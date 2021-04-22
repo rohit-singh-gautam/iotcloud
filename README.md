@@ -26,7 +26,7 @@ a Cloud Run deployment using the Docker image referenced earlier.
 
 ```bash
 cd google/cloud/examples/cloud_run_hello
-./bootstrap-cloud-run-hello.sh
+./bootstrap-cloud-run-iotcloud.sh
 ```
 
 ## Send a HTTP GET request to the server.
@@ -38,7 +38,7 @@ SERVICE_URL=$(gcloud run services list \
     "--project=${GOOGLE_CLOUD_PROJECT}" \
     "--platform=managed" \
     '--format=csv[no-heading](URL)' \
-    "--filter=SERVICE:cloud-run-hello")
+    "--filter=SERVICE:iotcloud")
 ```
 
 Then send a request using `curl`:

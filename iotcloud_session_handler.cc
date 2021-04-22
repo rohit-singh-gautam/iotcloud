@@ -32,16 +32,14 @@ void iotcloud_session_handler(tcp::socket socket) {
 
       // Send the response
       // Respond to any request with a "Hello World" message.
+
       be::http::response<be::http::string_body> response{be::http::status::ok,
                                                          request.version()};
       response.set(be::http::field::server, BOOST_BEAST_VERSION_STRING);
-      response.set(be::http::field::content_type, "text/plain");
+      response.set(be::http::field::content_type, "application/json");
       response.keep_alive(request.keep_alive());
-      std::string greeting = "Hello ";
-      auto const* target = std::getenv("TARGET");
-      greeting += target == nullptr ? "World" : target;
-      greeting += "\n";
-      response.body() = std::move(greeting);
+      std::string response_body = "{result:""success""}";
+      response.body() = std::move(response_body);
       response.prepare_payload();
       be::http::write(socket, response, ec);
       if (ec) return report_error(ec, "write");

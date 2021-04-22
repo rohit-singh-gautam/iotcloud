@@ -29,6 +29,6 @@ steps:
         "--dockerfile=Dockerfile",
         "--cache=true",
         "--cache-repo=gcr.io/${PROJECT_ID}/cpp-samples/ci/cache",
-        "--destination=gcr.io/${PROJECT_ID}/cloud-run-hello",
+        "--destination=gcr.io/${PROJECT_ID}/iotcloud",
     ]
     timeout: 1800s

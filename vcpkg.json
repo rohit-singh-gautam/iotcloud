@@ -1,9 +1,9 @@
 {
-  "name": "cpp-samples-cloud-run-hello-world",
+  "name": "cloud-run-iotcloud",
   "version-string": "0.1.0",
-  "homepage": "https://github.com/GoogleCloudPlatform/cpp-samples/",
+  "homepage": "https://github.com/rohit-singh-gautam/iotcloud",
   "description": [
-    "Shows how to deploy a C++ application to Cloud Run."
+    "Cloud service to control and monitor IOT device"
   ],
   "dependencies": [
     "boost-beast",
