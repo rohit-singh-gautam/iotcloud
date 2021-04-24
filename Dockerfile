@@ -1,63 +1,53 @@
-# Copyright 2021 Rohit Jairaj Singh (rohit@singh.org.in)
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# [START cloudrun_iotcloud_dockerfile]
-# [START dockerfile]
-# We chose Alpine to build the image because it has good support for creating
-# statically-linked, small programs.
-ARG DISTRO_VERSION=edge
-FROM alpine:${DISTRO_VERSION} AS base
+# [START cloudrun_helloworld_dockerfile]
+# [START run_helloworld_dockerfile]
 
-# Create separate targets for each phase, this allows us to cache intermediate
-# stages when using Google Cloud Build, and makes the final deployment stage
-# small as it contains only what is needed.
-FROM base AS devtools
+# Use the offical golang image to create a binary.
+# This is based on Debian and sets the GOPATH to /go.
+# https://hub.docker.com/_/golang
+FROM golang:1.16-buster as builder
 
-# Install the typical development tools and some additions:
-#   - ninja-build is a backend for CMake that often compiles faster than
-#     CMake with GNU Make.
-#   - Install the boost libraries.
-RUN apk update && \
-    apk add \
-        boost-dev \
-        boost-static \
-        build-base \
-        cmake \
-        git \
-        gcc \
-        g++ \
-        libc-dev \
-        nghttp2-static \
-        ninja \
-        openssl-dev \
-        openssl-libs-static \
-        tar \
-        zlib-static
+# Create and change to the app directory.
+WORKDIR /app
 
-# Copy the source code to /v/source and compile it.
-FROM devtools AS build
-COPY . /v/source
-WORKDIR /v/source
+# Retrieve application dependencies.
+# This allows the container build to reuse cached dependencies.
+# Expecting to copy go.mod and if present go.sum.
+COPY go.* ./
+RUN go mod download
 
-# Run the CMake configuration step, setting the options to create
-# a statically linked C++ program
-RUN cmake -S/v/source -B/v/binary -GNinja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBoost_USE_STATIC_LIBS=ON \
-    -DCMAKE_EXE_LINKER_FLAGS=-static
+# Copy local code to the container image.
+COPY . ./
 
-# Compile the binary and strip it to reduce its size.
-RUN cmake --build /v/binary
-RUN strip /v/binary/iotcloud
+# Build the binary.
+RUN go build -v -o server
 
-# Create the final deployment image, using `scratch` (the empty Docker image)
-# as the starting point. Effectively we create an image that only contains
-# our program.
-FROM scratch AS iotcloud
-WORKDIR /r
+# Use the official Debian slim image for a lean production container.
+# https://hub.docker.com/_/debian
+# https://docs.docker.com/develop/develop-images/multistage-build/#use-multi-stage-builds
+FROM debian:buster-slim
+RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy the program from the previously created stage and make it the entry point.
-COPY --from=build /v/binary/iotcloud /r
+# Copy the binary to the production image from the builder stage.
+COPY --from=builder /app/server /app/server
 
-ENTRYPOINT [ "/r/iotcloud" ]
-# [END dockerfile]
-# [END cloudrun_iotcloud_dockerfile]
+# Run the web service on container startup.
+CMD ["/app/server"]
+
+# [END run_helloworld_dockerfile]
+# [END cloudrun_helloworld_dockerfile]
