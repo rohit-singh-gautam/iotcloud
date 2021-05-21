@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC
+// Copyright 2021 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,40 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// [START cloudrun_helloworld_service]
-// [START run_helloworld_service]
-
-// Sample run-helloworld is a minimal Cloud Run service.
 package main
 
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+
+	"golang.org/x/net/http2"
 )
 
 func main() {
-	log.Print("starting server...")
-	http.HandleFunc("/", handler)
-
-	// Determine port for HTTP service.
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Printf("defaulting to port %s", port)
+	port := "8080"
+	if v := os.Getenv("PORT"); v != "" {
+		port = v
 	}
-
-	// Start HTTP server.
-	log.Printf("listening on port %s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	addr := net.JoinHostPort("", port)
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
 		log.Fatal(err)
+	}
+	log.Printf("listening on %s", addr)
+
+	server := http2.Server{}
+	http.HandleFunc("/", handler)
+	opts := &http2.ServeConnOpts{
+		Handler: http.DefaultServeMux,
+	}
+	for {
+		conn, err := lis.Accept()
+		if err != nil {
+			log.Printf("failed to accept connection: %v", err)
+		}
+		go server.ServeConn(conn, opts)
 	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "{Result:\"Success\"}\n")
+	fmt.Fprintf(w, "{Result:\"success\"}\n", r.Proto)
 }
-
-// [END run_helloworld_service]
-// [END cloudrun_helloworld_service]
