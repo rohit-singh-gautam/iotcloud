@@ -1,11 +1,11 @@
-#include "log.hh"
-#include "iotclouderror.hh"
-#include "iotcloudmath.hh"
-#include "socket.hh"
+#include <iot/log.hh>
+#include <iot/core/error.hh>
+#include <iot/math.hh>
+#include <iot/socket.hh>
 #include <cstring>
 #include <iostream>
 
-namespace iotcloud {
+namespace rohit {
 
 class log_cluster_entry {
 public:
@@ -257,7 +257,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
             }
 
             case 'X': {
-                using namespace iotcloud::math;
+                using namespace rohit::math;
                 switch(lenght_specifier) {
                 case formatstring_type_length::NONE: integerToStringHelper<uint32_t, 16, number_case::upper>(pStr, data_args); break;
                 case formatstring_type_length::h: integerToStringHelper<uint16_t, 16, number_case::upper>(pStr, data_args); break;
@@ -387,4 +387,4 @@ const std::string logreader::readnext() {
     return std::string(text);
 }
 
-} // namespace iotcloud
+} // namespace rohit

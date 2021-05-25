@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-namespace iotcloud {
+namespace rohit {
 
 template <typename T> struct is_int8_t { static constexpr bool const value = false; };
 template <> struct is_int8_t<int8_t> { static constexpr bool const value = true; };
@@ -174,5 +174,6 @@ template <> struct type_length<type_identifier::ssize_t> { static constexpr size
 
 
 typedef uint16_t log_id_type;
+typedef uint16_t state_type;
 
-} // namespace iotcloud 
+} // namespace rohit 

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "iotcloudtypes.hh"
+#include "types.hh"
 #include <errno.h>
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-namespace iotcloud {
+namespace rohit {
 
 class error_str {
 public:
@@ -205,4 +205,4 @@ inline std::ostream& operator<<(std::ostream& os, const exception_t &error) {
 
 
 
-} // namespace iotcloud
+} // namespace rohit

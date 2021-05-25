@@ -1,13 +1,13 @@
 #pragma once
-#include "iotclouderror.hh"
-#include "iotcloudmath.hh"
+#include "core/error.hh"
+#include "math.hh"
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string>
 #include <cstring>
 
-namespace iotcloud {
+namespace rohit {
 
 class ipv6_addr {
 private:
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const ipv6_addr &ipv6Addr) {
 
 inline int create_socket() {
     int socket_id = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    if (socket_id < 0) throw exception_t(iotcloud::error_t::socket_create_ret());
+    if (socket_id < 0) throw exception_t(rohit::error_t::socket_create_ret());
     return socket_id;
 }
 
@@ -159,4 +159,4 @@ public:
 };
 
 
-} // namespace iotcloud
+} // namespace rohit

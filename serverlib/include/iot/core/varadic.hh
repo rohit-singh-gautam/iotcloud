@@ -1,10 +1,10 @@
 #pragma once
-#include "iotcloudtypes.hh"
-#include "socket.hh"
+#include "types.hh"
+#include <iot/socket.hh>
 #include <assert.h>
 #include <iostream>
 
-namespace iotcloud {
+namespace rohit {
 
 template <typename T>
 inline constexpr size_t sizeofvaargs(const T& arg) {
@@ -342,4 +342,4 @@ inline constexpr size_t check_formatstring_args(const ARGS&... args) {
     return check_formatstring_args_internal<COUNT, fmt_list>((size_t)0, args...);
 }
 
-} // namespace iotcloud
+} // namespace rohit

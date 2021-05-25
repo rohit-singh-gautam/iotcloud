@@ -6,7 +6,7 @@
 #include "socket.hh"
 #include "log.hh"
 
-namespace iotcloud {
+namespace rohit {
 
 template <class Execution>
 class socketserver {
@@ -99,4 +99,4 @@ public:
 
 
 
-} // namespace iotcloud
+} // namespace rohit

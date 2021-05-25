@@ -1,10 +1,10 @@
 #pragma once
 
-#include "iotclouderror.hh"
+#include "core/error.hh"
 #include <algorithm>
 #include <string>
 
-namespace iotcloud {
+namespace rohit {
 
 constexpr uint8_t hexToValue(const char c) {
     return c > '9' ? c - 'a' + 10 : c - '0';

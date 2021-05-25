@@ -1,7 +1,7 @@
-#include "iotcloudmath.hh"
-#include "log.hh"
+#include <iot/math.hh>
+#include <iot/log.hh>
 #include "test.hh"
-#include "serversocket.hh"
+#include <iot/serversocket.hh>
 #include <arpa/inet.h>
 #include <iostream>
 #include <sstream>
@@ -12,13 +12,13 @@ int success = 0;
 int failed = 0;
 
 void test_error_t() {
-    for(int i = iotcloud::error_t::SUCCESS; i <= iotcloud::error_t::MAX_FAILURE; i++) {
-        iotcloud::error_t err((iotcloud::error_t::error_internal_t)i);
-        std::cout << "Error value: " << (iotcloud::log_id_type)i << ", " << err << std::endl;
+    for(int i = rohit::error_t::SUCCESS; i <= rohit::error_t::MAX_FAILURE; i++) {
+        rohit::error_t err((rohit::error_t::error_internal_t)i);
+        std::cout << "Error value: " << (rohit::log_id_type)i << ", " << err << std::endl;
     }
 }
 
-void ClientConnection::execute(iotcloud::socket_t client_id) {
+void ClientConnection::execute(rohit::socket_t client_id) {
     std::cout << "Connection Received from " << client_id.get_ipv6_addr().to_string() << std::endl;
 
     size_t read_buffer_size = 1024;
@@ -49,7 +49,7 @@ void ClientConnection::execute(iotcloud::socket_t client_id) {
     client_id.write(strResponseHeader.c_str(), strResponseHeader.length());
 }
 
-void ClientConnectionThreaded::execute(iotcloud::socket_t client_id) {
+void ClientConnectionThreaded::execute(rohit::socket_t client_id) {
     std::cout << "Connection Received from " << client_id.get_ipv6_addr().to_string() << std::endl;
 
     size_t read_buffer_size = 1024;
@@ -82,30 +82,30 @@ void ClientConnectionThreaded::execute(iotcloud::socket_t client_id) {
 
 void *test_serversocket(void *) try {
     int port = 8081;
-    iotcloud::socketserver<iotcloud::server_execution_simplest<ClientConnection>> serversocket(port);
+    rohit::socketserver<rohit::server_execution_simplest<ClientConnection>> serversocket(port);
     
-    iotcloud::error_t err = serversocket.execute();
+    rohit::error_t err = serversocket.execute();
     if (err.isFailure()) {
         std::cout << "Failed with failure " << err << std::endl;
     }
  
     pthread_exit(NULL);
-} catch (iotcloud::exception_t excep) {
+} catch (rohit::exception_t excep) {
     std::cout << excep << std::endl;
     pthread_exit(NULL);
 }
 
 void *test_serversocket_threaded(void *) try {
     int port = 8080;
-    iotcloud::socketserver<iotcloud::server_execution_threaded<ClientConnectionThreaded>> serversocket(port);
+    rohit::socketserver<rohit::server_execution_threaded<ClientConnectionThreaded>> serversocket(port);
 
-    iotcloud::error_t err = serversocket.execute();
+    rohit::error_t err = serversocket.execute();
     if (err.isFailure()) {
         std::cout << "Failed with failure " << err << std::endl;
     }
  
     pthread_exit(NULL);
-} catch (iotcloud::exception_t excep) {
+} catch (rohit::exception_t excep) {
     std::cout << excep << std::endl;
     pthread_exit(NULL);
 }
@@ -125,7 +125,7 @@ void test_itoa() {
     for(auto port_entry: port_list) {
         uint16_t port = port_entry.first;
         char portstr[6];
-        auto count = iotcloud::math::integerToString(portstr, port);
+        auto count = rohit::math::integerToString(portstr, port);
         auto len = strlen(port_entry.second.c_str()) + 1;
 
         if (count != len) {
@@ -149,22 +149,22 @@ void test_itoa() {
     }
 }
 
-template <iotcloud::logger_message_id ID>
+template <rohit::logger_message_id ID>
 void test_types_helper() {
-    using iotcloud::logger;
-    using iotcloud::logger_level;
-    using desc = iotcloud::log_description<ID>;
+    using rohit::logger;
+    using rohit::logger_level;
+    using desc = rohit::log_description<ID>;
 
     std::cout << "Log: " << desc::id_str << ":" << desc::value << ", types: ";
     for(size_t i = 0; i < desc::type_count; i++) {
-        std::cout << iotcloud::type_str[(size_t)(desc::type_list[i])] << "|";
+        std::cout << rohit::type_str[(size_t)(desc::type_list[i])] << "|";
     }
 
     std::cout << std::endl;
 }
 
-#define fmtfn(x, ...) check_formatstring_args<iotcloud::logger_message_id::x>(__VA_ARGS__)
-#define fmtstr(x, ...) "check_formatstring_args<iotcloud::logger_message_id::" #x ">(" #__VA_ARGS__ ")"
+#define fmtfn(x, ...) check_formatstring_args<rohit::logger_message_id::x>(__VA_ARGS__)
+#define fmtstr(x, ...) "check_formatstring_args<rohit::logger_message_id::" #x ">(" #__VA_ARGS__ ")"
 
 #define check_formatstring_args_macro(result, x, ...)  { \
     auto ret = fmtfn(x, __VA_ARGS__); \
@@ -173,7 +173,7 @@ void test_types_helper() {
     std::cout << fmtstr(x, __VA_ARGS__) ": (SIZE_MAX,18446744073709551615==SUCCESS) " << ret << std::endl; }
 
 void test_types_what_type() {
-    using namespace iotcloud;
+    using namespace rohit;
     std::cout << "Type comparison template test " << std::endl;
     std::cout << "char: " << type_str[(size_t)what_type<char>::value] << std::endl;
     std::cout << "int8_t: " << type_str[(size_t)what_type<int8_t>::value] << std::endl;
@@ -208,12 +208,12 @@ void test_types_what_type() {
     check_formatstring_args_macro(SIZE_MAX, TEST_FLOAT_LOGS, 101.0f, 102.0);
     check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
 
-    iotcloud::ipv6_addr ipv6addr("::1", 8080);
+    rohit::ipv6_addr ipv6addr("::1", 8080);
     check_formatstring_args_macro(SIZE_MAX, TEST_IPV6ADDR_LOGS, 'v', ipv6addr);
 }
 
 void test_types() {
-    using iotcloud::logger_message_id;
+    using rohit::logger_message_id;
     test_types_helper<logger_message_id::PTHREAD_CREATE_FAILED>();
     test_types_helper<logger_message_id::PTHREAD_JOIN_FAILED>();
     test_types_helper<logger_message_id::TEST_INTEGER_LOGS>();
@@ -221,18 +221,18 @@ void test_types() {
     test_types_what_type();
 }
 
-void test_readlog(iotcloud::logreader &log_reader) {
+void test_readlog(rohit::logreader &log_reader) {
     auto logstr = log_reader.readnext();
     std::cout << "Log String: " << logstr << std::endl;
 }
 
 void test_logs() try {
-    using iotcloud::logger;
-    using iotcloud::logger_level;
-    using iotcloud::logger_message_id;
-    using iotcloud::log_verbose;
+    using rohit::logger;
+    using rohit::logger_level;
+    using rohit::logger_message_id;
+    using rohit::log_verbose;
 
-    std::cout << "Total type of logs count: " << iotcloud::logger_message_id_count << std::endl;
+    std::cout << "Total type of logs count: " << rohit::logger_message_id_count << std::endl;
     const std::string log_filename = "/tmp/test_logs.txt";
 
     remove(log_filename.c_str());
@@ -248,7 +248,7 @@ void test_logs() try {
             (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
     }
 
-    iotcloud::ipv6_addr ipv6addr("::1", 8080);
+    rohit::ipv6_addr ipv6addr("::1", 8080);
     log_verbose<logger_message_id::TEST_IPV6ADDR_LOGS>('v', ipv6addr);
 
     logger::flush();
@@ -256,7 +256,7 @@ void test_logs() try {
 
     std::cout << "Reading log" << std::endl;
     // Read written logs
-    iotcloud::logreader log_reader(log_filename);
+    rohit::logreader log_reader(log_filename);
 
     test_readlog(log_reader);
     test_readlog(log_reader);
@@ -265,7 +265,7 @@ void test_logs() try {
         try {
             std::cout << count << ": ";
             test_readlog(log_reader);
-        } catch(iotcloud::exception_t exception) {
+        } catch(rohit::exception_t exception) {
             std::cout << "test_logs failed with exception is " << exception << std::endl;
             break;
         }
@@ -275,7 +275,7 @@ void test_logs() try {
 
     std::cout << std::endl;
     std::cout << std::endl;
-} catch (iotcloud::exception_t exception) {
+} catch (rohit::exception_t exception) {
     std::cout << "test_logs failed with exception is " << exception << std::endl;
 }
 
@@ -293,21 +293,21 @@ int main() {
 
     /*pthread_t pthreadIds[2];
 
-    auto errCreate = iotcloud::error_t::pthread_create_ret(pthread_create(&pthreadIds[0], NULL, test_serversocket, NULL));
+    auto errCreate = rohit::error_t::pthread_create_ret(pthread_create(&pthreadIds[0], NULL, test_serversocket, NULL));
     if (errCreate.isFailure()) {
         errCreate.log();
         return EXIT_FAILURE;
     }
 
-    errCreate = iotcloud::error_t::pthread_create_ret(pthread_create(&pthreadIds[1], NULL, test_serversocket_threaded, NULL));
+    errCreate = rohit::error_t::pthread_create_ret(pthread_create(&pthreadIds[1], NULL, test_serversocket_threaded, NULL));
     if (errCreate) {
         errCreate.log();
         return EXIT_FAILURE;
     }
 
     for (auto threadId: pthreadIds) {
-        auto err = iotcloud::error_t::pthread_join_ret(pthread_join(threadId, NULL));
-        if (err != iotcloud::error_t::SUCCESS) {
+        auto err = rohit::error_t::pthread_join_ret(pthread_join(threadId, NULL));
+        if (err != rohit::error_t::SUCCESS) {
             err.log();
             return EXIT_FAILURE;
         }

@@ -1,6 +1,6 @@
-#include "iotclouderror.hh"
+#include <iot/core/error.hh>
 
-namespace iotcloud {
+namespace rohit {
 
 const error_str error_t::displayString[] {
 #define ERROR_T_ENTRY(x, y) {#x, y},

@@ -1,10 +1,10 @@
-#include "serversocket.hh"
-#include "iotcloudmath.hh"
+#include <iot/serversocket.hh>
+#include <iot/math.hh>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string>
 
-namespace iotcloud {
+namespace rohit {
 
 const std::string ipv6_addr::to_string() const { 
     // Stored memory for string like "000.000.000.000:00000"
@@ -22,4 +22,4 @@ const std::string ipv6_addr::to_string() const {
     return displayString;
 }
 
-} // namespace iotcloud
+} // namespace rohit

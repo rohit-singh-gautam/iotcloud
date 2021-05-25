@@ -1,7 +1,7 @@
-#include "iotmessage.hh"
+#include <iot/message.hh>
 #include <sstream>
 
-namespace iotcloud {
+namespace rohit {
 
 const std::string operation_t::displayString[] = {
     "SWITCH",
@@ -64,4 +64,4 @@ std::ostream& operator<<(std::ostream& os, const message_command_t &message) {
     return os;
 }
 
-} // namespace iotcloud
+} // namespace rohit

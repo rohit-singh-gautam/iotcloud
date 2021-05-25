@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <cmath>
 
-namespace iotcloud {
+namespace rohit {
 
 namespace math {
 
@@ -66,4 +66,4 @@ constexpr size_t floatToString(char *dest, T val) {
 
 } // namespace math
 
-} // namespace iotcloud
+} // namespace rohit

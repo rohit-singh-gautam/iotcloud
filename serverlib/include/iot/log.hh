@@ -1,10 +1,10 @@
 #pragma once
-#include "iotcloudvaradic.hh"
+#include "core/varadic.hh"
 #include <unistd.h>
 #include <iostream>
 #include <thread>
 
-namespace iotcloud {
+namespace rohit {
 
 class log_str {
 public:
@@ -270,4 +270,4 @@ public:
 }; // class logreader
 
 
-} // namespace iotcloud
+} // namespace rohit

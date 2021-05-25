@@ -1,5 +1,5 @@
-#include "include/iotmessage.hh"
-#include "serversocket.hh"
+#include <iot/message.hh>
+#include <iot/serversocket.hh>
 #include <cstring>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -16,25 +16,25 @@ int main(int argc, char *argv[]) try {
         return EXIT_FAILURE;
     }
 
-    iotcloud::message_command_t messageCommand(sourceGuid);
-    messageCommand.add(destGuid, iotcloud::operation_t::SWITCH, (iotcloud::operation_value_internal_type)iotcloud::operation_t::operation_switch_t::ON);
+    rohit::message_command_t messageCommand(sourceGuid);
+    messageCommand.add(destGuid, rohit::operation_t::SWITCH, (rohit::operation_value_internal_type)rohit::operation_t::operation_switch_t::ON);
 
     int portno = atoi(argv[2]);
     
-    iotcloud::ipv6_addr ipv6addr(argv[1], portno);
+    rohit::ipv6_addr ipv6addr(argv[1], portno);
 
-    iotcloud::client_socket_t client_socket(ipv6addr);
+    rohit::client_socket_t client_socket(ipv6addr);
     std::cout << "Connected: " << client_socket << std::endl;   
     std::cout << "Local Address: " << client_socket.get_local_ipv6_addr() << std::endl;
     
-    iotcloud::error_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
+    rohit::error_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
     if (err.isFailure()) {
         std::cout << err << std::endl;
         client_socket.close();
         return EXIT_FAILURE;
     }
 
-    size_t read_buffer_size = sizeof(iotcloud::message_command_t);
+    size_t read_buffer_size = sizeof(rohit::message_command_t);
     uint8_t read_buffer[read_buffer_size];
 
     size_t read_buffer_length;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) try {
         return EXIT_FAILURE;
     }
 
-    iotcloud::message_base_t *messageBase = (iotcloud::message_base_t *)read_buffer;
+    rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
     std::cout << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
 
     err = client_socket.close();
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) try {
     }
 
     return EXIT_SUCCESS;
-} catch(iotcloud::exception_t excep) {
+} catch(rohit::exception_t excep) {
     std::cout << excep << std::endl;
     return EXIT_FAILURE;
 }
