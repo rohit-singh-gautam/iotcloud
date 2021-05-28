@@ -32,8 +32,7 @@ void ClientConnectionThreaded::execute(rohit::socket_t client_id) {
 int main() try {
     int port = 8080;
     rohit::socketserver<rohit::server_execution_threaded<ClientConnectionThreaded>> serversocket(port);
-    std::cout << "Local Address: " << serversocket << std::endl;   
-    std::cout << "Connected: " << serversocket.get_local_ipv6_addr() << std::endl;
+    std::cout << "Local Address: " << serversocket << std::endl;
 
     rohit::error_t err = serversocket.execute();
     if (err.isFailure()) {

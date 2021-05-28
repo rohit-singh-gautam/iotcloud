@@ -138,7 +138,7 @@ constexpr size_t to_string(char *dest, const ipv6_socket_addr_t &val) {
     pstr += to_string<number_case, false>(pstr, val.addr);
     *pstr++ = ']';
     *pstr++ = ':';
-    pstr += to_string<uint16_t, 10, number_case, null_terminated>(pstr, changeEndian(val.port));
+    pstr += to_string<uint16_t, 10, number_case, null_terminated>(pstr, val.port);
     return (size_t)(pstr - dest);
 }
 

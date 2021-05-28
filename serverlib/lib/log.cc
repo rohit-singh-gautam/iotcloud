@@ -145,10 +145,27 @@ void floatToStringHelper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
-void ipv6_addrToStringHelper(char *&pStr, const uint8_t *&data_args) {
+template <number_case number_case = number_case::lower>
+void ipv6_socket_addr_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const ipv6_socket_addr_t &value = *(ipv6_socket_addr_t *)data_args;
     data_args += sizeof(ipv6_socket_addr_t);
-    auto count =  to_string(pStr, value);
+    auto count =  to_string<number_case, false>(pStr, value);
+    pStr += count;
+}
+
+template <number_case number_case = number_case::lower>
+void ipv6_addr_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const ipv6_addr_t &value = *(ipv6_addr_t *)data_args;
+    data_args += sizeof(ipv6_addr_t);
+    auto count =  to_string<number_case>(pStr, value);
+    pStr += count;
+}
+
+void ipv6_port_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const ipv6_port_t &value = *(ipv6_port_t *)data_args;
+    data_args += sizeof(ipv6_port_t);
+    uint16_t port = value;
+    auto count =  to_string<uint16_t, 10, number_case::lower, false>(pStr, port);
     pStr += count;
 }
 
@@ -211,7 +228,6 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case formatstring_type_length::NONE: integerToStringHelper<int32_t>(pStr, data_args); break;
                 case formatstring_type_length::l:
                 case formatstring_type_length::ll: integerToStringHelper<int64_t>(pStr, data_args); break;
-                case formatstring_type_length::z: integerToStringHelper<size_t>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -224,7 +240,6 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case formatstring_type_length::hh: integerToStringHelper<uint8_t>(pStr, data_args); break;
                 case formatstring_type_length::l:
                 case formatstring_type_length::ll: integerToStringHelper<uint64_t>(pStr, data_args); break;
-                case formatstring_type_length::z: integerToStringHelper<size_t>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -237,7 +252,6 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case formatstring_type_length::hh: integerToStringHelper<uint8_t, 8>(pStr, data_args); break;
                 case formatstring_type_length::l:
                 case formatstring_type_length::ll: integerToStringHelper<uint64_t, 8>(pStr, data_args); break;
-                case formatstring_type_length::z: integerToStringHelper<size_t, 8>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -250,7 +264,6 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case formatstring_type_length::hh: integerToStringHelper<uint8_t, 16>(pStr, data_args); break;
                 case formatstring_type_length::l:
                 case formatstring_type_length::ll: integerToStringHelper<uint64_t, 16>(pStr, data_args); break;
-                case formatstring_type_length::z: integerToStringHelper<size_t, 16>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -263,7 +276,6 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case formatstring_type_length::hh: integerToStringHelper<uint8_t, 16, number_case::upper>(pStr, data_args); break;
                 case formatstring_type_length::l:
                 case formatstring_type_length::ll: integerToStringHelper<uint64_t, 16, number_case::upper>(pStr, data_args); break;
-                case formatstring_type_length::z: integerToStringHelper<size_t, 16, number_case::upper>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -284,7 +296,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 break;
             
             case 'v':
-                ipv6_addrToStringHelper(pStr, data_args);
+                state = formatstring_state::MODIFIER_CUSTOM;
                 break;
 
             // Specifiers
@@ -299,18 +311,26 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                     lenght_specifier = formatstring_type_length::ll;
                 else lenght_specifier = formatstring_type_length::l;
                 break;
-
-            case 'z':
-                lenght_specifier = formatstring_type_length::z;
-                break;
             
             default: // Junk character we just ignoring it
                 state = formatstring_state::COPY;
                 break;
-            }
-            break;
-        }
-    }
+            } // switch (c)
+            break; // case formatstring_state::MODIFIER:
+        
+        case formatstring_state::MODIFIER_CUSTOM:
+            switch (c) {
+                case 'n': ipv6_socket_addr_t_to_string_helper(pStr, data_args); break;
+                case 'N': ipv6_socket_addr_t_to_string_helper<number_case::upper>(pStr, data_args); break;
+                case 'i': ipv6_addr_t_to_string_helper(pStr, data_args); break;
+                case 'I': ipv6_addr_t_to_string_helper<number_case::upper>(pStr, data_args); break;
+                case 'p': ipv6_port_t_to_string_helper(pStr, data_args); break;
+                    break;
+            } // switch (c)
+            state = formatstring_state::COPY;
+            break; // case formatstring_state::MODIFIER_CUSTOM:
+        } // switch (state)
+    } // while(*desc_str)
 
     *pStr++ = '\0';
 }

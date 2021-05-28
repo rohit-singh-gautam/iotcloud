@@ -55,7 +55,12 @@ public:
 // %f - floating point lower case (float)
 // %F - floating point upper case (float)
 // %c - character (char)
-// %v - IPv6 Address format
+// %v - Custom
+//      %vn: IPv6 network Address format
+//      %vN: IPv6 network Address format in caps
+//      %vi: IPv6 address
+//      %vi: IPv6 address in caps
+//      %vp: IPv6 port
 // %% - %
 //
 // Supported format length
@@ -67,7 +72,8 @@ public:
 
 enum class formatstring_state { 
     COPY,
-    MODIFIER
+    MODIFIER,
+    MODIFIER_CUSTOM
 };
 
 enum class formatstring_type_length {
@@ -75,8 +81,7 @@ enum class formatstring_type_length {
     h,
     hh,
     l,
-    ll,
-    z
+    ll
 };
 
 inline constexpr size_t formatstring_count(const char *arr) {
@@ -108,12 +113,25 @@ inline constexpr size_t formatstring_count(const char *arr) {
             case 'X':
             case 'f':
             case 'F':
+                ++count;
+                state = formatstring_state::COPY;
+                break;
             case 'v':
+                state = formatstring_state::MODIFIER_CUSTOM;
+            }
+            break;
+
+        case formatstring_state::MODIFIER_CUSTOM:
+            switch(c) {
+            case 'n':
+            case 'N':
+            case 'i':
+            case 'I':
+            case 'p':
                 ++count;
                 state = formatstring_state::COPY;
                 break;
             }
-            
             break;
         }
     }
@@ -173,10 +191,6 @@ template <const size_t COUNT> struct formatstring_type_list {
                         type_list[index++] = type_identifier::int64_t;
                         length += type_length<type_identifier::int64_t>::value;
                         break;
-                    case formatstring_type_length::z:
-                        type_list[index++] = type_identifier::uint64_t;
-                        length += type_length<type_identifier::uint64_t>::value;
-                        break;
                     }
                     state = formatstring_state::COPY;
                     break;
@@ -200,10 +214,6 @@ template <const size_t COUNT> struct formatstring_type_list {
                         break;
                     case formatstring_type_length::l:
                     case formatstring_type_length::ll:
-                        type_list[index++] = type_identifier::uint64_t;
-                        length += type_length<type_identifier::uint64_t>::value;
-                        break;
-                    case formatstring_type_length::z:
                         type_list[index++] = type_identifier::uint64_t;
                         length += type_length<type_identifier::uint64_t>::value;
                         break;
@@ -236,9 +246,7 @@ template <const size_t COUNT> struct formatstring_type_list {
                         assert(true);
                         continue;
                     }
-                    type_list[index++] = type_identifier::ipv6_socket_addr_t;
-                    length += type_length<type_identifier::ipv6_socket_addr_t>::value;
-                    state = formatstring_state::COPY;
+                    state = formatstring_state::MODIFIER_CUSTOM;
                     break;
 
                 // Specifiers
@@ -256,7 +264,7 @@ template <const size_t COUNT> struct formatstring_type_list {
                 
                 case 'l':
                     if(lenght_specifier != formatstring_type_length::NONE &&
-                    lenght_specifier != formatstring_type_length::l) {
+                       lenght_specifier != formatstring_type_length::l) {
                         type_list[index++] = type_identifier::bad_type;
                         assert(true);
                         continue;
@@ -266,20 +274,34 @@ template <const size_t COUNT> struct formatstring_type_list {
                     else lenght_specifier = formatstring_type_length::l;
                     break;
 
-                case 'z':
-                    if(lenght_specifier != formatstring_type_length::NONE) {
-                        type_list[index++] = type_identifier::bad_type;
-                        assert(true);
-                        continue;
-                    }
-                    lenght_specifier = formatstring_type_length::z;
-                    break;
-
                 default:
                     type_list[index++] = type_identifier::bad_type; break;
-                }
+                } //switch (c)
                 
-                break;
+                break; // case formatstring_state::MODIFIER:
+
+            case formatstring_state::MODIFIER_CUSTOM:
+                switch(c) {
+                case 'n':
+                case 'N':
+                    type_list[index++] = type_identifier::ipv6_socket_addr_t;
+                    length += type_length<type_identifier::ipv6_socket_addr_t>::value;
+                    state = formatstring_state::COPY;
+                    break;
+                case 'i':
+                case 'I':
+                    type_list[index++] = type_identifier::ipv6_addr_t;
+                    length += type_length<type_identifier::ipv6_addr_t>::value;
+                    state = formatstring_state::COPY;
+                    break;
+                case 'p':
+                    type_list[index++] = type_identifier::ipv6_port_t;
+                    length += type_length<type_identifier::ipv6_port_t>::value;
+                    state = formatstring_state::COPY;
+                default:
+                        type_list[index++] = type_identifier::bad_type; break;
+                }
+                break; // case formatstring_state::MODIFIER_CUSTOM:
             }
         }
 

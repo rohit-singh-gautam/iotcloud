@@ -59,9 +59,10 @@ public:
     inline const ipv6_socket_addr_t get_peer_ipv6_addr() const {
         sockaddr_in6 addr;
         socklen_t len = sizeof(addr);
-        getpeername(socket_id, (struct sockaddr *)&addr, &len);
+        getpeername(socket_id, reinterpret_cast<struct sockaddr *>(&addr), &len);
 
-        return ipv6_socket_addr_t(&addr.sin6_addr.__in6_u, addr.sin6_port);
+        ipv6_port_t &port = *reinterpret_cast<ipv6_port_t *>(&addr.sin6_port);
+        return ipv6_socket_addr_t(&addr.sin6_addr.__in6_u, port);
     }
 
     inline const ipv6_socket_addr_t get_local_ipv6_addr() const {
@@ -69,7 +70,8 @@ public:
         socklen_t len = sizeof(addr);
         getsockname(socket_id, (struct sockaddr *)&addr, &len);
 
-        return ipv6_socket_addr_t(&addr.sin6_addr.__in6_u, addr.sin6_port);
+        ipv6_port_t &port = *reinterpret_cast<ipv6_port_t *>(&addr.sin6_port);
+        return ipv6_socket_addr_t(&addr.sin6_addr.__in6_u, port);
     }
 
     // Returns local or socket IP address
