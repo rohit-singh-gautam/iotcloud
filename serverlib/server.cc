@@ -2,7 +2,7 @@
 #include <iot/message.hh>
 
 void ClientConnectionThreaded::execute(rohit::socket_t client_id) {
-    std::cout << "Connection Received from " << client_id.get_ipv6_addr().to_string() << std::endl;
+    std::cout << "Connection Received from " << client_id.get_peer_ipv6_addr() << std::endl;
 
     size_t read_buffer_size = 1024;
     uint8_t read_buffer[read_buffer_size];
@@ -32,6 +32,8 @@ void ClientConnectionThreaded::execute(rohit::socket_t client_id) {
 int main() try {
     int port = 8080;
     rohit::socketserver<rohit::server_execution_threaded<ClientConnectionThreaded>> serversocket(port);
+    std::cout << "Local Address: " << serversocket << std::endl;   
+    std::cout << "Connected: " << serversocket.get_local_ipv6_addr() << std::endl;
 
     rohit::error_t err = serversocket.execute();
     if (err.isFailure()) {

@@ -1,6 +1,7 @@
 #pragma once
 #include "core/error.hh"
 #include "math.hh"
+#include "core/ipv6addr.hh"
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -9,55 +10,15 @@
 
 namespace rohit {
 
-class ipv6_addr {
-private:
-    const sockaddr_in6 addr;
-    const std::size_t len;
-
-    static inline sockaddr_in6 stringToAddress(const char *addr_str, const uint16_t port) {
-        struct sockaddr_in6 server_address;
-
-        server_address.sin6_family = AF_INET6;
-        inet_pton(AF_INET6, addr_str, &server_address.sin6_addr);
-        server_address.sin6_port = htons(port);
-        return server_address;
-    }
-
-    inline constexpr ipv6_addr(const sockaddr_in6 &addr, const size_t len) : addr(addr), len(len) { }
-
-    friend class socket_t;
-    friend class client_socket_t;
-
-public:
-    inline ipv6_addr(const std::string &addr_str, const uint16_t port)
-        : addr(stringToAddress(addr_str.c_str(), port)), len(sizeof(addr)) {}
-    inline ipv6_addr(const char *addr_str, const uint16_t port) : addr(stringToAddress(addr_str, port)), len(sizeof(addr)) {}
-
-    inline uint16_t getPort() const { return htons(addr.sin6_port); }
-
-    inline size_t copy_string(char *ipv6_str) const {
-        // Stored memory for string like "000.000.000.000:00000"
-        const size_t displayString_size = INET6_ADDRSTRLEN + 6;
-        inet_ntop(AF_INET6, &addr.sin6_addr, ipv6_str, displayString_size);
-        size_t count = 0;
-        while(*ipv6_str) {
-            ++count;
-            ++ipv6_str;
-        }
-        *ipv6_str++ = ':'; count++;
-        count += math::integerToString<uint16_t, 10, math::number_case::lower, false>(ipv6_str, getPort());
-        return count;
-    }
-
-    const std::string to_string() const;
-
-    inline operator const std::string() const { return to_string(); }
-};
-
-template <> struct type_length<type_identifier::ipv6_addr_t> { static constexpr size_t const value = sizeof(ipv6_addr); };
-
-inline std::ostream& operator<<(std::ostream& os, const ipv6_addr &ipv6Addr) {
-    return os << ipv6Addr.to_string();
+constexpr ipv6_socket_addr_t::operator sockaddr_in6() const {
+    sockaddr_in6 sockaddr = {};
+    sockaddr.sin6_family = AF_INET6;
+    sockaddr.sin6_addr.__in6_u.__u6_addr32[0] = addr.addr_32[0];
+    sockaddr.sin6_addr.__in6_u.__u6_addr32[1] = addr.addr_32[1];
+    sockaddr.sin6_addr.__in6_u.__u6_addr32[2] = addr.addr_32[2];
+    sockaddr.sin6_addr.__in6_u.__u6_addr32[3] = addr.addr_32[3];
+    sockaddr.sin6_port = port.get_network_port();
+    return sockaddr;
 }
 
 inline int create_socket() {
@@ -95,23 +56,31 @@ public:
         return error_t::SUCCESS;
     }
 
-    inline const ipv6_addr get_ipv6_addr() const {
+    inline const ipv6_socket_addr_t get_peer_ipv6_addr() const {
         sockaddr_in6 addr;
         socklen_t len = sizeof(addr);
         getpeername(socket_id, (struct sockaddr *)&addr, &len);
-        return ipv6_addr(addr, len);
+
+        return ipv6_socket_addr_t(&addr.sin6_addr.__in6_u, addr.sin6_port);
     }
 
-    inline const ipv6_addr get_local_ipv6_addr() const {
+    inline const ipv6_socket_addr_t get_local_ipv6_addr() const {
         sockaddr_in6 addr;
         socklen_t len = sizeof(addr);
         getsockname(socket_id, (struct sockaddr *)&addr, &len);
-        return ipv6_addr(addr, len);
+
+        return ipv6_socket_addr_t(&addr.sin6_addr.__in6_u, addr.sin6_port);
     }
+
+    // Returns local or socket IP address
+    inline operator const ipv6_socket_addr_t() const {
+        return get_local_ipv6_addr();
+    }
+
 };
 
 inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
-    return os << client_id.get_ipv6_addr();
+    return os << client_id.get_local_ipv6_addr();
 }
 
 class server_socket_t : public socket_t {
@@ -144,15 +113,16 @@ public:
 
 class client_socket_t : public socket_t {
 private:
-    inline error_t connect(const ipv6_addr &ipv6addr) {
-        if (::connect(socket_id, (struct sockaddr*)&ipv6addr.addr, ipv6addr.len) == 0)
+    inline error_t connect(const ipv6_socket_addr_t &ipv6addr) {
+        sockaddr_in6 in6_addr = ipv6addr;
+        if (::connect(socket_id, (struct sockaddr*)&in6_addr, sizeof(in6_addr)) == 0)
             return error_t::SUCCESS;
         return error_t::socket_connect_ret();
     }
 
 public:
     using socket_t::socket_t;
-    client_socket_t(const ipv6_addr &ipv6addr) {
+    client_socket_t(const ipv6_socket_addr_t &ipv6addr) {
         error_t err = connect(ipv6addr);
         if (err.isFailure()) throw exception_t(err);
     }

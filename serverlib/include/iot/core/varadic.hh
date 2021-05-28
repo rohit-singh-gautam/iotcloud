@@ -22,8 +22,8 @@ inline constexpr void copyvaradic(uint8_t *arr, const T& arg) {
 }
 
 template <>
-inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_addr& arg) {
-    for(size_t count = 0; count < sizeof(ipv6_addr); count++) {
+inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_socket_addr_t& arg) {
+    for(size_t count = 0; count < sizeof(ipv6_socket_addr_t); count++) {
         *(arr + count) = *((uint8_t *)&arg + count);
     }
 }
@@ -236,8 +236,8 @@ template <const size_t COUNT> struct formatstring_type_list {
                         assert(true);
                         continue;
                     }
-                    type_list[index++] = type_identifier::ipv6_addr_t;
-                    length += type_length<type_identifier::ipv6_addr_t>::value;
+                    type_list[index++] = type_identifier::ipv6_socket_addr_t;
+                    length += type_length<type_identifier::ipv6_socket_addr_t>::value;
                     state = formatstring_state::COPY;
                     break;
 
@@ -303,17 +303,17 @@ template <const size_t COUNT> struct formatstring_type_list {
 template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list, typename T>
 inline constexpr size_t check_formatstring_args_internal(const size_t index, const T &) {
     if (index >= COUNT) {
-        //std::cout << "Too many argument";
+        // std::cout << "Too many argument";
         return index; // Too many argument
     }
     
     if (fmt_list[index] != what_type<T>::value) {
-        //std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
+        // std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
         return index; // Bad type
     }
 
     if (index + 1 != COUNT) {
-        //std::cout << "Too few argument";
+        // std::cout << "Too few argument";
         return index; // Too few argument
     }
     return SIZE_MAX;    
@@ -322,10 +322,12 @@ inline constexpr size_t check_formatstring_args_internal(const size_t index, con
 template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list, typename T, typename... ARGS>
 inline constexpr size_t check_formatstring_args_internal(const size_t index, const T &, const ARGS &...args)
 {
-    if (index >= COUNT)
+    if (index >= COUNT) {
+        // std::cout << "Too many argument";
         return index; // Too many argument
+    }
     if (fmt_list[index] != what_type<T>::value) {
-        //std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
+        // std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
         return index; // Bad type
     }
     return check_formatstring_args_internal<COUNT, fmt_list>(index + 1, args...);

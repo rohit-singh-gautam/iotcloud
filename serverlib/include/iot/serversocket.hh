@@ -18,6 +18,10 @@ private:
     Execution execution;
 
     bool running;
+
+    template <class Execution1>
+    friend inline std::ostream& operator<<(std::ostream& os, const socketserver<Execution1> &sockSrv);
+
 public:
     inline socketserver(int port, int backlog = 5) 
         : socket_id(port, backlog), port(port), backlog(backlog), execution(this), running(false) {  }
@@ -37,8 +41,21 @@ public:
     }
     error_t stop() { running = false; return error_t::SUCCESS; }
 
+    inline const ipv6_socket_addr_t get_peer_ipv6_addr() const {
+        return socket_id.get_peer_ipv6_addr();
+    }
+
+    inline const ipv6_socket_addr_t get_local_ipv6_addr() const {
+        return socket_id.get_local_ipv6_addr();
+    }
+
     friend class server_execution;
 }; // class socketserver
+
+template <class Execution>
+inline std::ostream& operator<<(std::ostream& os, const socketserver<Execution> &sockSrv) {
+    return os << sockSrv.socket_id;
+}
 
 // This is simpliest execution.
 template <class ClientExecution>

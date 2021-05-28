@@ -27,7 +27,7 @@ struct state_c {
     const state_t id;
     state_c(const state_t id) : id(id) { }
 
-    constexpr const char *to_string() {
+    constexpr const char *to_string() const {
         switch (id) {
         default: // This will avoid error, such condition will never reach
             assert(true);
@@ -37,9 +37,7 @@ struct state_c {
         }
     }
 
-    constexpr const char*() { return to_string(); }
+    constexpr const char*() const { return to_string(); }
 };
-
-
 
 } // namespace rohit

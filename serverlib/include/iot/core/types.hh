@@ -3,52 +3,115 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <bit>
 
+struct sockaddr_in6;
 namespace rohit {
+
+template <typename T>
+constexpr T changeEndian(const T &val) {
+    static_assert(
+        sizeof(T) == sizeof(uint16_t) || sizeof(T) == sizeof(uint32_t) || sizeof(T) == sizeof(uint64_t),
+        "Only type of size 16, 32 and 64 supported by change Endian");
+    if constexpr (std::endian::native == std::endian::little) {
+        if constexpr (sizeof(T) == sizeof(uint16_t)) return __bswap_16 (val);
+        if constexpr (sizeof(T) == sizeof(uint32_t)) return __bswap_32 (val);
+        if constexpr (sizeof(T) == sizeof(uint64_t)) return __bswap_64 (val);
+    } else if constexpr (std::endian::native == std::endian::big) {
+        // static_assert(std::endian::native == std::endian::big, "Code must reach here only for big endian");
+        return val;
+    } else {
+        return val;
+    }
+}
+
+
 
 template <typename T> struct is_int8_t { static constexpr bool const value = false; };
 template <> struct is_int8_t<int8_t> { static constexpr bool const value = true; };
 template <typename T> struct is_int16_t { static constexpr bool const value = false; };
 template <> struct is_int16_t<int16_t> { static constexpr bool const value = true; };
 
-class ipv6_addr;
+static constexpr const size_t ipv6_addr_size = 16;
+static constexpr const size_t ipv6_addr16_size = ipv6_addr_size/sizeof(uint16_t);
+static constexpr const size_t ipv6_addr32_size = ipv6_addr_size/sizeof(uint32_t);
+static constexpr const size_t ipv6_addr64_size = ipv6_addr_size/sizeof(uint64_t);
+
+union ipv6_addr_t {
+    uint8_t     addr_8[ipv6_addr_size];
+    uint16_t    addr_16[ipv6_addr16_size];
+    uint32_t    addr_32[ipv6_addr32_size];
+    uint64_t    addr_64[ipv6_addr64_size];
+};
+
+class ipv6_port_t {
+private:
+    const uint16_t value;
+public:
+    constexpr ipv6_port_t(const uint16_t value) : value(changeEndian(value)) {}
+    constexpr ipv6_port_t(const ipv6_port_t &rhs) : value(rhs.value) {}
+    constexpr operator uint16_t() const { return changeEndian(value); }
+    constexpr uint16_t get_network_port() const { return value; }
+};
+
+struct ipv6_socket_addr_t {
+    ipv6_addr_t addr;
+    ipv6_port_t port;
+
+    constexpr ipv6_socket_addr_t(const ipv6_addr_t &addr, const ipv6_port_t port) : addr(addr), port(port) { }
+    constexpr ipv6_socket_addr_t(const void *addr, const ipv6_port_t port) : addr(*(ipv6_addr_t *)addr), port(port) { }
+    constexpr ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port);
+    constexpr operator sockaddr_in6() const;
+};
+
+
+
+typedef uint16_t log_id_type;
+typedef uint16_t state_type;
+
+typedef char char_t;
+typedef float float_t;
+typedef double double_t;
+
+#define LIST_DEFINITION_END
+
+#define TYPE_LIST \
+    TYPE_LIST_ENTRY(char_t) \
+    TYPE_LIST_ENTRY(int8_t) \
+    TYPE_LIST_ENTRY(int16_t) \
+    TYPE_LIST_ENTRY(int32_t) \
+    TYPE_LIST_ENTRY(int64_t) \
+    TYPE_LIST_ENTRY(uint8_t) \
+    TYPE_LIST_ENTRY(uint16_t) \
+    TYPE_LIST_ENTRY(uint32_t) \
+    TYPE_LIST_ENTRY(uint64_t) \
+    TYPE_LIST_ENTRY(float_t) \
+    TYPE_LIST_ENTRY(double_t) \
+    TYPE_LIST_ENTRY(ipv6_addr_t) \
+    TYPE_LIST_ENTRY(ipv6_port_t) \
+    TYPE_LIST_ENTRY(ipv6_socket_addr_t) \
+    LIST_DEFINITION_END
+
+
+
 
 enum class type_identifier {
-    char_t,
-    int8_t,
-    int16_t,
-    int32_t,
-    int64_t,
-    uint8_t,
-    uint16_t,
-    uint32_t,
-    uint64_t,
-    float_t,
-    double_t,
-    size_t,
-    ssize_t,
-    ipv6_addr_t,
+#define TYPE_LIST_ENTRY(x) x,
+    TYPE_LIST
+#undef TYPE_LIST_ENTRY
+
     bad_type,
-    the_end
+    the_end,
 };
 
 constexpr const char * type_str[] = {
-    "char_t",
-    "int8_t",
-    "int16_t",
-    "int32_t",
-    "int64_t",
-    "uint8_t",
-    "uint16_t",
-    "uint32_t",
-    "uint64_t",
-    "float_t",
-    "double_t",
-    "size_t",
-    "ssize_t",
-    "ipv6_addr_t",
+#define TYPE_LIST_ENTRY(x) #x,
+    TYPE_LIST
+#undef TYPE_LIST_ENTRY
+
     "bad_type",
-    "the_end" };
+    "the_end"
+};
 
 template <typename T>
 struct what_type
@@ -56,124 +119,41 @@ struct what_type
     static constexpr const type_identifier value = type_identifier::bad_type;
     static constexpr const char str[] = "bad_type";
 };
-template <>
-struct what_type<char>
-{
-    static constexpr const type_identifier value = type_identifier::char_t;
-    static constexpr const char str[] = "char_t";
+
+#define TYPE_LIST_ENTRY(x) \
+template <> \
+struct what_type<x> \
+{ \
+    static constexpr const type_identifier value = type_identifier::x; \
+    static constexpr const char str[] = #x; \
 };
-template <>
-struct what_type<int8_t>
-{
-    static constexpr const type_identifier value = type_identifier::int8_t;
-    static constexpr const char str[] = "int8_t";
-};
-template <>
-struct what_type<int16_t>
-{
-    static constexpr const type_identifier value = type_identifier::int16_t;
-    static constexpr const char str[] = "int16_t";
-};
-template <>
-struct what_type<int32_t>
-{
-    static constexpr const type_identifier value = type_identifier::int32_t;
-    static constexpr const char str[] = "int32_t";
-};
-template <>
-struct what_type<int64_t>
-{
-    static constexpr const type_identifier value = type_identifier::int64_t;
-    static constexpr const char str[] = "int64_t";
-};
+    TYPE_LIST
+#undef TYPE_LIST_ENTRY
+
 template <>
 struct what_type<long long>
 {
     static constexpr const type_identifier value = type_identifier::int64_t;
     static constexpr const char str[] = "int64_t";
 };
-template <>
-struct what_type<uint8_t>
-{
-    static constexpr const type_identifier value = type_identifier::uint8_t;
-    static constexpr const char str[] = "uint8_t";
-};
-template <>
-struct what_type<uint16_t>
-{
-    static constexpr const type_identifier value = type_identifier::uint16_t;
-    static constexpr const char str[] = "uint16_t";
-};
-template <>
-struct what_type<uint32_t>
-{
-    static constexpr const type_identifier value = type_identifier::uint32_t;
-    static constexpr const char str[] = "uint32_t";
-};
-template <>
-struct what_type<uint64_t>
-{
-    static constexpr const type_identifier value = type_identifier::uint64_t;
-    static constexpr const char str[] = "uint64_t";
-};
+
 template <>
 struct what_type<unsigned long long>
 {
     static constexpr const type_identifier value = type_identifier::uint64_t;
     static constexpr const char str[] = "uint64_t";
 };
-template <>
-struct what_type<float>
-{
-    static constexpr const type_identifier value = type_identifier::float_t;
-    static constexpr const char str[] = "float_t";
-};
-template <>
-struct what_type<double>
-{
-    static constexpr const type_identifier value = type_identifier::double_t;
-    static constexpr const char str[] = "double_t";
-};
-template <>
-struct what_type<ipv6_addr>
-{
-    static constexpr const type_identifier value = type_identifier::ipv6_addr_t;
-    static constexpr const char str[] = "ipv6_addr_t";
-};
 
 template <typename T, type_identifier type> struct is_type { static constexpr bool const value = false; };
-template <> struct is_type<char, type_identifier::char_t> { static constexpr bool const value = true; };
-template <> struct is_type<int8_t, type_identifier::int8_t> { static constexpr bool const value = true; };
-template <> struct is_type<int16_t, type_identifier::int16_t> { static constexpr bool const value = true; };
-template <> struct is_type<int32_t, type_identifier::int32_t> { static constexpr bool const value = true; };
-template <> struct is_type<int64_t, type_identifier::int64_t> { static constexpr bool const value = true; };
-template <> struct is_type<uint8_t, type_identifier::uint8_t> { static constexpr bool const value = true; };
-template <> struct is_type<uint16_t, type_identifier::uint16_t> { static constexpr bool const value = true; };
-template <> struct is_type<uint32_t, type_identifier::uint32_t> { static constexpr bool const value = true; };
-template <> struct is_type<uint64_t, type_identifier::uint64_t> { static constexpr bool const value = true; };
-template <> struct is_type<float, type_identifier::float_t> { static constexpr bool const value = true; };
-template <> struct is_type<double, type_identifier::double_t> { static constexpr bool const value = true; };
-template <> struct is_type<uint64_t, type_identifier::size_t> { static constexpr bool const value = true; };
-template <> struct is_type<int64_t, type_identifier::ssize_t> { static constexpr bool const value = true; };
-template <> struct is_type<ipv6_addr, type_identifier::ipv6_addr_t> { static constexpr bool const value = true; };
+#define TYPE_LIST_ENTRY(x) \
+template <> struct is_type<x, type_identifier::x> { static constexpr bool const value = true; };
+    TYPE_LIST
+#undef TYPE_LIST_ENTRY
 
 template <type_identifier type> struct type_length { static constexpr size_t const value = 0; };
-template <> struct type_length<type_identifier::char_t> { static constexpr size_t const value = sizeof(char); };
-template <> struct type_length<type_identifier::int8_t> { static constexpr size_t const value = sizeof(int8_t); };
-template <> struct type_length<type_identifier::int16_t> { static constexpr size_t const value = sizeof(int16_t); };
-template <> struct type_length<type_identifier::int32_t> { static constexpr size_t const value = sizeof(int32_t); };
-template <> struct type_length<type_identifier::int64_t> { static constexpr size_t const value = sizeof(int64_t); };
-template <> struct type_length<type_identifier::uint8_t> { static constexpr size_t const value = sizeof(uint8_t); };
-template <> struct type_length<type_identifier::uint16_t> { static constexpr size_t const value = sizeof(uint16_t); };
-template <> struct type_length<type_identifier::uint32_t> { static constexpr size_t const value = sizeof(uint32_t); };
-template <> struct type_length<type_identifier::uint64_t> { static constexpr size_t const value = sizeof(uint64_t); };
-template <> struct type_length<type_identifier::float_t> { static constexpr size_t const value = sizeof(float); };
-template <> struct type_length<type_identifier::double_t> { static constexpr size_t const value = sizeof(double); };
-template <> struct type_length<type_identifier::size_t> { static constexpr size_t const value = sizeof(size_t); };
-template <> struct type_length<type_identifier::ssize_t> { static constexpr size_t const value = sizeof(ssize_t); };
-
-
-typedef uint16_t log_id_type;
-typedef uint16_t state_type;
+#define TYPE_LIST_ENTRY(x) \
+template <> struct type_length<type_identifier::x> { static constexpr size_t const value = sizeof(x); };
+    TYPE_LIST
+#undef TYPE_LIST_ENTRY
 
 } // namespace rohit 

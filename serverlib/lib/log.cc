@@ -129,11 +129,11 @@ constexpr void writeLogsText(const char * source, char *text, size_t &index) {
    }
 }
 
-template <typename T, T radix = 10, math::number_case number_case = math::number_case::lower>
+template <typename T, T radix = 10, number_case number_case = number_case::lower>
 void integerToStringHelper(char *&pStr, const uint8_t *&data_args) {
     T value = *(T *)data_args;
     data_args += sizeof(T);
-    auto count =  math::integerToString<T, radix, number_case, false>(pStr, value);
+    auto count =  to_string<T, radix, number_case, false>(pStr, value);
     pStr += count;
 }
 
@@ -141,14 +141,14 @@ template <typename T>
 void floatToStringHelper(char *&pStr, const uint8_t *&data_args) {
     T value = *(T *)data_args;
     data_args += sizeof(T);
-    auto count =  math::floatToString<T, false>(pStr, value);
+    auto count =  floatToString<T, false>(pStr, value);
     pStr += count;
 }
 
 void ipv6_addrToStringHelper(char *&pStr, const uint8_t *&data_args) {
-    const ipv6_addr *value = (ipv6_addr *)data_args;
-    data_args += sizeof(ipv6_addr);
-    auto count =  value->copy_string(pStr);
+    const ipv6_socket_addr_t &value = *(ipv6_socket_addr_t *)data_args;
+    data_args += sizeof(ipv6_socket_addr_t);
+    auto count =  to_string(pStr, value);
     pStr += count;
 }
 
@@ -257,7 +257,6 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
             }
 
             case 'X': {
-                using namespace rohit::math;
                 switch(lenght_specifier) {
                 case formatstring_type_length::NONE: integerToStringHelper<uint32_t, 16, number_case::upper>(pStr, data_args); break;
                 case formatstring_type_length::h: integerToStringHelper<uint16_t, 16, number_case::upper>(pStr, data_args); break;

@@ -14,14 +14,13 @@ public:
     inline log_str(const char *errStr, const char * desc) : id_str(errStr), description(desc) {}
 };
 
-#define LIST_DEFINITION_END
 
 #define LOGGER_LOG_LIST \
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, "Unable to create pthread") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread %lu") \
     LOGGER_ENTRY(TEST_FLOAT_LOGS, "Test float %%%f, double %lf") \
     LOGGER_ENTRY(TEST_INTEGER_LOGS, "Test %%, Integer %i, long %li, long long %lli, Short %hi, Short Short %hhi, Unsigned %u, long %lu, long long %llu, Short %hu, Short Short %hhu") \
-    LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_addr %v") \
+    LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_socket_addr_t %v") \
     \
     LOGGER_ENTRY(MAX_LOG, "Max log no entry must be made beyond this") \
     LIST_DEFINITION_END
