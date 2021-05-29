@@ -25,8 +25,8 @@ int main(int argc, char *argv[]) try {
     std::cout << "Local Address: " << client_socket << std::endl;   
     std::cout << "Connected: " << client_socket.get_local_ipv6_addr() << " -> " << client_socket.get_peer_ipv6_addr() << std::endl;
     
-    rohit::error_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
-    if (err.isFailure()) {
+    rohit::err_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
+    if (isFailure(err)) {
         std::cout << err << std::endl;
         client_socket.close();
         return EXIT_FAILURE;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) try {
 
     size_t read_buffer_length;
     err = client_socket.read((void *)read_buffer, read_buffer_size, read_buffer_length);
-    if (err.isFailure()) {
+    if (isFailure(err)) {
         std::cout << err << std::endl;
         client_socket.close();
         return EXIT_FAILURE;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) try {
     std::cout << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
 
     err = client_socket.close();
-    if (err.isFailure()) {
+    if (isFailure(err)) {
         std::cout << err << std::endl;
         return EXIT_FAILURE;
     }

@@ -6,26 +6,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <cstring>
 
 namespace rohit {
 
-class error_str {
-public:
-    const char * error;
-    const char * generic_description;
-
-    inline error_str(const char *errStr, const char * desc) : error(errStr), generic_description(desc) {}
-};
-
-#define ERROR_T_DEFINITION_END
-
-#define ERROR_T_SUCCESSTYPE \
+#define ERROR_T_LIST \
     ERROR_T_ENTRY(SUCCESS, "SUCCESS") \
     ERROR_T_ENTRY(SUCCESS_NONBLOCKING, "Call is non blocking") \
     ERROR_T_ENTRY(SOCKET_CONNECT_ALREADY_CONNECTED, "Socket is already connected") \
-    ERROR_T_DEFINITION_END
-
-#define ERROR_T_FAILURETYPE \
     ERROR_T_ENTRY(GENERAL_FAILURE, "Failed") \
     ERROR_T_ENTRY(BIND_FAILURE, "Unable to bind to a socket") \
     ERROR_T_ENTRY(LISTEN_FAILURE, "Socket is already connected") \
@@ -75,132 +63,180 @@ public:
     ERROR_T_ENTRY(LOG_FILE_OPEN_FAILURE, "Unable to open log file") \
     \
     ERROR_T_ENTRY(MATH_INSUFFICIENT_BUFFER, "Buffer is not sufficient to store result, partial and wrong result may have been written to buffer") \
-    ERROR_T_DEFINITION_END
+    \
+    \
+    ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
+    LIST_DEFINITION_END
 
-class error_t {
-public:
-    enum error_internal_t : log_id_type {
+enum class err_t : log_id_type {
 #define ERROR_T_ENTRY(x, y) x,
-        ERROR_T_SUCCESSTYPE
-        ERROR_T_FAILURETYPE
+        ERROR_T_LIST
 #undef ERROR_T_ENTRY
+};
 
-        MAX_FAILURE
-    };
+constexpr err_t operator++(const err_t &err) { return static_cast<err_t>(static_cast<log_id_type>(err) + 1); }
+constexpr err_t operator++(err_t err, int) { 
+    err_t reterr = err;
+    err = static_cast<err_t>(static_cast<log_id_type>(err) + 1);
+    return reterr;
+}
+
+template <bool null_terminated = true>
+constexpr size_t to_string_size(const err_t &val) {
+    if constexpr (null_terminated) {
+        constexpr size_t displaystr_size[] =  {
+#define ERROR_T_ENTRY(x, y) sizeof(#x" - " y),
+    ERROR_T_LIST
+#undef ERROR_T_ENTRY
+        };
+        return displaystr_size[(size_t)val];
+    } else {
+        constexpr size_t displaystr_size[] =  {
+#define ERROR_T_ENTRY(x, y) (sizeof(#x" - " y) - 1),
+    ERROR_T_LIST
+#undef ERROR_T_ENTRY
+        };
+        return displaystr_size[(size_t)val];
+    }
+}
+
+constexpr bool isFailure(const err_t &err) {
+    return err != err_t::SUCCESS;
+}
+
+constexpr const char *err_t_string[] = {
+#define ERROR_T_ENTRY(x, y) {#x" - " y},
+    ERROR_T_LIST
+#undef ERROR_T_ENTRY
+};
+
+template <bool null_terminated = true>
+constexpr size_t to_string(char *dest, const err_t &val) {
+    auto len = to_string_size<null_terminated>(val);
+    memcpy(dest, err_t_string[(size_t)val], len);
+    return len;
+}
+
+class error_c {
+public:
 
 private:
-    log_id_type value;
-    static const error_str displayString[];
+    err_t value;
 
 public:
-    inline error_t(const error_t &err) : value(err.value) {}
-    inline error_t(const error_internal_t value) : value(value) {}
+    inline error_c(const error_c &err) : value(err.value) {}
+    inline error_c(const err_t value) : value(value) {}
 
-    inline error_t& operator=(const error_t rhs) { value = rhs.value; return *this; }
+    inline error_c& operator=(const error_c rhs) { value = rhs.value; return *this; }
 
     // Description will not be compared
-    inline bool operator==(const error_t rhs) const { return value == rhs.value; }
-    inline bool operator!=(const error_t rhs) const { return value != rhs.value; }
-    inline bool operator==(const error_internal_t rhs) const { return value == rhs; }
-    inline bool operator!=(const error_internal_t rhs) const { return value != rhs; }
+    inline bool operator==(const error_c rhs) const { return value == rhs; }
+    inline bool operator!=(const error_c rhs) const { return value != rhs; }
+    inline bool operator==(const err_t rhs) const { return value == rhs; }
+    inline bool operator!=(const err_t rhs) const { return value != rhs; }
 
     inline const std::string to_string() const {
-        auto dispStr = displayString[value];
-        return std::string(dispStr.error) + " - " + dispStr.generic_description;
+        return std::string(err_t_string[(size_t)value]);
     }
     inline operator const std::string() const { return to_string(); }
 
-    inline operator error_internal_t() const { return static_cast<error_internal_t>(value); }
+    constexpr operator err_t() const { return value; }
+    constexpr operator log_id_type() const { return static_cast<log_id_type>(value); }
 
-    inline bool isSuccess() const { return value == SUCCESS; }
-    inline bool isFailure() const { return value != SUCCESS; }
 
-    static inline error_t pthread_join_ret(const int retval) {
+    inline bool isSuccess() const { return value == err_t::SUCCESS; }
+    inline bool isFailure() const { return value != err_t::SUCCESS; }
+
+    static inline err_t pthread_join_ret(const int retval) {
         switch (retval) {
-            case 0: return SUCCESS;
-            case EDEADLK: return PTHREAD_JOIN_DEADLOCK_FAILURE;
-            case EINVAL: return PTHREAD_JOIN_NOT_JOINABLE_FAILURE;
-            case ESRCH: return PTHREAD_JOIN_INVALID_THREAD_ID_FAILURE;
-            default: return PTHREAD_JOIN_FAILURE;
+            case 0: return err_t::SUCCESS;
+            case EDEADLK: return err_t::PTHREAD_JOIN_DEADLOCK_FAILURE;
+            case EINVAL: return err_t::PTHREAD_JOIN_NOT_JOINABLE_FAILURE;
+            case ESRCH: return err_t::PTHREAD_JOIN_INVALID_THREAD_ID_FAILURE;
+            default: return err_t::PTHREAD_JOIN_FAILURE;
         }
     }
 
-    static inline error_t pthread_create_ret(const int retval) {
+    static inline err_t pthread_create_ret(const int retval) {
         switch (retval) {
-            case 0: return SUCCESS;
-            case EAGAIN: return PTHREAD_CREATE_RESOURCE_FAILURE;
-            case EINVAL: return PTHREAD_CREATE_INVALID_ATTRIBUTE_FAILURE;
-            case EPERM: return PTHREAD_CREATE_PERMISSION_FAILURE;
-            default: return PTHREAD_CREATE_FAILURE;
+            case 0: return err_t::SUCCESS;
+            case EAGAIN: return err_t::PTHREAD_CREATE_RESOURCE_FAILURE;
+            case EINVAL: return err_t::PTHREAD_CREATE_INVALID_ATTRIBUTE_FAILURE;
+            case EPERM: return err_t::PTHREAD_CREATE_PERMISSION_FAILURE;
+            default: return err_t::PTHREAD_CREATE_FAILURE;
         }
     }
 
-    static inline error_t socket_create_ret() {
+    static inline err_t socket_create_ret() {
         switch (errno)
         {
-        case 0: return SUCCESS;
-        case EACCES: return SOCKET_PERMISSION_FAILURE;
-        case EAFNOSUPPORT: return SOCKET_ADDRESS_NOT_SUPPORTED;
+        case 0: return err_t::SUCCESS;
+        case EACCES: return err_t::SOCKET_PERMISSION_FAILURE;
+        case EAFNOSUPPORT: return err_t::SOCKET_ADDRESS_NOT_SUPPORTED;
         case EPROTONOSUPPORT:
-        case EINVAL: return SOCKET_PROTOCOL_NOT_SUPPORTED;
-        case EMFILE: return SOCKET_LIMIT_REACHED;
+        case EINVAL: return err_t::SOCKET_PROTOCOL_NOT_SUPPORTED;
+        case EMFILE: return err_t::SOCKET_LIMIT_REACHED;
         case ENOBUFS:
-        case ENOMEM: return SOCKET_INSUFFICIENT_MEMORY;
-        default: return SOCKET_FAILURE;
+        case ENOMEM: return err_t::SOCKET_INSUFFICIENT_MEMORY;
+        default: return err_t::SOCKET_FAILURE;
         }
     }
 
-    static inline error_t socket_connect_ret() {
+    static inline err_t socket_connect_ret() {
         switch (errno)
         {
-        case 0: return SUCCESS;
+        case 0: return err_t::SUCCESS;
         case EAGAIN:
         case EALREADY:
-        case EINPROGRESS: return SUCCESS_NONBLOCKING;
-        case EISCONN: return SOCKET_CONNECT_ALREADY_CONNECTED;
+        case EINPROGRESS: return err_t::SUCCESS_NONBLOCKING;
+        case EISCONN: return err_t::SOCKET_CONNECT_ALREADY_CONNECTED;
         case EACCES:
-        case EPERM: return SOCKET_CONNECT_PERMISSION_FAILURE;
+        case EPERM: return err_t::SOCKET_CONNECT_PERMISSION_FAILURE;
         case EADDRINUSE: 
-        case EADDRNOTAVAIL: return SOCKET_CONNECT_ADDRESS_IN_USE;
-        case EAFNOSUPPORT: return SOCKET_CONNECT_ADDRESS_NOT_SUPPORTED;
+        case EADDRNOTAVAIL: return err_t::SOCKET_CONNECT_ADDRESS_IN_USE;
+        case EAFNOSUPPORT: return err_t::SOCKET_CONNECT_ADDRESS_NOT_SUPPORTED;
         case EBADF: 
         case EFAULT:
-        case ENOTSOCK: return SOCKET_CONNECT_INVALID_ID;
-        case ECONNREFUSED: return SOCKET_CONNECT_CONNECTION_REFUSED;
-        case EINTR: return SOCKET_CONNECT_INTERRUPTED;
-        case ENETUNREACH: return SOCKET_CONNECT_NETWORK_UNREACHABLE;
-        case EPROTOTYPE: return SOCKET_CONNECT_UNSUPPORTED_PROTOCOL;
-        case ETIMEDOUT: return SOCKET_CONNECT_TIMEOUT;
+        case ENOTSOCK: return err_t::SOCKET_CONNECT_INVALID_ID;
+        case ECONNREFUSED: return err_t::SOCKET_CONNECT_CONNECTION_REFUSED;
+        case EINTR: return err_t::SOCKET_CONNECT_INTERRUPTED;
+        case ENETUNREACH: return err_t::SOCKET_CONNECT_NETWORK_UNREACHABLE;
+        case EPROTOTYPE: return err_t::SOCKET_CONNECT_UNSUPPORTED_PROTOCOL;
+        case ETIMEDOUT: return err_t::SOCKET_CONNECT_TIMEOUT;
 
-        default: return SOCKET_CONNECT_FAILURE;
+        default: return err_t::SOCKET_CONNECT_FAILURE;
         }
     }
 
-    static inline error_t sockopt_ret() {
+    static inline err_t sockopt_ret() {
         switch (errno) {
-            case 0: return SUCCESS;
+            case 0: return err_t::SUCCESS;
             case EBADF:
-            case ENOTSOCK: return SOCKOPT_BAD_ID;
-            case ENOPROTOOPT: return SOCKOPT_UNKNOWN_OPTION;
+            case ENOTSOCK: return err_t::SOCKOPT_BAD_ID;
+            case ENOPROTOOPT: return err_t::SOCKOPT_UNKNOWN_OPTION;
             case EINVAL:
-            default: return error_t::SOCKOPT_FAILURE;
+            default: return err_t::SOCKOPT_FAILURE;
         }
     }
 
-}; // class error_t
+}; // class err_t
 
-inline std::ostream& operator<<(std::ostream& os, const error_t &error) {
-    return os << error.to_string();
+inline std::ostream& operator<<(std::ostream& os, const err_t &error) {
+    char str[to_string_size(error)] = {};
+    to_string(str, error);
+    return os << str;
 }
 
-class exception_t : public error_t {
+class exception_t : public error_c {
 public:
-    using error_t::error_t;
+    using error_c::error_c;
 
 };
 
 inline std::ostream& operator<<(std::ostream& os, const exception_t &error) {
-    return os << error.to_string();
+    char str[to_string_size(error)] = {};
+    to_string(str, error);
+    return os << str;
 }
 
 

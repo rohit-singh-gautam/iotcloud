@@ -114,7 +114,7 @@ logreader::logreader(const std::string &filename) {
     file_descriptor = open(filename.c_str(), O_RDONLY);
     if ( file_descriptor < 0 ) {
         std::cerr << "Failed to open file " << filename << ", error " << errno << "\n";
-        throw exception_t(exception_t::LOG_FILE_OPEN_FAILURE);
+        throw exception_t(err_t::LOG_FILE_OPEN_FAILURE);
     }
 }
 
@@ -181,6 +181,14 @@ void errno_to_string(char *&pStr, const uint8_t *&data_args) {
     pStr += len;
 }
 
+void errno_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const err_t &value = *reinterpret_cast<const err_t *>(data_args);
+    data_args += sizeof(ipv6_port_t);
+    auto count =  to_string<false>(pStr, value);
+   
+    pStr += count;
+}
+
 
 template <size_t N>
 constexpr void write_string(char *&pStr, const char (&message)[N]) {
@@ -192,7 +200,7 @@ constexpr void write_string(char *&pStr, const char (&message)[N]) {
 void createLogsString(logger_logs_entry_read &logEntry, char *text) {
     const uint8_t *data_args = logEntry.arguments;
     if (logEntry.log_type != logger_type::LOGS) {
-        throw exception_t(exception_t::LOG_UNSUPPORTED_TYPE_FAILURE);
+        throw exception_t(err_t::LOG_UNSUPPORTED_TYPE_FAILURE);
     }
 
     size_t index = 0;
@@ -346,6 +354,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case 'I': ipv6_addr_t_to_string_helper<number_case::upper>(pStr, data_args); break;
                 case 'p': ipv6_port_t_to_string_helper(pStr, data_args); break;
                 case 'e': errno_to_string(pStr, data_args); break;
+                case 'E': errno_t_to_string_helper(pStr, data_args); break;
                 default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
             state = formatstring_state::COPY;
@@ -368,7 +377,7 @@ const std::string logreader::readnext() {
     ssize_t read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_header));
     if (read_size != sizeof(logger_logs_entry_header)) {
         std::cerr << "Read failure " << errno << std::endl;
-        throw exception_t(exception_t::LOG_READ_FAILURE);
+        throw exception_t(err_t::LOG_READ_FAILURE);
     }
 
     if (log_header.log_type == logger_type::END_OF_CLUSTER) {
@@ -379,7 +388,7 @@ const std::string logreader::readnext() {
             sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_header));
         if (read_size != sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_header)) {
             std::cerr << "Read failure " << errno << std::endl;
-            throw exception_t(exception_t::LOG_READ_FAILURE);
+            throw exception_t(err_t::LOG_READ_FAILURE);
         }
 
         // Skipping end of cluster length
@@ -389,18 +398,18 @@ const std::string logreader::readnext() {
             log_end_of_cluster.length - sizeof(logger_logs_entry_end_of_cluster));
         if ((size_t)read_size != log_end_of_cluster.length - sizeof(logger_logs_entry_end_of_cluster)) {
             std::cerr << "Read failure " << errno << std::endl;
-            throw exception_t(exception_t::LOG_READ_FAILURE);
+            throw exception_t(err_t::LOG_READ_FAILURE);
         }
 
         read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_header));
         if (read_size != sizeof(logger_logs_entry_header)) {
             std::cerr << "Read failure " << errno << std::endl;
-            throw exception_t(exception_t::LOG_READ_FAILURE);
+            throw exception_t(err_t::LOG_READ_FAILURE);
         }
 
         if (log_header.log_type != logger_type::LOGS) {
             std::cerr << "Read failure wronge logger type" << errno << std::endl;
-            throw exception_t(exception_t::LOG_READ_FAILURE);
+            throw exception_t(err_t::LOG_READ_FAILURE);
         }
     }
 
@@ -410,7 +419,7 @@ const std::string logreader::readnext() {
 
     if ((size_t)read_size != sizeof(logger_logs_entry_common) - total_read) {
         std::cerr << "Read failure " << errno << std::endl;
-        throw exception_t(exception_t::LOG_READ_FAILURE);
+        throw exception_t(err_t::LOG_READ_FAILURE);
     }
 
     total_read += read_size;
@@ -419,7 +428,7 @@ const std::string logreader::readnext() {
     read_size = read(file_descriptor, (void *)(data_args + total_read), data_args_size);
 
     if (read_size != (ssize_t)data_args_size) {
-        throw exception_t(exception_t::LOG_READ_FAILURE);
+        throw exception_t(err_t::LOG_READ_FAILURE);
     }
 
     createLogsString(log_read, text);

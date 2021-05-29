@@ -323,8 +323,8 @@ template <const size_t COUNT> struct formatstring_type_list {
                     length += type_length<type_identifier::int32_t>::value;
                     break;
                 case 'E':
-                    type_list[index++] = what_type<log_id_type>::value;
-                    length += type_length<what_type<log_id_type>::value>::value;
+                    type_list[index++] = type_identifier::err_t;
+                    length += type_length<type_identifier::err_t>::value;
                     break;
                 default:
                         type_list[index++] = type_identifier::bad_type; break;

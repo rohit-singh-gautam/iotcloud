@@ -11,10 +11,9 @@
 int success = 0;
 int failed = 0;
 
-void test_error_t() {
-    for(int i = rohit::error_t::SUCCESS; i <= rohit::error_t::MAX_FAILURE; i++) {
-        rohit::error_t err((rohit::error_t::error_internal_t)i);
-        std::cout << "Error value: " << (rohit::log_id_type)i << ", " << err << std::endl;
+void test_err_t() {
+    for(rohit::err_t i = rohit::err_t::SUCCESS; i <= rohit::err_t::MAX_FAILURE; ++i) {
+        std::cout << "Error value: " << (rohit::log_id_type)i << ", " << i << std::endl;
     }
 }
 
@@ -84,8 +83,8 @@ void *test_serversocket(void *) try {
     int port = 8081;
     rohit::socketserver<rohit::server_execution_simplest<ClientConnection>> serversocket(port);
     
-    rohit::error_t err = serversocket.execute();
-    if (err.isFailure()) {
+    rohit::err_t err = serversocket.execute();
+    if (isFailure(err)) {
         std::cout << "Failed with failure " << err << std::endl;
     }
  
@@ -99,8 +98,8 @@ void *test_serversocket_threaded(void *) try {
     int port = 8080;
     rohit::socketserver<rohit::server_execution_threaded<ClientConnectionThreaded>> serversocket(port);
 
-    rohit::error_t err = serversocket.execute();
-    if (err.isFailure()) {
+    rohit::err_t err = serversocket.execute();
+    if (isFailure(err)) {
         std::cout << "Failed with failure " << err << std::endl;
     }
  
@@ -207,6 +206,7 @@ void test_types_what_type() {
     check_formatstring_args_macro(0, PTHREAD_JOIN_FAILED);
     check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, 101lu);
     check_formatstring_args_macro(SIZE_MAX, SYSTEM_ERROR, EINVAL);
+    check_formatstring_args_macro(SIZE_MAX, IOT_ERROR, rohit::err_t::MATH_INSUFFICIENT_BUFFER);
     check_formatstring_args_macro(SIZE_MAX, TEST_FLOAT_LOGS, 101.0f, 102.0);
     check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
 
@@ -221,6 +221,7 @@ void test_types() {
     test_types_helper<logger_message_id::PTHREAD_CREATE_FAILED>();
     test_types_helper<logger_message_id::PTHREAD_JOIN_FAILED>();
     test_types_helper<logger_message_id::SYSTEM_ERROR>();
+    test_types_helper<logger_message_id::IOT_ERROR>();
     test_types_helper<logger_message_id::TEST_INTEGER_LOGS>();
     test_types_helper<logger_message_id::TEST_IPV6ADDR_LOGS>();
     test_types_helper<logger_message_id::MAX_LOG>();
@@ -260,6 +261,7 @@ void test_logs() try {
 
     log_verbose<logger_message_id::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
     log_verbose<logger_message_id::SYSTEM_ERROR>(EINVAL);
+    log_verbose<logger_message_id::IOT_ERROR>(rohit::err_t::GUID_BAD_STRING_FAILURE);
 
     logger::flush();
     sync();
@@ -283,6 +285,7 @@ void test_logs() try {
 
     test_readlog(log_reader);
     test_readlog(log_reader);
+    test_readlog(log_reader);
 
     std::cout << "Read done " << std::endl;
     std::cout << std::endl;
@@ -291,7 +294,7 @@ void test_logs() try {
 }
 
 int main() {
-    //test_error_t();
+    //test_err_t();
     //test_itoa();
 
     std::cout << "Test Logs " << std::endl;
@@ -304,21 +307,21 @@ int main() {
 
     /*pthread_t pthreadIds[2];
 
-    auto errCreate = rohit::error_t::pthread_create_ret(pthread_create(&pthreadIds[0], NULL, test_serversocket, NULL));
+    auto errCreate = rohit::err_t::pthread_create_ret(pthread_create(&pthreadIds[0], NULL, test_serversocket, NULL));
     if (errCreate.isFailure()) {
         errCreate.log();
         return EXIT_FAILURE;
     }
 
-    errCreate = rohit::error_t::pthread_create_ret(pthread_create(&pthreadIds[1], NULL, test_serversocket_threaded, NULL));
+    errCreate = rohit::err_t::pthread_create_ret(pthread_create(&pthreadIds[1], NULL, test_serversocket_threaded, NULL));
     if (errCreate) {
         errCreate.log();
         return EXIT_FAILURE;
     }
 
     for (auto threadId: pthreadIds) {
-        auto err = rohit::error_t::pthread_join_ret(pthread_join(threadId, NULL));
-        if (err != rohit::error_t::SUCCESS) {
+        auto err = rohit::err_t::pthread_join_ret(pthread_join(threadId, NULL));
+        if (err != rohit::err_t::SUCCESS) {
             err.log();
             return EXIT_FAILURE;
         }

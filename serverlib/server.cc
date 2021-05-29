@@ -34,8 +34,8 @@ int main() try {
     rohit::socketserver<rohit::server_execution_threaded<ClientConnectionThreaded>> serversocket(port);
     std::cout << "Local Address: " << serversocket << std::endl;
 
-    rohit::error_t err = serversocket.execute();
-    if (err.isFailure()) {
+    rohit::err_t err = serversocket.execute();
+    if (isFailure(err)) {
         std::cout << "Failed with failure " << err << std::endl;
     }
 

@@ -65,9 +65,10 @@ struct ipv6_socket_addr_t {
 }  __attribute__((packed));;
 
 
-
 typedef uint16_t log_id_type;
 typedef uint16_t state_type;
+
+enum class err_t : log_id_type;
 
 typedef char char_t;
 typedef float float_t;
@@ -87,6 +88,7 @@ typedef double double_t;
     TYPE_LIST_ENTRY(uint64_t) \
     TYPE_LIST_ENTRY(float_t) \
     TYPE_LIST_ENTRY(double_t) \
+    TYPE_LIST_ENTRY(err_t) \
     TYPE_LIST_ENTRY(ipv6_addr_t) \
     TYPE_LIST_ENTRY(ipv6_port_t) \
     TYPE_LIST_ENTRY(ipv6_socket_addr_t) \

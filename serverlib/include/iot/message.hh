@@ -20,7 +20,7 @@ private:
     static const constexpr std::size_t guid_string_size = 36;
     uint8_t guid_store[guid_size];
 
-    inline error_t toStore(const char *guid) {
+    inline err_t toStore(const char *guid) {
         size_t index = 0;
         size_t guidIndex = 0;
         // f81d4fae-7dec-11d0-a765-00a0c91e6bf6
@@ -29,35 +29,35 @@ private:
             guidIndex += 2;
         }
 
-        if (guid[guidIndex++] != '-') return error_t::GUID_BAD_STRING_FAILURE;
+        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
 
         for(;index < 6;) {
             guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
             guidIndex += 2;
         }
 
-        if (guid[guidIndex++] != '-') return error_t::GUID_BAD_STRING_FAILURE;
+        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
 
         for(;index < 8;) {
             guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
             guidIndex += 2;
         }
 
-        if (guid[guidIndex++] != '-') return error_t::GUID_BAD_STRING_FAILURE;
+        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
 
         for(;index < 10;) {
             guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
             guidIndex += 2;
         }
 
-        if (guid[guidIndex++] != '-') return error_t::GUID_BAD_STRING_FAILURE;
+        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
 
         for(;index < 16;) {
             guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
             guidIndex += 2;
         }
 
-        return error_t::SUCCESS;
+        return err_t::SUCCESS;
     }
 
 public:
@@ -66,14 +66,14 @@ public:
 
     // Below function is mosty for testing
     inline guid_t(const std::string &guid) {
-        if (guid.length() != 36) throw exception_t(exception_t::GUID_BAD_STRING_FAILURE);
-        error_t err = toStore(guid.c_str());
-        if (err != error_t::SUCCESS) throw exception_t(err);
+        if (guid.length() != 36) throw exception_t(err_t::GUID_BAD_STRING_FAILURE);
+        err_t err = toStore(guid.c_str());
+        if (err != err_t::SUCCESS) throw exception_t(err);
     }
 
     inline guid_t(const char *guid) {
-        error_t err = toStore(guid);
-        if (err != error_t::SUCCESS) throw exception_t(err);
+        err_t err = toStore(guid);
+        if (err != err_t::SUCCESS) throw exception_t(err);
     }
 
     inline bool operator==(const guid_t rhs) const { 
@@ -270,10 +270,10 @@ public:
     inline message_command_t(const guid_t &source)
         : message_base_t(message_code_t::COMMAND), command_count(0), source(source) {}
 
-    inline error_t add(const guid_t &source, const operation_t &operation, const operation_value_internal_type &value) {
-        if (command_count >= MAX_COMMAND) return error_t::MESSAGE_COMMAND_LIMIT_FAILURE;
+    inline err_t add(const guid_t &source, const operation_t &operation, const operation_value_internal_type &value) {
+        if (command_count >= MAX_COMMAND) return err_t::MESSAGE_COMMAND_LIMIT_FAILURE;
         commands[command_count++] = command_t(source, operation, value);
-        return error_t::SUCCESS;
+        return err_t::SUCCESS;
     }
 
     inline size_t length() { 

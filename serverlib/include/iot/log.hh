@@ -18,6 +18,7 @@ public:
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, "Unable to create pthread") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread %lu") \
     LOGGER_ENTRY(SYSTEM_ERROR, "System Error '%ve'") \
+    LOGGER_ENTRY(IOT_ERROR, "IOT Error '%vE'") \
     LOGGER_ENTRY(TEST_FLOAT_LOGS, "Test float %%%f, double %lf") \
     LOGGER_ENTRY(TEST_INTEGER_LOGS, "Test %%, Integer %i, long %li, long long %lli, Short %hi, Short Short %hhi, Unsigned %u, long %lu, long long %llu, Short %hu, Short Short %hhu") \
     LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_socket_addr_t %vn caps: %vN; ipv6_addr_t %vi caps: %vI ipv6_port_t %vp") \

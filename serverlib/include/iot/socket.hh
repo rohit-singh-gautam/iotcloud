@@ -23,7 +23,7 @@ constexpr ipv6_socket_addr_t::operator sockaddr_in6() const {
 
 inline int create_socket() {
     int socket_id = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    if (socket_id < 0) throw exception_t(rohit::error_t::socket_create_ret());
+    if (socket_id < 0) throw exception_t(rohit::error_c::socket_create_ret());
     return socket_id;
 }
 
@@ -36,24 +36,24 @@ public:
     inline constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
     inline operator int() const { return socket_id; }
 
-    inline error_t close() const {
+    inline err_t close() const {
         auto ret = ::close(socket_id);
-        if (ret == -1) return error_t::CLOSE_FAILURE;
-        else return error_t::SUCCESS;
+        if (ret == -1) return err_t::CLOSE_FAILURE;
+        else return err_t::SUCCESS;
     }
 
-    inline error_t read(void *buf, const size_t buf_size, size_t &read_len) const {
+    inline err_t read(void *buf, const size_t buf_size, size_t &read_len) const {
         int ret = ::read(socket_id, buf, buf_size);
-        if (ret == -1) return error_t::RECEIVE_FAILURE;
+        if (ret == -1) return err_t::RECEIVE_FAILURE;
         read_len = ret;
-        return error_t::SUCCESS;
+        return err_t::SUCCESS;
     }
 
-    inline error_t write(const void *buf, const size_t send_len) const {
+    inline err_t write(const void *buf, const size_t send_len) const {
         // TODO: send in part
         int ret = ::write(socket_id, buf, send_len);
-        if (ret == -1) return error_t::SEND_FAILURE;
-        return error_t::SUCCESS;
+        if (ret == -1) return err_t::SEND_FAILURE;
+        return err_t::SUCCESS;
     }
 
     inline const ipv6_socket_addr_t get_peer_ipv6_addr() const {
@@ -91,7 +91,7 @@ public:
         int enable = 1;
         if (setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR, (char *)&enable,sizeof(enable)) < 0) {
             close();
-            throw exception_t(error_t::sockopt_ret());
+            throw exception_t(error_c::sockopt_ret());
         }
 
         struct sockaddr_in6 addr;
@@ -102,12 +102,12 @@ public:
 
         if (bind(socket_id, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
             close();
-            throw exception_t(exception_t::BIND_FAILURE);
+            throw exception_t(err_t::BIND_FAILURE);
         }
 
         if (listen(socket_id, backlog) < 0) {
             close();
-            throw exception_t(exception_t::LISTEN_FAILURE);
+            throw exception_t(err_t::LISTEN_FAILURE);
         }
     }
 
@@ -115,18 +115,18 @@ public:
 
 class client_socket_t : public socket_t {
 private:
-    inline error_t connect(const ipv6_socket_addr_t &ipv6addr) {
+    inline err_t connect(const ipv6_socket_addr_t &ipv6addr) {
         sockaddr_in6 in6_addr = ipv6addr;
         if (::connect(socket_id, (struct sockaddr*)&in6_addr, sizeof(in6_addr)) == 0)
-            return error_t::SUCCESS;
-        return error_t::socket_connect_ret();
+            return err_t::SUCCESS;
+        return error_c::socket_connect_ret();
     }
 
 public:
     using socket_t::socket_t;
     client_socket_t(const ipv6_socket_addr_t &ipv6addr) {
-        error_t err = connect(ipv6addr);
-        if (err.isFailure()) throw exception_t(err);
+        err_t err = connect(ipv6addr);
+        if (isFailure(err)) throw exception_t(err);
     }
 };
 
