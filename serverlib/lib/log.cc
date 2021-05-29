@@ -157,7 +157,7 @@ template <number_case number_case = number_case::lower>
 void ipv6_addr_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const ipv6_addr_t &value = *(ipv6_addr_t *)data_args;
     data_args += sizeof(ipv6_addr_t);
-    auto count =  to_string<number_case>(pStr, value);
+    auto count =  to_string<number_case, false>(pStr, value);
     pStr += count;
 }
 

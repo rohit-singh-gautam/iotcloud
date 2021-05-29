@@ -21,10 +21,28 @@ inline constexpr void copyvaradic(uint8_t *arr, const T& arg) {
     *(T *)arr = arg;
 }
 
+
+template <>
+inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_addr_t& arg) {
+    uint8_t *arrsrc = (uint8_t *)(&arg);
+    for(size_t index = 0; index < sizeof(ipv6_addr_t); ++index) {
+        arr[index] = arrsrc[index];
+    }
+}
+
 template <>
 inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_socket_addr_t& arg) {
-    for(size_t count = 0; count < sizeof(ipv6_socket_addr_t); count++) {
-        *(arr + count) = *((uint8_t *)&arg + count);
+    uint8_t *arrsrc = (uint8_t *)(&arg);
+    for(size_t index = 0; index < sizeof(ipv6_socket_addr_t); ++index) {
+        arr[index] = arrsrc[index];
+    }
+}
+
+template <>
+inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_port_t& arg) {
+    uint8_t *arrsrc = (uint8_t *)(&arg);
+    for(size_t index = 0; index < sizeof(ipv6_port_t); ++index) {
+        arr[index] = arrsrc[index];
     }
 }
 
@@ -286,21 +304,20 @@ template <const size_t COUNT> struct formatstring_type_list {
                 case 'N':
                     type_list[index++] = type_identifier::ipv6_socket_addr_t;
                     length += type_length<type_identifier::ipv6_socket_addr_t>::value;
-                    state = formatstring_state::COPY;
                     break;
                 case 'i':
                 case 'I':
                     type_list[index++] = type_identifier::ipv6_addr_t;
                     length += type_length<type_identifier::ipv6_addr_t>::value;
-                    state = formatstring_state::COPY;
                     break;
                 case 'p':
                     type_list[index++] = type_identifier::ipv6_port_t;
                     length += type_length<type_identifier::ipv6_port_t>::value;
-                    state = formatstring_state::COPY;
+                    break;
                 default:
                         type_list[index++] = type_identifier::bad_type; break;
                 }
+                state = formatstring_state::COPY;
                 break; // case formatstring_state::MODIFIER_CUSTOM:
             }
         }

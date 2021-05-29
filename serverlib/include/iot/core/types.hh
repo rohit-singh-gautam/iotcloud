@@ -42,7 +42,7 @@ union ipv6_addr_t {
     uint16_t    addr_16[ipv6_addr16_size];
     uint32_t    addr_32[ipv6_addr32_size];
     uint64_t    addr_64[ipv6_addr64_size];
-};
+}  __attribute__((packed));;
 
 class ipv6_port_t {
 private:
@@ -52,7 +52,7 @@ public:
     constexpr ipv6_port_t(const ipv6_port_t &rhs) : value(rhs.value) {}
     constexpr operator uint16_t() const { return changeEndian(value); }
     constexpr uint16_t get_network_port() const { return value; }
-};
+}  __attribute__((packed));;
 
 struct ipv6_socket_addr_t {
     ipv6_addr_t addr;
@@ -62,7 +62,7 @@ struct ipv6_socket_addr_t {
     constexpr ipv6_socket_addr_t(const void *addr, const ipv6_port_t port) : addr(*(ipv6_addr_t *)addr), port(port) { }
     constexpr ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port);
     constexpr operator sockaddr_in6() const;
-};
+}  __attribute__((packed));;
 
 
 

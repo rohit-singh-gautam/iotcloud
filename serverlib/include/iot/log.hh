@@ -14,13 +14,15 @@ public:
     inline log_str(const char *errStr, const char * desc) : id_str(errStr), description(desc) {}
 };
 
+//     LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_socket_addr_t %vn caps: %vN; ipv6_addr_t %vi caps: %vI ipv6_port_t %vp  ")
+
 
 #define LOGGER_LOG_LIST \
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, "Unable to create pthread") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread %lu") \
     LOGGER_ENTRY(TEST_FLOAT_LOGS, "Test float %%%f, double %lf") \
     LOGGER_ENTRY(TEST_INTEGER_LOGS, "Test %%, Integer %i, long %li, long long %lli, Short %hi, Short Short %hhi, Unsigned %u, long %lu, long long %llu, Short %hu, Short Short %hhu") \
-    LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_socket_addr_t %vn") \
+    LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_socket_addr_t %vn caps: %vN; ipv6_addr_t %vi caps: %vI ipv6_port_t %vp") \
     \
     LOGGER_ENTRY(MAX_LOG, "Max log no entry must be made beyond this") \
     LIST_DEFINITION_END
@@ -162,7 +164,7 @@ public:
             : logger_logs_entry_common(LEVEL, ID) {
         static_assert(totalsize != log_description<ID>::length, "Total size of argument must be less than 256");
         static_assert(log_description<ID>::type_count == sizeof...(ARGS), "Wrong number of parameters");
-        static_assert(check_formatstring_args<ID>(args...) == SIZE_MAX, "Wrong parameter type");
+        //static_assert(check_formatstring_args<ID>(args...) == SIZE_MAX, "Wrong parameter type");
         copyvaradic(arguments, args...);
     }
 } __attribute__((packed));
