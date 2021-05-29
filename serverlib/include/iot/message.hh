@@ -1,139 +1,11 @@
 #pragma once
 
 #include "core/error.hh"
+#include "core/guid.hh"
 #include <algorithm>
 #include <string>
 
 namespace rohit {
-
-constexpr uint8_t hexToValue(const char c) {
-    return c > '9' ? c - 'a' + 10 : c - '0';
-}
-
-constexpr char valueToHex(const uint8_t c) {
-    return c > 9 ? c + 'a' - 10 : c + '0';
-}
-
-class guid_t {
-private:
-    static const constexpr std::size_t guid_size = 16;
-    static const constexpr std::size_t guid_string_size = 36;
-    uint8_t guid_store[guid_size];
-
-    inline err_t toStore(const char *guid) {
-        size_t index = 0;
-        size_t guidIndex = 0;
-        // f81d4fae-7dec-11d0-a765-00a0c91e6bf6
-        for(;index < 4;) {
-            guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
-            guidIndex += 2;
-        }
-
-        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
-
-        for(;index < 6;) {
-            guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
-            guidIndex += 2;
-        }
-
-        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
-
-        for(;index < 8;) {
-            guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
-            guidIndex += 2;
-        }
-
-        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
-
-        for(;index < 10;) {
-            guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
-            guidIndex += 2;
-        }
-
-        if (guid[guidIndex++] != '-') return err_t::GUID_BAD_STRING_FAILURE;
-
-        for(;index < 16;) {
-            guid_store[index++] = hexToValue(guid[guidIndex]) * 16 + hexToValue(guid[guidIndex+1]);
-            guidIndex += 2;
-        }
-
-        return err_t::SUCCESS;
-    }
-
-public:
-    inline guid_t() {}
-    inline guid_t(const uint8_t *guid_binary) { std::copy(guid_binary, guid_binary + guid_size, guid_store); }
-
-    // Below function is mosty for testing
-    inline guid_t(const std::string &guid) {
-        if (guid.length() != 36) throw exception_t(err_t::GUID_BAD_STRING_FAILURE);
-        err_t err = toStore(guid.c_str());
-        if (err != err_t::SUCCESS) throw exception_t(err);
-    }
-
-    inline guid_t(const char *guid) {
-        err_t err = toStore(guid);
-        if (err != err_t::SUCCESS) throw exception_t(err);
-    }
-
-    inline bool operator==(const guid_t rhs) const { 
-        for(size_t index = 0; index < guid_size; index++) {
-            if (guid_store[index] != rhs.guid_store[index]) return false;
-        }
-        return true;
-    }
-
-    inline bool operator!=(const guid_t rhs) const { return !(*this != rhs); }
-
-    inline const std::string to_string() const {
-        std::string str(guid_string_size, '\0');
-
-        size_t index = 0;
-        size_t guidIndex = 0;
-
-        for(;index < 4;) {
-            str[guidIndex++] = valueToHex((guid_store[index] & 0xf0) >> 4);
-            str[guidIndex++] = valueToHex(guid_store[index++] & 0x0f);
-        }
-
-        str[guidIndex++] = '-';
-
-        for(;index < 6;) {
-            str[guidIndex++] = valueToHex((guid_store[index] & 0xf0) >> 4);
-            str[guidIndex++] = valueToHex(guid_store[index++] & 0x0f);
-        }
-
-        str[guidIndex++] = '-';
-
-        for(;index < 8;) {
-            str[guidIndex++] = valueToHex((guid_store[index] & 0xf0) >> 4);
-            str[guidIndex++] = valueToHex(guid_store[index++] & 0x0f);
-        }
-
-        str[guidIndex++] = '-';
-
-        for(;index < 10;) {
-            str[guidIndex++] = valueToHex((guid_store[index] & 0xf0) >> 4);
-            str[guidIndex++] = valueToHex(guid_store[index++] & 0x0f);
-        }
-
-        str[guidIndex++] = '-';
-
-        for(;index < 16;) {
-            str[guidIndex++] = valueToHex((guid_store[index] & 0xf0) >> 4);
-            str[guidIndex++] = valueToHex(guid_store[index++] & 0x0f);
-        }
-
-        return str;
-    }
-
-    inline operator const std::string() const { return to_string(); }
-};
-
-inline std::ostream& operator<<(std::ostream& os, const guid_t &guid) {
-    return os << guid.to_string();
-}
-
 
 // Fixed size structure
 typedef uint16_t operation_internal_type;
@@ -269,6 +141,8 @@ public:
     inline message_command_t() : message_base_t(message_code_t::COMMAND) {}
     inline message_command_t(const guid_t &source)
         : message_base_t(message_code_t::COMMAND), command_count(0), source(source) {}
+    inline message_command_t(const char *guid_string)
+        : message_base_t(message_code_t::COMMAND), command_count(0), source(to_guid(guid_string)) {}
 
     inline err_t add(const guid_t &source, const operation_t &operation, const operation_value_internal_type &value) {
         if (command_count >= MAX_COMMAND) return err_t::MESSAGE_COMMAND_LIMIT_FAILURE;

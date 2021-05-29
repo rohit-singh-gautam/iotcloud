@@ -5,11 +5,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string>
 
 
 int main(int argc, char *argv[]) try {
-    const std::string sourceGuid = "86512592-6b7b-48c4-8bf3-468501c3d9fa";
-    const std::string destGuid = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
+    const char sourceGuid[] = "86512592-6b7b-48c4-8bf3-468501c3d9fa";
+    const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
 
     if (argc !=2) {
         std::cout << "Usage: client [<hostname>]:<port>" << std::endl;
@@ -17,7 +18,7 @@ int main(int argc, char *argv[]) try {
     }
 
     rohit::message_command_t messageCommand(sourceGuid);
-    messageCommand.add(destGuid, rohit::operation_t::SWITCH, (rohit::operation_value_internal_type)rohit::operation_t::operation_switch_t::ON);
+    messageCommand.add(rohit::to_guid(destGuid), rohit::operation_t::SWITCH, (rohit::operation_value_internal_type)rohit::operation_t::operation_switch_t::ON);
     
     rohit::ipv6_socket_addr_t ipv6addr = rohit::string_to_ipv6_socket_addr_t(argv[1]);
 

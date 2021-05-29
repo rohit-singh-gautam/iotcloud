@@ -124,7 +124,7 @@ void test_itoa() {
     for(auto port_entry: port_list) {
         uint16_t port = port_entry.first;
         char portstr[6];
-        auto count = rohit::to_string(portstr, port);
+        auto count = rohit::to_string(port, portstr);
         auto len = strlen(port_entry.second.c_str()) + 1;
 
         if (count != len) {

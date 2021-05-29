@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <bit>
+#include <algorithm>
 
 struct sockaddr_in6;
 namespace rohit {
@@ -24,8 +25,6 @@ constexpr T changeEndian(const T &val) {
         return val;
     }
 }
-
-
 
 template <typename T> struct is_int8_t { static constexpr bool const value = false; };
 template <> struct is_int8_t<int8_t> { static constexpr bool const value = true; };
@@ -64,6 +63,30 @@ struct ipv6_socket_addr_t {
     constexpr operator sockaddr_in6() const;
 }  __attribute__((packed));;
 
+class guid_t {
+public:
+    static constexpr const size_t size = 16;
+    static constexpr const size_t size_16 = size/sizeof(uint16_t);
+    static constexpr const size_t size_32 = size/sizeof(uint32_t);
+    static constexpr const size_t size_64 = size/sizeof(uint64_t);
+
+    static const constexpr std::size_t guid_string_size = 36;
+    static const constexpr std::size_t guid_string_withnull_size = 37;
+
+private:
+    union {
+        uint8_t     guid_8[size];
+        uint16_t    guid_16[size_16];
+        uint32_t    guid_32[size_32];
+        uint64_t    guid_64[ipv6_addr64_size];
+    };
+
+public:
+    constexpr guid_t() : guid_8() {}
+    constexpr guid_t(const uint8_t *guid_binary) : guid_8() { std::copy(guid_binary, guid_binary + size, guid_8); }
+
+    constexpr uint8_t operator[](size_t index) const { return guid_8[index]; }
+}; // class guid_t
 
 typedef uint16_t log_id_type;
 typedef uint16_t state_type;
@@ -93,8 +116,6 @@ typedef double double_t;
     TYPE_LIST_ENTRY(ipv6_port_t) \
     TYPE_LIST_ENTRY(ipv6_socket_addr_t) \
     LIST_DEFINITION_END
-
-
 
 
 enum class type_identifier {

@@ -2,11 +2,11 @@
 #include "types.hh"
 #include "assert.h"
 #include <iot/core/math.hh>
-#include <iostream>
+#include <ostream>
 
 namespace rohit {
 
-constexpr size_t ipv6_addr_t_max_hex_string = 40;
+constexpr size_t ipv6_addr_t_max_hex_string = 40; // "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx"
 
 // This function parse ipv6 string to ipv6_addr_t
 // We are iterating twice on string to aviod dual copy
@@ -71,7 +71,7 @@ constexpr const ipv6_addr_t string_to_ipv6_addr_t(const char *ipv6str, size_t *l
 }
 
 template <number_case number_case = number_case::lower, bool null_terminated = true>
-constexpr size_t to_string(char *dest, const ipv6_addr_t &val) {
+constexpr size_t to_string(const ipv6_addr_t &val, char *dest) {
     constexpr size_t radix = 16;
     constexpr size_t no_compat = 8;
     size_t compact_start = no_compat;
@@ -98,7 +98,7 @@ constexpr size_t to_string(char *dest, const ipv6_addr_t &val) {
             index += compact_size;
         } else {
             auto addr_segment = changeEndian(val.addr_16[index]);
-            size_t str_size = to_string<uint16_t, radix, number_case, false>(pstr, addr_segment);
+            size_t str_size = to_string<uint16_t, radix, number_case, false>(addr_segment, pstr);
             pstr += str_size;
             if (index != 7) {
                 *pstr++ = ':';
@@ -129,16 +129,17 @@ constexpr const ipv6_socket_addr_t string_to_ipv6_socket_addr_t(const char *ipv6
     return ipv6_socket_addr_t(addr, port);
 }
 
+// "[xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]:65535"
 constexpr size_t ipv6_socket_addr_t_max_hex_string = ipv6_addr_t_max_hex_string + 8;
 
 template <number_case number_case = number_case::lower, bool null_terminated = true>
-constexpr size_t to_string(char *dest, const ipv6_socket_addr_t &val) {
+constexpr size_t to_string(const ipv6_socket_addr_t &val, char *dest) {
     char *pstr = dest;
     *pstr++ = '[';
-    pstr += to_string<number_case, false>(pstr, val.addr);
+    pstr += to_string<number_case, false>(val.addr, pstr);
     *pstr++ = ']';
     *pstr++ = ':';
-    pstr += to_string<uint16_t, 10, number_case, null_terminated>(pstr, val.port);
+    pstr += to_string<uint16_t, 10, number_case, null_terminated>(val.port, pstr);
     return (size_t)(pstr - dest);
 }
 
@@ -156,13 +157,13 @@ public:
 
 inline std::ostream& operator<<(std::ostream& os, const ipv6_addr_t &ipv6addr) {
     char str[ipv6_addr_t_max_hex_string] = {};
-    to_string(str, ipv6addr);
+    to_string(ipv6addr, str);
     return os << str;
 }
 
 inline std::ostream& operator<<(std::ostream& os, const ipv6_socket_addr_t &ipv6sockaddr) {
     char str[ipv6_socket_addr_t_max_hex_string] = {};
-    to_string(str, ipv6sockaddr);
+    to_string(ipv6sockaddr, str);
     return os << str;
 }
 

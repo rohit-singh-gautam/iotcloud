@@ -45,7 +45,7 @@ constexpr uint8_t char_to_int[] {
 };
 
 template <typename T, T radix = 10, number_case number_case = number_case::lower, bool null_terminated = true>
-constexpr size_t to_string(char *dest, T val) {
+constexpr size_t to_string(T val, char * const dest) {
     static_assert(std::is_integral_v<T>, "Only integral type allowed");
     static_assert(!std::is_signed<T>::value || (std::is_signed<T>::value && radix == 10), "Signed type only allowed for radix 10" );
     static_assert(radix >= 2, "Radix must be atleast 2");

@@ -133,7 +133,7 @@ template <typename T, T radix = 10, number_case number_case = number_case::lower
 void integerToStringHelper(char *&pStr, const uint8_t *&data_args) {
     T value = *(T *)data_args;
     data_args += sizeof(T);
-    auto count =  to_string<T, radix, number_case, false>(pStr, value);
+    auto count =  to_string<T, radix, number_case, false>(value, pStr);
     pStr += count;
 }
 
@@ -149,7 +149,7 @@ template <number_case number_case = number_case::lower>
 void ipv6_socket_addr_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const ipv6_socket_addr_t &value = *(ipv6_socket_addr_t *)data_args;
     data_args += sizeof(ipv6_socket_addr_t);
-    auto count =  to_string<number_case, false>(pStr, value);
+    auto count =  to_string<number_case, false>(value, pStr);
     pStr += count;
 }
 
@@ -157,7 +157,7 @@ template <number_case number_case = number_case::lower>
 void ipv6_addr_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const ipv6_addr_t &value = *(ipv6_addr_t *)data_args;
     data_args += sizeof(ipv6_addr_t);
-    auto count =  to_string<number_case, false>(pStr, value);
+    auto count =  to_string<number_case, false>(value, pStr);
     pStr += count;
 }
 
@@ -165,7 +165,7 @@ void ipv6_port_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const ipv6_port_t &value = *(ipv6_port_t *)data_args;
     data_args += sizeof(ipv6_port_t);
     uint16_t port = value;
-    auto count =  to_string<uint16_t, 10, number_case::lower, false>(pStr, port);
+    auto count =  to_string<uint16_t, 10, number_case::lower, false>(port, pStr);
    
     pStr += count;
 }
@@ -184,7 +184,7 @@ void errno_to_string(char *&pStr, const uint8_t *&data_args) {
 void errno_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const err_t &value = *reinterpret_cast<const err_t *>(data_args);
     data_args += sizeof(ipv6_port_t);
-    auto count =  to_string<false>(pStr, value);
+    auto count =  to_string<false>(value, pStr);
    
     pStr += count;
 }

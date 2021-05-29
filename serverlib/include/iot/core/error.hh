@@ -111,7 +111,7 @@ constexpr const char *err_t_string[] = {
 };
 
 template <bool null_terminated = true>
-constexpr size_t to_string(char *dest, const err_t &val) {
+constexpr size_t to_string(const err_t &val, char *dest) {
     auto len = to_string_size<null_terminated>(val);
     memcpy(dest, err_t_string[(size_t)val], len);
     return len;
@@ -223,7 +223,7 @@ public:
 
 inline std::ostream& operator<<(std::ostream& os, const err_t &error) {
     char str[to_string_size(error)] = {};
-    to_string(str, error);
+    to_string(error, str);
     return os << str;
 }
 
@@ -235,7 +235,7 @@ public:
 
 inline std::ostream& operator<<(std::ostream& os, const exception_t &error) {
     char str[to_string_size(error)] = {};
-    to_string(str, error);
+    to_string(error, str);
     return os << str;
 }
 
