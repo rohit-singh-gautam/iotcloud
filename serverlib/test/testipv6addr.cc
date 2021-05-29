@@ -1,5 +1,5 @@
 #include <iot/core/ipv6addr.hh>
-#include <iot/math.hh>
+#include <iot/core/math.hh>
 #include <iostream>
 #include <netinet/in.h>
 #include <arpa/inet.h>

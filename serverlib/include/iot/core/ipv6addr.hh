@@ -1,7 +1,7 @@
 #pragma once
 #include "types.hh"
 #include "assert.h"
-#include <iot/math.hh>
+#include <iot/core/math.hh>
 #include <iostream>
 
 namespace rohit {

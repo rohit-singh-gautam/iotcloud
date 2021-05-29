@@ -79,6 +79,8 @@ public:
 //      %vi: IPv6 address
 //      %vi: IPv6 address in caps
 //      %vp: IPv6 port
+//      %ve: System errno
+//      %vE: IOT error
 // %% - %
 //
 // Supported format length
@@ -146,6 +148,8 @@ inline constexpr size_t formatstring_count(const char *arr) {
             case 'i':
             case 'I':
             case 'p':
+            case 'e':
+            case 'E':
                 ++count;
                 state = formatstring_state::COPY;
                 break;
@@ -313,6 +317,14 @@ template <const size_t COUNT> struct formatstring_type_list {
                 case 'p':
                     type_list[index++] = type_identifier::ipv6_port_t;
                     length += type_length<type_identifier::ipv6_port_t>::value;
+                    break;
+                case 'e':
+                    type_list[index++] = type_identifier::int32_t;
+                    length += type_length<type_identifier::int32_t>::value;
+                    break;
+                case 'E':
+                    type_list[index++] = what_type<log_id_type>::value;
+                    length += type_length<what_type<log_id_type>::value>::value;
                     break;
                 default:
                         type_list[index++] = type_identifier::bad_type; break;

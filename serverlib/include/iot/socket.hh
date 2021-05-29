@@ -1,6 +1,6 @@
 #pragma once
 #include "core/error.hh"
-#include "math.hh"
+#include "core/math.hh"
 #include "core/ipv6addr.hh"
 #include <netinet/in.h>
 #include <arpa/inet.h>

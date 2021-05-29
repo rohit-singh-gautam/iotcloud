@@ -1,4 +1,4 @@
-#include <iot/math.hh>
+#include <iot/core/math.hh>
 #include <iot/log.hh>
 #include "test.hh"
 #include <iot/serversocket.hh>
@@ -206,17 +206,21 @@ void test_types_what_type() {
     check_formatstring_args_macro(0, TEST_INTEGER_LOGS);
     check_formatstring_args_macro(0, PTHREAD_JOIN_FAILED);
     check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, 101lu);
+    check_formatstring_args_macro(SIZE_MAX, SYSTEM_ERROR, EINVAL);
     check_formatstring_args_macro(SIZE_MAX, TEST_FLOAT_LOGS, 101.0f, 102.0);
     check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
 
-    rohit::ipv6_socket_addr_t ipv6addr("::1", 8080);
-    check_formatstring_args_macro(SIZE_MAX, TEST_IPV6ADDR_LOGS, 'v', ipv6addr);
+    rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
+    rohit::ipv6_addr_t ipv6addr = rohit::string_to_ipv6_addr_t("eb::1");
+    rohit::ipv6_port_t ipv6port = 8080;
+    check_formatstring_args_macro(SIZE_MAX, TEST_IPV6ADDR_LOGS, 'v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
 }
 
 void test_types() {
     using rohit::logger_message_id;
     test_types_helper<logger_message_id::PTHREAD_CREATE_FAILED>();
     test_types_helper<logger_message_id::PTHREAD_JOIN_FAILED>();
+    test_types_helper<logger_message_id::SYSTEM_ERROR>();
     test_types_helper<logger_message_id::TEST_INTEGER_LOGS>();
     test_types_helper<logger_message_id::TEST_IPV6ADDR_LOGS>();
     test_types_helper<logger_message_id::MAX_LOG>();
@@ -255,6 +259,7 @@ void test_logs() try {
     rohit::ipv6_port_t ipv6port = 8080;
 
     log_verbose<logger_message_id::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
+    log_verbose<logger_message_id::SYSTEM_ERROR>(EINVAL);
 
     logger::flush();
     sync();
@@ -276,6 +281,7 @@ void test_logs() try {
         }
     }
 
+    test_readlog(log_reader);
     test_readlog(log_reader);
 
     std::cout << "Read done " << std::endl;

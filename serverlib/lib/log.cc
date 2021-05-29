@@ -1,6 +1,6 @@
 #include <iot/log.hh>
 #include <iot/core/error.hh>
-#include <iot/math.hh>
+#include <iot/core/math.hh>
 #include <iot/socket.hh>
 #include <cstring>
 #include <iostream>
@@ -84,7 +84,7 @@ void logger::init(const std::string &filename) {
     // This must be read/write as same class can be used to read
     file_descriptor = open(filename.c_str(), O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     if ( file_descriptor < 0 ) {
-        std::cerr << "Failed to open file " << filename << ", error " << errno << "\n";
+        std::cerr << "Failed to open file " << filename << ", error " << errno << ", " << strerror(errno) << "\n";
     } else {
         log_cluster_entry *log_cluster = log_buf.get_current_cluster();
          auto index = lseek(file_descriptor, 0, SEEK_CUR);
@@ -166,7 +166,27 @@ void ipv6_port_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     data_args += sizeof(ipv6_port_t);
     uint16_t port = value;
     auto count =  to_string<uint16_t, 10, number_case::lower, false>(pStr, port);
+   
     pStr += count;
+}
+
+void errno_to_string(char *&pStr, const uint8_t *&data_args) {
+    const int32_t errnum = *(int32_t *)data_args;
+    data_args += sizeof(int32_t);
+    const char *errstr = strerror(errnum);
+
+    const size_t len = strlen(errstr);
+    memcpy(pStr, errstr, len);
+
+    pStr += len;
+}
+
+
+template <size_t N>
+constexpr void write_string(char *&pStr, const char (&message)[N]) {
+    constexpr size_t n = N-1;
+    memcpy(pStr, message, n);
+    pStr += n;
 }
 
 void createLogsString(logger_logs_entry_read &logEntry, char *text) {
@@ -325,7 +345,8 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case 'i': ipv6_addr_t_to_string_helper(pStr, data_args); break;
                 case 'I': ipv6_addr_t_to_string_helper<number_case::upper>(pStr, data_args); break;
                 case 'p': ipv6_port_t_to_string_helper(pStr, data_args); break;
-                    break;
+                case 'e': errno_to_string(pStr, data_args); break;
+                default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
             state = formatstring_state::COPY;
             break; // case formatstring_state::MODIFIER_CUSTOM:
