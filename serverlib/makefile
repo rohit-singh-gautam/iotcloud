@@ -1,7 +1,7 @@
 MAKEFLAGS += --no-builtin-rules
 
-CXX = g++
-CPPFLAGS = -std=c++2a -Wall -Wextra -Werror -ggdb3 -O0 -Iinclude -I../httpserver
+CXX = g++-10
+CPPFLAGS = -std=c++20 -Wall -Wextra -Werror -ggdb3 -O0 -Iinclude -I../httpserver
 
 COMMONHPP=include/iot/core/error.hh include/iot/core/varadic.hh include/iot/message.hh include/iot/log.hh include/iot/core/math.hh include/iot/core/types.hh include/iot/core/ipv6addr.hh include/iot/core/guid.hh
 
@@ -37,4 +37,4 @@ iotcloudclient: $(CLIENTCPPFILES) $(CLIENTHPPFILES)
 	$(CXX) -c $(CFLAGS) $(CPPFLAGS) -o $@ $^
 
 clean:
-	rm testcommon iotcloudserver iotcloudclient
+	rm testipv6addr testcommon iotcloudserver iotcloudclient

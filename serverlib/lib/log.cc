@@ -1,4 +1,5 @@
 #include <iot/log.hh>
+#include <iot/core/guid.hh>
 #include <iot/core/error.hh>
 #include <iot/core/math.hh>
 #include <iot/socket.hh>
@@ -189,6 +190,15 @@ void errno_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
+template <number_case number_case = number_case::lower>
+void guid_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const guid_t &value = *reinterpret_cast<const guid_t *>(data_args);
+    data_args += sizeof(guid_t);
+    auto count =  to_string<number_case, false>(value, pStr);
+   
+    pStr += count;
+}
+
 
 template <size_t N>
 constexpr void write_string(char *&pStr, const char (&message)[N]) {
@@ -355,6 +365,8 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case 'p': ipv6_port_t_to_string_helper(pStr, data_args); break;
                 case 'e': errno_to_string(pStr, data_args); break;
                 case 'E': errno_t_to_string_helper(pStr, data_args); break;
+                case 'g': guid_t_to_string_helper(pStr, data_args); break;
+                case 'G': guid_t_to_string_helper<number_case::upper>(pStr, data_args); break;
                 default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
             state = formatstring_state::COPY;

@@ -19,6 +19,7 @@ public:
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread %lu") \
     LOGGER_ENTRY(SYSTEM_ERROR, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, "IOT Error '%vE'") \
+    LOGGER_ENTRY(TEST_GUID_LOG, "IOT Error '%vg' caps '%vG'") \
     LOGGER_ENTRY(TEST_FLOAT_LOGS, "Test float %%%f, double %lf") \
     LOGGER_ENTRY(TEST_INTEGER_LOGS, "Test %%, Integer %i, long %li, long long %lli, Short %hi, Short Short %hhi, Unsigned %u, long %lu, long long %llu, Short %hu, Short Short %hhu") \
     LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, "Test char %c, ipv6_socket_addr_t %vn caps: %vN; ipv6_addr_t %vi caps: %vI ipv6_port_t %vp") \
@@ -114,8 +115,13 @@ constexpr size_t logger_message_id_count = 0 + LOGGER_LOG_LIST;
 #undef LOGGER_ENTRY
 
 template <logger_message_id ID, typename... ARGS>
-inline constexpr size_t check_formatstring_args(const ARGS&... args) {
-    return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list>(args...);
+inline constexpr size_t check_formatstring_args() {
+    return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list, ARGS...>();
+}
+
+template <logger_message_id ID, typename... ARGS>
+inline constexpr size_t check_formatstring_args(const ARGS&...) {
+    return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list, ARGS...>();
 }
 
 class logger_logs_entry_header {
@@ -163,7 +169,7 @@ public:
             : logger_logs_entry_common(LEVEL, ID) {
         static_assert(totalsize != log_description<ID>::length, "Total size of argument must be less than 256");
         static_assert(log_description<ID>::type_count == sizeof...(ARGS), "Wrong number of parameters");
-        static_assert(check_formatstring_args<ID>(args...) == SIZE_MAX, "Wrong parameter type");
+        static_assert(check_formatstring_args<ID, ARGS...>() == SIZE_MAX, "Wrong parameter type");
         copyvaradic(arguments, args...);
     }
 } __attribute__((packed));

@@ -53,7 +53,8 @@ public:
     constexpr uint16_t get_network_port() const { return value; }
 }  __attribute__((packed));;
 
-struct ipv6_socket_addr_t {
+class ipv6_socket_addr_t {
+public:
     ipv6_addr_t addr;
     ipv6_port_t port;
 
@@ -61,7 +62,7 @@ struct ipv6_socket_addr_t {
     constexpr ipv6_socket_addr_t(const void *addr, const ipv6_port_t port) : addr(*(ipv6_addr_t *)addr), port(port) { }
     constexpr ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port);
     constexpr operator sockaddr_in6() const;
-}  __attribute__((packed));;
+}  __attribute__((packed));
 
 class guid_t {
 public:
@@ -86,7 +87,7 @@ public:
     constexpr guid_t(const uint8_t *guid_binary) : guid_8() { std::copy(guid_binary, guid_binary + size, guid_8); }
 
     constexpr uint8_t operator[](size_t index) const { return guid_8[index]; }
-}; // class guid_t
+} __attribute__((packed)); // class guid_t
 
 typedef uint16_t log_id_type;
 typedef uint16_t state_type;
@@ -112,6 +113,7 @@ typedef double double_t;
     TYPE_LIST_ENTRY(float_t) \
     TYPE_LIST_ENTRY(double_t) \
     TYPE_LIST_ENTRY(err_t) \
+    TYPE_LIST_ENTRY(guid_t) \
     TYPE_LIST_ENTRY(ipv6_addr_t) \
     TYPE_LIST_ENTRY(ipv6_port_t) \
     TYPE_LIST_ENTRY(ipv6_socket_addr_t) \

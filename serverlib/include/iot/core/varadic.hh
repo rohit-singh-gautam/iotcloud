@@ -18,32 +18,8 @@ inline constexpr size_t sizeofvaargs(const T& arg, const ARGS&... args) {
 
 template <typename T>
 inline constexpr void copyvaradic(uint8_t *arr, const T& arg) {
-    *(T *)arr = arg;
-}
-
-
-template <>
-inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_addr_t& arg) {
     uint8_t *arrsrc = (uint8_t *)(&arg);
-    for(size_t index = 0; index < sizeof(ipv6_addr_t); ++index) {
-        arr[index] = arrsrc[index];
-    }
-}
-
-template <>
-inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_socket_addr_t& arg) {
-    uint8_t *arrsrc = (uint8_t *)(&arg);
-    for(size_t index = 0; index < sizeof(ipv6_socket_addr_t); ++index) {
-        arr[index] = arrsrc[index];
-    }
-}
-
-template <>
-inline constexpr void copyvaradic<>(uint8_t *arr, const ipv6_port_t& arg) {
-    uint8_t *arrsrc = (uint8_t *)(&arg);
-    for(size_t index = 0; index < sizeof(ipv6_port_t); ++index) {
-        arr[index] = arrsrc[index];
-    }
+    std::copy(arrsrc, arrsrc + sizeof(T), arr);
 }
 
 template <typename T, typename... ARGS>
@@ -81,6 +57,8 @@ public:
 //      %vp: IPv6 port
 //      %ve: System errno
 //      %vE: IOT error
+//      %vg: GUID lower case
+//      %vG: GUID upper case
 // %% - %
 //
 // Supported format length
@@ -150,6 +128,8 @@ inline constexpr size_t formatstring_count(const char *arr) {
             case 'p':
             case 'e':
             case 'E':
+            case 'g':
+            case 'G':
                 ++count;
                 state = formatstring_state::COPY;
                 break;
@@ -326,6 +306,11 @@ template <const size_t COUNT> struct formatstring_type_list {
                     type_list[index++] = type_identifier::err_t;
                     length += type_length<type_identifier::err_t>::value;
                     break;
+                case 'g':
+                case 'G':
+                    type_list[index++] = type_identifier::guid_t;
+                    length += type_length<type_identifier::guid_t>::value;
+                    break;
                 default:
                         type_list[index++] = type_identifier::bad_type; break;
                 }
@@ -350,49 +335,30 @@ template <const size_t COUNT> struct formatstring_type_list {
     constexpr type_identifier operator[] (size_t index) const { return type_list[index]; }
 };
 
-// It will return SIZE_MAX on success and index of failed argument on failure
-template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list, typename T>
-inline constexpr size_t check_formatstring_args_internal(const size_t index, const T &) {
-    if (index >= COUNT) {
-        // std::cout << "Too many argument";
-        return index; // Too many argument
-    }
-    
-    if (fmt_list[index] != what_type<T>::value) {
-        // std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
-        return index; // Bad type
-    }
-
-    if (index + 1 != COUNT) {
-        // std::cout << "Too few argument";
-        return index; // Too few argument
-    }
-    return SIZE_MAX;    
-}
-
 template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list, typename T, typename... ARGS>
-inline constexpr size_t check_formatstring_args_internal(const size_t index, const T &, const ARGS &...args)
+constexpr size_t check_formatstring_args_internal()
 {
-    if (index >= COUNT) {
-        // std::cout << "Too many argument";
-        return index; // Too many argument
-    }
+    constexpr const size_t index = COUNT - sizeof...(ARGS) - 1;
     if (fmt_list[index] != what_type<T>::value) {
-        // std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
+        //std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
         return index; // Bad type
     }
-    return check_formatstring_args_internal<COUNT, fmt_list>(index + 1, args...);
-}
 
-template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list>
-inline constexpr size_t check_formatstring_args() {
-    if constexpr (COUNT == 0) return SIZE_MAX;
-    else return 0;
+    if constexpr (sizeof...(ARGS) >= 1) {
+        return check_formatstring_args_internal<COUNT, fmt_list, ARGS...>();
+    }
+    return SIZE_MAX;
 }
 
 template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list, typename... ARGS>
-inline constexpr size_t check_formatstring_args(const ARGS&... args) {
-    return check_formatstring_args_internal<COUNT, fmt_list>((size_t)0, args...);
+constexpr size_t check_formatstring_args() {
+    if constexpr (COUNT != sizeof...(ARGS)) {
+        //std::cout << "COUNT: " << COUNT << ", sizeof...(ARGS): " << sizeof...(ARGS) << std::endl;
+        return 0;
+    }
+    if constexpr (sizeof...(ARGS) >= 1) return check_formatstring_args_internal<COUNT, fmt_list, ARGS...>();
+    if constexpr (COUNT >= 1) return 0;
+    return SIZE_MAX;
 }
 
 } // namespace rohit

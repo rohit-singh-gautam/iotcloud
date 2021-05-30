@@ -1,5 +1,6 @@
 #include <iot/core/math.hh>
 #include <iot/log.hh>
+#include <iot/core/guid.hh>
 #include "test.hh"
 #include <iot/serversocket.hh>
 #include <arpa/inet.h>
@@ -201,14 +202,17 @@ void test_types_what_type() {
 
     std::cout << "sizeof(long long)" << sizeof(long long) << std::endl;
 
+    check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, 101lu);
     check_formatstring_args_macro(SIZE_MAX, PTHREAD_CREATE_FAILED);
     check_formatstring_args_macro(0, TEST_INTEGER_LOGS);
     check_formatstring_args_macro(0, PTHREAD_JOIN_FAILED);
-    check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, 101lu);
     check_formatstring_args_macro(SIZE_MAX, SYSTEM_ERROR, EINVAL);
     check_formatstring_args_macro(SIZE_MAX, IOT_ERROR, rohit::err_t::MATH_INSUFFICIENT_BUFFER);
     check_formatstring_args_macro(SIZE_MAX, TEST_FLOAT_LOGS, 101.0f, 102.0);
     check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
+    constexpr rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
+    check_formatstring_args_macro(SIZE_MAX, TEST_GUID_LOG, guid, guid);
+
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
     rohit::ipv6_addr_t ipv6addr = rohit::string_to_ipv6_addr_t("eb::1");
@@ -223,8 +227,10 @@ void test_types() {
     test_types_helper<logger_message_id::SYSTEM_ERROR>();
     test_types_helper<logger_message_id::IOT_ERROR>();
     test_types_helper<logger_message_id::TEST_INTEGER_LOGS>();
+    test_types_helper<logger_message_id::TEST_FLOAT_LOGS>();
     test_types_helper<logger_message_id::TEST_IPV6ADDR_LOGS>();
     test_types_helper<logger_message_id::MAX_LOG>();
+    test_types_helper<logger_message_id::TEST_GUID_LOG>();
     test_types_what_type();
 }
 
@@ -263,6 +269,9 @@ void test_logs() try {
     log_verbose<logger_message_id::SYSTEM_ERROR>(EINVAL);
     log_verbose<logger_message_id::IOT_ERROR>(rohit::err_t::GUID_BAD_STRING_FAILURE);
 
+    rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
+    log_verbose<logger_message_id::TEST_GUID_LOG>(guid, guid);
+
     logger::flush();
     sync();
 
@@ -286,6 +295,13 @@ void test_logs() try {
     test_readlog(log_reader);
     test_readlog(log_reader);
     test_readlog(log_reader);
+    test_readlog(log_reader);
+
+    char guid_str[rohit::guid_t::guid_string_withnull_size] = {};
+    rohit::to_string(guid, guid_str);
+    std::cout << "GUID String: " << guid_str << std::endl;
+    rohit::to_string<rohit::number_case::upper>(guid, guid_str);
+    std::cout << "GUID String in caps: " << guid_str << std::endl;
 
     std::cout << "Read done " << std::endl;
     std::cout << std::endl;
