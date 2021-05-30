@@ -17,13 +17,13 @@ inline constexpr size_t sizeofvaargs(const T& arg, const ARGS&... args) {
 }
 
 template <typename T>
-inline constexpr void copyvaradic(uint8_t *arr, const T& arg) {
-    uint8_t *arrsrc = (uint8_t *)(&arg);
+inline constexpr void copyvaradic(uint8_t * const arr, const T& arg) {
+    uint8_t * const arrsrc = (uint8_t * const)(&arg);
     std::copy(arrsrc, arrsrc + sizeof(T), arr);
 }
 
 template <typename T, typename... ARGS>
-inline constexpr void copyvaradic(uint8_t *arr, const T& arg, const ARGS&... args) {
+inline constexpr void copyvaradic(uint8_t * const arr, const T& arg, const ARGS&... args) {
     copyvaradic(arr, arg);
     copyvaradic(arr + sizeof(arg), args...);
 }
