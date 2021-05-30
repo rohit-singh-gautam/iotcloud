@@ -3,7 +3,7 @@ MAKEFLAGS += --no-builtin-rules
 CXX = g++-10
 CPPFLAGS = -std=c++20 -Wall -Wextra -Werror -ggdb3 -O0 -Iinclude -I../httpserver
 
-COMMONHPP=include/iot/core/error.hh include/iot/core/varadic.hh include/iot/message.hh include/iot/log.hh include/iot/core/math.hh include/iot/core/types.hh include/iot/core/ipv6addr.hh include/iot/core/guid.hh
+COMMONHPP=include/iot/core/error.hh include/iot/core/varadic.hh include/iot/message.hh include/iot/log.hh include/iot/core/math.hh include/iot/core/types.hh include/iot/core/ipv6addr.hh include/iot/core/guid.hh include/iot/states/states.hh
 
 TESTCPPFILES=test/test.cc lib/log.cc ../httpserver/http11.tab.cc ../httpserver/lex.yy.cc ../httpserver/http11driver.cc ../httpserver/http11.cc
 TESTHPPFILES=include/iot/serversocket.hh test/test.hh include/iot/socket.hh $(COMMONHPP)

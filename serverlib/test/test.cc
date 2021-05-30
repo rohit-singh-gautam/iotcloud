@@ -8,6 +8,7 @@
 #include <sstream>
 #include "../httpserver/http11driver.hh"
 #include <pthread.h>
+#include <iot/states/states.hh>
 
 int success = 0;
 int failed = 0;
@@ -212,6 +213,7 @@ void test_types_what_type() {
     check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
     constexpr rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
     check_formatstring_args_macro(SIZE_MAX, TEST_GUID_LOG, guid, guid);
+    check_formatstring_args_macro(SIZE_MAX, TEST_STATE_LOG, rohit::state_t::LISTEN);
 
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
@@ -231,6 +233,7 @@ void test_types() {
     test_types_helper<logger_message_id::TEST_IPV6ADDR_LOGS>();
     test_types_helper<logger_message_id::MAX_LOG>();
     test_types_helper<logger_message_id::TEST_GUID_LOG>();
+    test_types_helper<logger_message_id::TEST_STATE_LOG>();
     test_types_what_type();
 }
 
@@ -271,6 +274,7 @@ void test_logs() try {
 
     rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
     log_verbose<logger_message_id::TEST_GUID_LOG>(guid, guid);
+    log_verbose<logger_message_id::TEST_STATE_LOG>(rohit::state_t::LISTEN);
 
     logger::flush();
     sync();
@@ -292,6 +296,7 @@ void test_logs() try {
         }
     }
 
+    test_readlog(log_reader);
     test_readlog(log_reader);
     test_readlog(log_reader);
     test_readlog(log_reader);

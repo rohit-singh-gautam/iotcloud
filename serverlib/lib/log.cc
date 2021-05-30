@@ -2,6 +2,7 @@
 #include <iot/core/guid.hh>
 #include <iot/core/error.hh>
 #include <iot/core/math.hh>
+#include <iot/states/states.hh>
 #include <iot/socket.hh>
 #include <cstring>
 #include <iostream>
@@ -199,6 +200,14 @@ void guid_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
+void state_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const state_t &value = *reinterpret_cast<const state_t *>(data_args);
+    data_args += sizeof(state_t);
+    auto count =  to_string<false>(value, pStr);
+   
+    pStr += count;
+}
+
 
 template <size_t N>
 constexpr void write_string(char *&pStr, const char (&message)[N]) {
@@ -367,6 +376,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case 'E': errno_t_to_string_helper(pStr, data_args); break;
                 case 'g': guid_t_to_string_helper(pStr, data_args); break;
                 case 'G': guid_t_to_string_helper<number_case::upper>(pStr, data_args); break;
+                case 's': state_t_to_string_helper(pStr, data_args); break;
                 default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
             state = formatstring_state::COPY;

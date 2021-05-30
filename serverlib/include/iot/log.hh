@@ -19,6 +19,7 @@ public:
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread %lu") \
     LOGGER_ENTRY(SYSTEM_ERROR, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, "IOT Error '%vE'") \
+    LOGGER_ENTRY(TEST_STATE_LOG, "State '%vs'") \
     LOGGER_ENTRY(TEST_GUID_LOG, "IOT Error '%vg' caps '%vG'") \
     LOGGER_ENTRY(TEST_FLOAT_LOGS, "Test float %%%f, double %lf") \
     LOGGER_ENTRY(TEST_INTEGER_LOGS, "Test %%, Integer %i, long %li, long long %lli, Short %hi, Short Short %hhi, Unsigned %u, long %lu, long long %llu, Short %hu, Short Short %hhu") \

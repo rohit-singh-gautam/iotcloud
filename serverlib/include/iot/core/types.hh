@@ -92,6 +92,7 @@ public:
 typedef uint16_t log_id_type;
 typedef uint16_t state_type;
 
+enum class state_t : state_type;
 enum class err_t : log_id_type;
 
 typedef char char_t;
@@ -113,6 +114,7 @@ typedef double double_t;
     TYPE_LIST_ENTRY(float_t) \
     TYPE_LIST_ENTRY(double_t) \
     TYPE_LIST_ENTRY(err_t) \
+    TYPE_LIST_ENTRY(state_t) \
     TYPE_LIST_ENTRY(guid_t) \
     TYPE_LIST_ENTRY(ipv6_addr_t) \
     TYPE_LIST_ENTRY(ipv6_port_t) \

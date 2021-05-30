@@ -59,6 +59,7 @@ public:
 //      %vE: IOT error
 //      %vg: GUID lower case
 //      %vG: GUID upper case
+//      %vs: State of an execution
 // %% - %
 //
 // Supported format length
@@ -130,6 +131,7 @@ inline constexpr size_t formatstring_count(const char *arr) {
             case 'E':
             case 'g':
             case 'G':
+            case 's':
                 ++count;
                 state = formatstring_state::COPY;
                 break;
@@ -310,6 +312,10 @@ template <const size_t COUNT> struct formatstring_type_list {
                 case 'G':
                     type_list[index++] = type_identifier::guid_t;
                     length += type_length<type_identifier::guid_t>::value;
+                    break;
+                case 's':
+                    type_list[index++] = type_identifier::state_t;
+                    length += type_length<type_identifier::state_t>::value;
                     break;
                 default:
                         type_list[index++] = type_identifier::bad_type; break;
