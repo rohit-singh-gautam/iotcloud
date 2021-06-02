@@ -1,7 +1,7 @@
 #pragma once
-#include "core/error.hh"
-#include "core/math.hh"
-#include "core/ipv6addr.hh"
+#include <iot/core/error.hh>
+#include <iot/core/math.hh>
+#include <iot/core/ipv6addr.hh>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>

@@ -1,9 +1,9 @@
-#include <iot/log.hh>
+#include <iot/core/log.hh>
 #include <iot/core/guid.hh>
 #include <iot/core/error.hh>
 #include <iot/core/math.hh>
 #include <iot/states/states.hh>
-#include <iot/socket.hh>
+#include <iot/net/socket.hh>
 #include <cstring>
 #include <iostream>
 

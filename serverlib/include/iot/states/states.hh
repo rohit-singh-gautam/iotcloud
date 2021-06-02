@@ -3,6 +3,7 @@
 #include <iot/core/types.hh>
 #include "statesentry.hh"
 #include <assert.h>
+#include <unordered_map>
 
 namespace rohit {
 
@@ -39,5 +40,6 @@ constexpr size_t to_string(const state_t &val, char *dest) {
 #undef STATE_ENTRY
     }
 }
+
 
 } // namespace rohit

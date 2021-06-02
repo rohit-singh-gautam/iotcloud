@@ -1,8 +1,8 @@
 #include <iot/core/math.hh>
-#include <iot/log.hh>
+#include <iot/core/log.hh>
 #include <iot/core/guid.hh>
 #include "test.hh"
-#include <iot/serversocket.hh>
+#include <iot/net/serversocket.hh>
 #include <arpa/inet.h>
 #include <iostream>
 #include <sstream>
