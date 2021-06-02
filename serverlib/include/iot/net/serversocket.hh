@@ -1,4 +1,10 @@
+////////////////////////////////////////////////////////////
+// Copyright 2021 Rohit Jairaj Singh (rohit@singh.org.in) //
+// Private file do not read, copy, share or distribute    //
+////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <string>
 #include <cstdlib>
 #include <cstring>

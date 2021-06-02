@@ -1,3 +1,8 @@
+////////////////////////////////////////////////////////////
+// Copyright 2021 Rohit Jairaj Singh (rohit@singh.org.in) //
+// Private file do not read, copy, share or distribute    //
+////////////////////////////////////////////////////////////
+
 #include <iot/core/ipv6addr.hh>
 #include <iot/core/math.hh>
 #include <iostream>
