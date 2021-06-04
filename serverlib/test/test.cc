@@ -260,7 +260,7 @@ void test_logs() try {
     logger::init(log_filename);
 
     std::cout << "Writing log" << std::endl;
-    log_verbose<logger_message_id::PTHREAD_JOIN_FAILED>(101lu);
+    log_verbose<logger_message_id::PTHREAD_JOIN_FAILED>(101);
     log_verbose<logger_message_id::TEST_FLOAT_LOGS>(101.0f, 102.0);
 
     size_t log_count = 201;

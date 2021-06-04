@@ -98,18 +98,18 @@ public:
 
     inline void execute(socket_t client_id) {
         if (pthread[next_index]) {
-            auto errJoin = error_c::pthread_join_ret(pthread_join(pthread[next_index], NULL));
+            auto errJoin = pthread_join(pthread[next_index], NULL);
             // We are just logging here
-            if (errJoin != err_t::SUCCESS)
-                log_warning<logger_message_id::PTHREAD_JOIN_FAILED>(
-                    pthread[next_index]);
+            if (errJoin != 0)
+                log_warning<logger_message_id::PTHREAD_JOIN_FAILED>(errJoin);
         }
-        auto errCreate = error_c::pthread_create_ret(
-            pthread_create(&pthread[next_index], NULL, execute_client, (void *)&client_id));
+        auto ret = pthread_create(&pthread[next_index], NULL, execute_client, (void *)&client_id);
 
-        if (errCreate != err_t::SUCCESS) // TODO: Wait for a while and loop if not able to create thread
-            log_error<logger_message_id::PTHREAD_CREATE_FAILED>(); 
-        else ++next_index;
+        if (ret != 0) {
+            log_error<logger_message_id::PTHREAD_CREATE_FAILED>(ret); 
+        } else {
+             ++next_index;
+        }
     }
 };
 

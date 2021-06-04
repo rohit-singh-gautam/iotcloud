@@ -33,9 +33,6 @@ namespace rohit {
     ERROR_T_ENTRY(PTHREAD_JOIN_INVALID_THREAD_ID_FAILURE, "No thread is running with given thread ID") \
     \
     ERROR_T_ENTRY(PTHREAD_CREATE_FAILURE, "Unable to create thread") \
-    ERROR_T_ENTRY(PTHREAD_CREATE_RESOURCE_FAILURE, "Insufficient resource or /proc/sys/kernel/pid_max limit reached") \
-    ERROR_T_ENTRY(PTHREAD_CREATE_INVALID_ATTRIBUTE_FAILURE, "Invalid pthread attributes passed") \
-    ERROR_T_ENTRY(PTHREAD_CREATE_PERMISSION_FAILURE, "No permission to create thread") \
     \
     ERROR_T_ENTRY(GUID_BAD_STRING_FAILURE, "Bad GUID string") \
     \
@@ -69,6 +66,8 @@ namespace rohit {
     \
     ERROR_T_ENTRY(MATH_INSUFFICIENT_BUFFER, "Buffer is not sufficient to store result, partial and wrong result may have been written to buffer") \
     \
+    ERROR_T_ENTRY(EVENT_DIST_CREATE_FAILED, "Event distributor creation failed") \
+    ERROR_T_ENTRY(EVENT_CREATE_FAILED, "Event creation failed") \
     \
     ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
     LIST_DEFINITION_END
@@ -151,26 +150,6 @@ public:
 
     inline bool isSuccess() const { return value == err_t::SUCCESS; }
     inline bool isFailure() const { return value != err_t::SUCCESS; }
-
-    static inline err_t pthread_join_ret(const int retval) {
-        switch (retval) {
-            case 0: return err_t::SUCCESS;
-            case EDEADLK: return err_t::PTHREAD_JOIN_DEADLOCK_FAILURE;
-            case EINVAL: return err_t::PTHREAD_JOIN_NOT_JOINABLE_FAILURE;
-            case ESRCH: return err_t::PTHREAD_JOIN_INVALID_THREAD_ID_FAILURE;
-            default: return err_t::PTHREAD_JOIN_FAILURE;
-        }
-    }
-
-    static inline err_t pthread_create_ret(const int retval) {
-        switch (retval) {
-            case 0: return err_t::SUCCESS;
-            case EAGAIN: return err_t::PTHREAD_CREATE_RESOURCE_FAILURE;
-            case EINVAL: return err_t::PTHREAD_CREATE_INVALID_ATTRIBUTE_FAILURE;
-            case EPERM: return err_t::PTHREAD_CREATE_PERMISSION_FAILURE;
-            default: return err_t::PTHREAD_CREATE_FAILURE;
-        }
-    }
 
     static inline err_t socket_create_ret() {
         switch (errno)

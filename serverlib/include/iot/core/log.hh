@@ -21,8 +21,20 @@ public:
 };
 
 #define LOGGER_LOG_LIST \
-    LOGGER_ENTRY(PTHREAD_CREATE_FAILED, "Unable to create pthread") \
-    LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread %lu") \
+    LOGGER_ENTRY(PTHREAD_CREATE_FAILED, "Unable to create pthread with error %ve") \
+    LOGGER_ENTRY(PTHREAD_JOIN_FAILED, "Unable to join pthread with error %ve") \
+    LOGGER_ENTRY(EVENT_DIST_CREATE_FAILED, "Event distributor creation failed with error %ve, terminating application") \
+    LOGGER_ENTRY(EVENT_DIST_CREATE_NO_THREAD, "Event distributor failed to create any thread, terminating application") \
+    LOGGER_ENTRY(EVENT_DIST_LOOP_WAIT_FAILED, "Event distributor loop failed with error %ve, waiting for a second and retry") \
+    LOGGER_ENTRY(EVENT_DIST_LOOP_WAIT_INTERRUPTED, "Event distributor loop interrupted with error %ve, exiting thread") \
+    LOGGER_ENTRY(EVENT_DIST_TOO_MANY_THREAD, "Event distributor created with threads more than CPUs") \
+    LOGGER_ENTRY(EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED, "Event distributor unable to close epoll with error %ve") \
+    LOGGER_ENTRY(EVENT_DIST_NO_THREAD_CANCEL, "Event distributor unable to set thread cancel flag with error %ve, exit may not be proper") \
+    LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_CANCEL_FAILED, "Event distributor unable to cancel thread with error %ve") \
+    LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_JOIN_FAILED, "Event distributor unable to join thread with error %ve") \
+    LOGGER_ENTRY(EVENT_DIST_CREATE_SUCCESS, "Event distributor creation succeeded") \
+    LOGGER_ENTRY(EVENT_CREATE_FAILED, "Event creation failed with error %ve") \
+    LOGGER_ENTRY(EVENT_CREATE_SUCCESS, "Event creation succeeded") \
     LOGGER_ENTRY(SYSTEM_ERROR, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, "IOT Error '%vE'") \
     LOGGER_ENTRY(TEST_STATE_LOG, "State '%vs'") \
@@ -243,6 +255,35 @@ public:
     }
 
 }; // class logger
+
+// Supported format specifier
+// %d or %i - signed integer (int32_t)
+// %u - unsigned integer (uint32_t)
+// %o - unsigned integer (uint32_t)(Octal)
+// %x - unsigned integer (uint32_t)(hex small case)
+// %X - unsigned integer (uint32_t)(hex capital case)
+// %f - floating point lower case (float)
+// %F - floating point upper case (float)
+// %c - character (char)
+// %v - Custom
+//      %vn: IPv6 network Address format
+//      %vN: IPv6 network Address format in caps
+//      %vi: IPv6 address
+//      %vi: IPv6 address in caps
+//      %vp: IPv6 port
+//      %ve: System errno
+//      %vE: IOT error
+//      %vg: GUID lower case
+//      %vG: GUID upper case
+//      %vs: State of an execution
+// %% - %
+//
+// Supported format length
+// h - short - 16 bits
+// hh - ultra short 8 bits
+// l - long
+// ll - long long
+// z - size_t
 
 template<logger_message_id ID, typename... ARGS>
 constexpr void log_verbose(const ARGS&... args) {

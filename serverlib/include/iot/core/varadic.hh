@@ -46,35 +46,6 @@ public:
     static const constexpr size_t size = sizeof(T);
 };
 
-// Supported format specifier
-// %d or %i - signed integer (int32_t)
-// %u - unsigned integer (uint32_t)
-// %o - unsigned integer (uint32_t)(Octal)
-// %x - unsigned integer (uint32_t)(hex small case)
-// %X - unsigned integer (uint32_t)(hex capital case)
-// %f - floating point lower case (float)
-// %F - floating point upper case (float)
-// %c - character (char)
-// %v - Custom
-//      %vn: IPv6 network Address format
-//      %vN: IPv6 network Address format in caps
-//      %vi: IPv6 address
-//      %vi: IPv6 address in caps
-//      %vp: IPv6 port
-//      %ve: System errno
-//      %vE: IOT error
-//      %vg: GUID lower case
-//      %vG: GUID upper case
-//      %vs: State of an execution
-// %% - %
-//
-// Supported format length
-// h - short - 16 bits
-// hh - ultra short 8 bits
-// l - long
-// ll - long long
-// z - size_t
-
 enum class formatstring_state { 
     COPY,
     MODIFIER,
