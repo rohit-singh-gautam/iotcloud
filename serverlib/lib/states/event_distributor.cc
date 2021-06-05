@@ -15,29 +15,29 @@ event_distributor::event_distributor(const int thread_count, const int max_event
     epollfd = epoll_create(max_event_size);
 
     if (epollfd == -1) {
-        log_error<logger_message_id::EVENT_DIST_CREATE_FAILED>(errno);
+        log<log_t::EVENT_DIST_CREATE_FAILED>(errno);
         throw exception_t(err_t::EVENT_DIST_CREATE_FAILED);
     } else {
-        log_verbose<logger_message_id::EVENT_DIST_CREATE_SUCCESS>();
+        log<log_t::EVENT_DIST_CREATE_SUCCESS>();
     }
 
     auto cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
     if (!thread_count) this->thread_count = cpu_count;
     if (thread_count > cpu_count) {
-        log_warning<logger_message_id::EVENT_DIST_TOO_MANY_THREAD>();
+        log<log_t::EVENT_DIST_TOO_MANY_THREAD>();
     }
 
     for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
         auto ret = pthread_create(&pthread[cpu_index], NULL, &event_distributor::loop, this);
         if (ret != 0) {
-            log_warning<logger_message_id::PTHREAD_CREATE_FAILED>(ret);
+            log<log_t::PTHREAD_CREATE_FAILED>(ret);
             this->thread_count = cpu_index;
             break;
         }
     }
 
     if (this->thread_count == 0) {
-        log_error<logger_message_id::EVENT_DIST_CREATE_NO_THREAD>();
+        log<log_t::EVENT_DIST_CREATE_NO_THREAD>();
         throw exception_t(err_t::EVENT_DIST_CREATE_FAILED);
     }
 }
@@ -47,7 +47,9 @@ void *event_distributor::loop(void *pvoid_evtdist) {
     // This is infinite loop
     auto ret = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, nullptr);
     if (ret != 0)
-        log_warning<logger_message_id::EVENT_DIST_NO_THREAD_CANCEL>(ret);
+        log<log_t::EVENT_DIST_NO_THREAD_CANCEL>(ret);
+
+    thread_context ctx;
 
     while(true) {
         epoll_event event;
@@ -57,7 +59,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
                 if (pevtdist->is_terminate) pthread_exit(nullptr);
             }
 
-            log_warning<logger_message_id::EVENT_DIST_LOOP_WAIT_INTERRUPTED>(ret);
+            log<log_t::EVENT_DIST_LOOP_WAIT_INTERRUPTED>(ret);
             sleep(1);
             // Check again if terminated
             if (pevtdist->is_terminate) pthread_exit(nullptr);
@@ -65,7 +67,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
         }
 
         event_executor *executor = static_cast<event_executor *>(event.data.ptr);
-        executor->execute();
+        executor->execute(ctx);
     }
 
     return nullptr;
@@ -75,7 +77,7 @@ void event_distributor::terminate() {
     is_terminate = true;
     auto ret = close(epollfd);
     if (ret != 0) {
-        log_warning<logger_message_id::EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED>(ret);
+        log<log_t::EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED>(ret);
     }
 
     // Wait for fd to close
@@ -86,14 +88,14 @@ void event_distributor::terminate() {
     for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
         ret = pthread_cancel(pthread[cpu_index]);
         if (ret != 0) {
-            log_warning<logger_message_id::EVENT_DIST_EXIT_THREAD_CANCEL_FAILED>(ret);
+            log<log_t::EVENT_DIST_EXIT_THREAD_CANCEL_FAILED>(ret);
         }
     }
 
     for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
         ret = pthread_join(pthread[cpu_index], NULL);
         if (ret != 0) {
-            log_warning<logger_message_id::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
+            log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
         }
     }
 }

@@ -155,7 +155,7 @@ void test_itoa() {
     }
 }
 
-template <rohit::logger_message_id ID>
+template <rohit::log_t ID>
 void test_types_helper() {
     using rohit::logger;
     using rohit::logger_level;
@@ -169,13 +169,13 @@ void test_types_helper() {
     std::cout << std::endl;
 }
 
-#define fmtfn(x, ...) check_formatstring_args<rohit::logger_message_id::x>(__VA_ARGS__)
-#define fmtstr(x, ...) "check_formatstring_args<rohit::logger_message_id::" #x ">(" #__VA_ARGS__ ")"
+#define fmtfn(x, ...) check_formatstring_args<rohit::log_t::x>(__VA_ARGS__)
+#define fmtstr(x, ...) "check_formatstring_args<rohit::log_t::" #x ">(" #__VA_ARGS__ ")"
 
 #define check_formatstring_args_macro(result, x, ...)  { \
     auto ret = fmtfn(x, __VA_ARGS__); \
-    if (ret == result) success++; \
-    else failed++; \
+    if (ret == result) { success++; std::cout << "Success  "; } \
+    else { failed++; std::cout << "Failed   "; }\
     std::cout << fmtstr(x, __VA_ARGS__) ": (SIZE_MAX,18446744073709551615==SUCCESS) " << ret << std::endl; }
 
 void test_types_what_type() {
@@ -208,8 +208,8 @@ void test_types_what_type() {
 
     std::cout << "sizeof(long long)" << sizeof(long long) << std::endl;
 
-    check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, 101lu);
-    check_formatstring_args_macro(SIZE_MAX, PTHREAD_CREATE_FAILED);
+    check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, EINVAL);
+    check_formatstring_args_macro(SIZE_MAX, PTHREAD_CREATE_FAILED, EACCES);
     check_formatstring_args_macro(0, TEST_INTEGER_LOGS);
     check_formatstring_args_macro(0, PTHREAD_JOIN_FAILED);
     check_formatstring_args_macro(SIZE_MAX, SYSTEM_ERROR, EINVAL);
@@ -228,17 +228,17 @@ void test_types_what_type() {
 }
 
 void test_types() {
-    using rohit::logger_message_id;
-    test_types_helper<logger_message_id::PTHREAD_CREATE_FAILED>();
-    test_types_helper<logger_message_id::PTHREAD_JOIN_FAILED>();
-    test_types_helper<logger_message_id::SYSTEM_ERROR>();
-    test_types_helper<logger_message_id::IOT_ERROR>();
-    test_types_helper<logger_message_id::TEST_INTEGER_LOGS>();
-    test_types_helper<logger_message_id::TEST_FLOAT_LOGS>();
-    test_types_helper<logger_message_id::TEST_IPV6ADDR_LOGS>();
-    test_types_helper<logger_message_id::MAX_LOG>();
-    test_types_helper<logger_message_id::TEST_GUID_LOG>();
-    test_types_helper<logger_message_id::TEST_STATE_LOG>();
+    using rohit::log_t;
+    test_types_helper<log_t::PTHREAD_CREATE_FAILED>();
+    test_types_helper<log_t::PTHREAD_JOIN_FAILED>();
+    test_types_helper<log_t::SYSTEM_ERROR>();
+    test_types_helper<log_t::IOT_ERROR>();
+    test_types_helper<log_t::TEST_INTEGER_LOGS>();
+    test_types_helper<log_t::TEST_FLOAT_LOGS>();
+    test_types_helper<log_t::TEST_IPV6ADDR_LOGS>();
+    test_types_helper<log_t::MAX_LOG>();
+    test_types_helper<log_t::TEST_GUID_LOG>();
+    test_types_helper<log_t::TEST_STATE_LOG>();
     test_types_what_type();
 }
 
@@ -250,22 +250,22 @@ void test_readlog(rohit::logreader &log_reader) {
 void test_logs() try {
     using rohit::logger;
     using rohit::logger_level;
-    using rohit::logger_message_id;
-    using rohit::log_verbose;
+    using rohit::log_t;
+    using rohit::log;
 
-    std::cout << "Total type of logs count: " << rohit::logger_message_id_count << std::endl;
+    std::cout << "Total type of logs count: " << rohit::log_t_count << std::endl;
     const std::string log_filename = "/tmp/test_logs.txt";
 
     remove(log_filename.c_str());
     logger::init(log_filename);
 
     std::cout << "Writing log" << std::endl;
-    log_verbose<logger_message_id::PTHREAD_JOIN_FAILED>(101);
-    log_verbose<logger_message_id::TEST_FLOAT_LOGS>(101.0f, 102.0);
+    log<log_t::PTHREAD_JOIN_FAILED>(101);
+    log<log_t::TEST_FLOAT_LOGS>(101.0f, 102.0);
 
     size_t log_count = 201;
     for (size_t count = 0; count < log_count; ++count) {
-        log_verbose<logger_message_id::TEST_INTEGER_LOGS>(101, 102l, 103ll,
+        log<log_t::TEST_INTEGER_LOGS>(101, 102l, 103ll,
             (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
     }
 
@@ -273,13 +273,13 @@ void test_logs() try {
     rohit::ipv6_addr_t ipv6addr = rohit::string_to_ipv6_addr_t("eb::1");
     rohit::ipv6_port_t ipv6port = 8080;
 
-    log_verbose<logger_message_id::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
-    log_verbose<logger_message_id::SYSTEM_ERROR>(EINVAL);
-    log_verbose<logger_message_id::IOT_ERROR>(rohit::err_t::GUID_BAD_STRING_FAILURE);
+    log<log_t::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
+    log<log_t::SYSTEM_ERROR>(EINVAL);
+    log<log_t::IOT_ERROR>(rohit::err_t::GUID_BAD_STRING_FAILURE);
 
     rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
-    log_verbose<logger_message_id::TEST_GUID_LOG>(guid, guid);
-    log_verbose<logger_message_id::TEST_STATE_LOG>(rohit::state_t::LISTEN);
+    log<log_t::TEST_GUID_LOG>(guid, guid);
+    log<log_t::TEST_STATE_LOG>(rohit::state_t::LISTEN);
 
     logger::flush();
     sync();

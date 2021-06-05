@@ -24,12 +24,33 @@ enum class event_hook_t : uint32_t {
     // We will fill in only events those are required
 };
 
+class thread_context {
+public:
+    thread_context() {}
+
+    template <typename T, typename... ARGS>
+    T *alloc(ARGS&... args) {
+        // Syntax to use preallocated memory is 'new(memptr) T(parameter)
+        return new T(args...);
+    }
+
+    template <typename T>
+    void free(T *) {
+        // There is no check we just free it
+    }
+
+    template<log_t ID, typename... ARGS>
+    constexpr void log(const ARGS&... args) {
+        logger::log<logger_level::VERBOSE, ID, ARGS...>(args...);
+    }
+};
+
 class event_executor {
 private:
 friend class event_distributor;
 
     // This is pure virtual function can be called only from event_distributor
-    virtual void execute() = 0;
+    virtual void execute(thread_context &ctx) = 0;
 
 }; // class event_executor
 
@@ -63,10 +84,10 @@ public:
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
 
         if (ret == -1) {
-            log_error<logger_message_id::EVENT_CREATE_FAILED>(errno);
+            log<log_t::EVENT_CREATE_FAILED>(errno);
             return err_t::EVENT_CREATE_FAILED;
         } else {
-            log_verbose<logger_message_id::EVENT_CREATE_SUCCESS>();
+            log<log_t::EVENT_CREATE_SUCCESS>();
             return err_t::SUCCESS;
         }
     }

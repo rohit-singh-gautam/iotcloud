@@ -223,16 +223,15 @@ constexpr void write_string(char *&pStr, const char (&message)[N]) {
 
 void createLogsString(logger_logs_entry_read &logEntry, char *text) {
     const uint8_t *data_args = logEntry.arguments;
-    if (logEntry.log_type != logger_type::LOGS) {
-        throw exception_t(err_t::LOG_UNSUPPORTED_TYPE_FAILURE);
-    }
 
     size_t index = 0;
 
-    switch(logEntry.level) {
-#define LOGGER_LEVEL_ENTRY(x) case logger_level::x: writeLogsText(#x, sizeof(#x) - 1, text, index); break;
-    LOGGER_LEVEL_LIST
-#undef LOGGER_LEVEL_ENTRY
+    switch(logEntry.id) {
+        default:
+            assert(true);
+#define LOGGER_ENTRY(x, y, z) case log_t::x: writeLogsText(#y, sizeof(#y) - 1, text, index); break;
+            LOGGER_LOG_LIST
+#undef LOGGER_ENTRY
     }
 
     *(text + index++) = ':';
@@ -395,25 +394,24 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
 
 const std::string logreader::readnext() {
     // First read header
-    logger_logs_entry_header &log_header = *(logger_logs_entry_header *)data_args;
-    logger_logs_entry_end_of_cluster &log_end_of_cluster = *(logger_logs_entry_end_of_cluster *)data_args;
     logger_logs_entry_common &log_common = *(logger_logs_entry_common *)data_args;
+    logger_logs_entry_end_of_cluster &log_end_of_cluster = *(logger_logs_entry_end_of_cluster *)data_args;
     logger_logs_entry_read &log_read = *(logger_logs_entry_read *)data_args;
     ssize_t total_read = 0;
 
-    ssize_t read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_header));
-    if (read_size != sizeof(logger_logs_entry_header)) {
+    ssize_t read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
+    if (read_size != sizeof(logger_logs_entry_common)) {
         std::cerr << "Read failure " << errno << std::endl;
         throw exception_t(err_t::LOG_READ_FAILURE);
     }
 
-    if (log_header.log_type == logger_type::END_OF_CLUSTER) {
+    if (log_common.id == log_t::END_OF_CLUSTER) {
         // Reading end of cluster length
         read_size = read(
             file_descriptor,
             (void *)(data_args + read_size),
-            sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_header));
-        if (read_size != sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_header)) {
+            sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_common));
+        if (read_size != sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_common)) {
             std::cerr << "Read failure " << errno << std::endl;
             throw exception_t(err_t::LOG_READ_FAILURE);
         }
@@ -428,25 +426,11 @@ const std::string logreader::readnext() {
             throw exception_t(err_t::LOG_READ_FAILURE);
         }
 
-        read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_header));
-        if (read_size != sizeof(logger_logs_entry_header)) {
+        read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
+        if (read_size != sizeof(logger_logs_entry_common)) {
             std::cerr << "Read failure " << errno << std::endl;
             throw exception_t(err_t::LOG_READ_FAILURE);
         }
-
-        if (log_header.log_type != logger_type::LOGS) {
-            std::cerr << "Read failure wronge logger type" << errno << std::endl;
-            throw exception_t(err_t::LOG_READ_FAILURE);
-        }
-    }
-
-    total_read += read_size;
-
-    read_size = read(file_descriptor, (void *)(data_args + total_read), sizeof(logger_logs_entry_common) - total_read);
-
-    if ((size_t)read_size != sizeof(logger_logs_entry_common) - total_read) {
-        std::cerr << "Read failure " << errno << std::endl;
-        throw exception_t(err_t::LOG_READ_FAILURE);
     }
 
     total_read += read_size;

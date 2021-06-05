@@ -101,12 +101,12 @@ public:
             auto errJoin = pthread_join(pthread[next_index], NULL);
             // We are just logging here
             if (errJoin != 0)
-                log_warning<logger_message_id::PTHREAD_JOIN_FAILED>(errJoin);
+                log<log_t::PTHREAD_JOIN_FAILED>(errJoin);
         }
         auto ret = pthread_create(&pthread[next_index], NULL, execute_client, (void *)&client_id);
 
         if (ret != 0) {
-            log_error<logger_message_id::PTHREAD_CREATE_FAILED>(ret); 
+            log<log_t::PTHREAD_CREATE_FAILED>(ret); 
         } else {
              ++next_index;
         }
