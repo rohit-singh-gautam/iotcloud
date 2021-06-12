@@ -1,0 +1,12 @@
+////////////////////////////////////////////////////////////
+// Copyright 2021 Rohit Jairaj Singh (rohit@singh.org.in) //
+// Private file do not read, copy, share or distribute    //
+////////////////////////////////////////////////////////////
+
+#include <iot/net/serverevent.hh>
+
+namespace rohit {
+
+
+
+} // namespace rohit

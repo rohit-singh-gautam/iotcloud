@@ -25,29 +25,19 @@ enum class event_hook_t : uint32_t {
 };
 
 class thread_context {
+    logger cxtlog;
 public:
     thread_context() {}
 
-    template <typename T, typename... ARGS>
-    T *alloc(ARGS&... args) {
-        // Syntax to use preallocated memory is 'new(memptr) T(parameter)
-        return new T(args...);
-    }
-
-    template <typename T>
-    void free(T *) {
-        // There is no check we just free it
-    }
-
     template<log_t ID, typename... ARGS>
     constexpr void log(const ARGS&... args) {
-        logger::log<logger_level::VERBOSE, ID, ARGS...>(args...);
+        cxtlog.log<ID, ARGS...>(args...);
     }
 };
 
 class event_executor {
 private:
-friend class event_distributor;
+    friend class event_distributor;
 
     // This is pure virtual function can be called only from event_distributor
     virtual void execute(thread_context &ctx) = 0;
@@ -71,12 +61,12 @@ private:
     static void *loop(void *pevtdist);
 
 public:
-    event_distributor(const int thread_count = 0,const int max_event_size = event_distributor::max_event_size);
+    event_distributor(const int thread_count = 0, const int max_event_size = event_distributor::max_event_size);
 
     // event_executor memory will be used directly
     // clean up is responsibility of event_executor
     // itself.
-    inline err_t add(const int fd, const event_hook_t event, event_executor &executor) {
+    inline err_t add(const int fd, const event_hook_t event, event_executor &executor) const {
         epoll_event epoll_data;
         epoll_data.events = static_cast<uint32_t>(event) | EPOLLET;
         epoll_data.data.ptr = &executor;
@@ -84,13 +74,15 @@ public:
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
 
         if (ret == -1) {
-            log<log_t::EVENT_CREATE_FAILED>(errno);
+            glog.log<log_t::EVENT_CREATE_FAILED>(errno);
             return err_t::EVENT_CREATE_FAILED;
         } else {
-            log<log_t::EVENT_CREATE_SUCCESS>();
+            glog.log<log_t::EVENT_CREATE_SUCCESS>();
             return err_t::SUCCESS;
         }
     }
+
+    inline size_t get_thread_count() const { return thread_count; }
 
     void terminate();
     

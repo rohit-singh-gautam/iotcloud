@@ -14,50 +14,7 @@
 
 namespace rohit {
 
-class log_cluster_entry {
-public:
-    static constexpr size_t max_cluster_size = 8192;
-    bool used = false;
-    size_t start = 0;
-    size_t index = 0;
-    uint8_t buffer[max_cluster_size];
-
-    constexpr void init() {
-        start = index = 0;
-    }
-};
-
-class log_buffer {
-public:
-
-    static constexpr size_t max_cluster_count = 2;
-    size_t current_cluster = 0;
-    log_cluster_entry cluster_list[max_cluster_count];
-
-    constexpr log_cluster_entry *get_current_cluster();
-
-    constexpr void init() {
-        current_cluster = 0;
-        for(size_t count = 0; count < max_cluster_count; ++count) {
-            cluster_list[count].init();
-        }
-    }
-
-    // For timebeing no check will be performed
-    constexpr void next_cluster() {
-        ++current_cluster;
-        if (current_cluster == max_cluster_count) current_cluster = 0;
-        log_cluster_entry &log_cluster = *get_current_cluster();
-        log_cluster.index = 0;
-        log_cluster.start = 0;
-    }
-};
-
-constexpr log_cluster_entry *log_buffer::get_current_cluster() {
-    return cluster_list + current_cluster;
-}
-
-log_buffer log_buf;
+rohit::logger glog;
 
 int logger::file_descriptor = 0;
 
@@ -87,16 +44,10 @@ void logger::write(const void *data, const size_t length) {
 }
 
 void logger::init(const std::string &filename) {
-    log_buf.init();
     // This must be read/write as same class can be used to read
     file_descriptor = open(filename.c_str(), O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     if ( file_descriptor < 0 ) {
         std::cerr << "Failed to open file " << filename << ", error " << errno << ", " << strerror(errno) << "\n";
-    } else {
-        log_cluster_entry *log_cluster = log_buf.get_current_cluster();
-         auto index = lseek(file_descriptor, 0, SEEK_CUR);
-         log_cluster->start = log_cluster->index = index;
-
     }
 }
 
@@ -229,7 +180,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
     switch(logEntry.id) {
         default:
             assert(true);
-#define LOGGER_ENTRY(x, y, z) case log_t::x: writeLogsText(#y, sizeof(#y) - 1, text, index); break;
+#define LOGGER_ENTRY(x, y, m, z) case log_t::x: writeLogsText(#y, sizeof(#y) - 1, text, index); break;
             LOGGER_LOG_LIST
 #undef LOGGER_ENTRY
     }

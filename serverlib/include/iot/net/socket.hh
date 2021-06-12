@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
 
 class server_socket_t : public socket_t {
 public:
-    server_socket_t(const int port, const int backlog = 5) {
+    inline server_socket_t(const int port, const int backlog = 5, const bool blisten = true) {
         int enable = 1;
         if (setsockopt(socket_id, SOL_SOCKET, SO_REUSEADDR, (char *)&enable,sizeof(enable)) < 0) {
             close();
@@ -111,10 +111,18 @@ public:
             throw exception_t(err_t::BIND_FAILURE);
         }
 
-        if (listen(socket_id, backlog) < 0) {
+        if (blisten && listen(socket_id, backlog) < 0) {
             close();
             throw exception_t(err_t::LISTEN_FAILURE);
         }
+    }
+
+    inline socket_t accept() {
+        auto client_id = ::accept(socket_id, NULL, NULL);
+        if (client_id == -1) {
+            throw exception_t(err_t::ACCEPT_FAILURE);
+        } 
+        return client_id;
     }
 
 };
