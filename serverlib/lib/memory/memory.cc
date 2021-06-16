@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////
 
 #include <iot/core/memory.hh>
-#include <iot/core/config.hh>
+#include <memory.h>
 
 namespace rohit {
 
@@ -40,21 +40,25 @@ uint8_t *fixed_memory::get_memory() {
     if (free_start_index == null_index) {
         // Memory is full now require to make bigger allocation
 
-        auto memory_size = current_capacity * alloc_size;
-
         current_capacity *= 2;
-        store_block[++current_store_index] = 
-            new uint8_t[memory_size];
+        auto memory_size = current_capacity * alloc_size;
+        ++last_store_index;
+
+        if constexpr (config::debug) {
+            assert(memory_size <= null_index.memory_index + 1);
+        }
+
+        store_block[last_store_index] = (uint8_t *)malloc(memory_size);
 
         // Initializing free list, keeping zero free for current allocation
-        free_start_index = {static_cast<uint8_t>(current_store_index), static_cast<uint32_t>(alloc_size)};
+        free_start_index = {static_cast<uint8_t>(last_store_index), alloc_size};
         uint32_t free_index = alloc_size;
         uint32_t next_index = free_index + alloc_size;
         auto memory_size_one_less = memory_size - alloc_size;
-        uint8_t *current_store_block = store_block[current_store_index];
+        uint8_t *current_store_block = store_block[last_store_index];
         while (free_index < memory_size_one_less) {
             *(fixed_memory_free_info*)(current_store_block + free_index) = 
-                {static_cast<uint8_t>(current_store_index), next_index};
+                {static_cast<uint8_t>(last_store_index), next_index};
             free_index = next_index;
             next_index += alloc_size;
         }
@@ -63,7 +67,7 @@ uint8_t *fixed_memory::get_memory() {
         // Allocating memory at zero index
         memptr = current_store_block;
         fixed_memory_alloc_info *pallocinfo = (fixed_memory_alloc_info *)memptr;
-        pallocinfo->store_index = current_store_index;
+        pallocinfo->store_index = last_store_index;
         // current_store_index can be changed from another thread
         pthread_mutex_unlock(&lock);
     } else {
@@ -91,10 +95,13 @@ void fixed_memory::free(const uint8_t *pheader) {
 
     fixed_memory_alloc_info alloc_info = *(fixed_memory_alloc_info *)pheader;
     *(fixed_memory_free_info *)pheader = free_start_index;
+
+    uint8_t *current_store_block = store_block[alloc_info.store_index];
+    free_start_index.memory_index = pheader - current_store_block;
     free_start_index.store_index = alloc_info.store_index;
-    free_start_index.memory_index = pheader - store_block[alloc_info.store_index];
 
     if constexpr (config::debug) {
+        assert((free_start_index.memory_index % alloc_size) == 0);
         assert(alloc_info.memory_check == fixed_memory_alloc_info::default_memory_check );
     }
 
