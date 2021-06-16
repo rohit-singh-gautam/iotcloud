@@ -24,7 +24,10 @@ CLIENTLIBFILES=/usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/x86_64-linux-gnu/l
 
 .PHONY: all
 
-all: testipv6addr testcommon iotcloudserver iotcloudclient
+all: testipv6addr testcommon iotcloudserver iotcloudclient testmemory
+
+testmemory: test/testmemory.cc lib/memory/memory.cc include/iot/core/memory.hh
+	$(CXX) $(CFLAGS) $(CPPFLAGS) -o $@ test/testmemory.cc lib/memory/memory.cc
 
 testipv6addr: test/testipv6addr.cc include/iot/core/ipv6addr.hh include/iot/core/types.hh
 	$(CXX) $(CFLAGS) $(CPPFLAGS) -o $@ test/testipv6addr.cc /usr/lib/x86_64-linux-gnu/libresolv.a
@@ -42,4 +45,4 @@ iotcloudclient: $(CLIENTCPPFILES) $(CLIENTHPPFILES)
 	$(CXX) -c $(CFLAGS) $(CPPFLAGS) -o $@ $^
 
 clean:
-	rm testipv6addr testcommon iotcloudserver iotcloudclient
+	rm testipv6addr testcommon iotcloudserver iotcloudclient testmemory

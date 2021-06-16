@@ -51,7 +51,9 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_CREATE_FAILED, ERROR, EVENT_EXECUTOR, "Event creation failed with error %ve") \
     LOGGER_ENTRY(EVENT_CREATE_SUCCESS, VERBOSE, EVENT_EXECUTOR, "Event creation succeeded") \
     LOGGER_ENTRY(EVENT_SERVER_ACCEPT_FAILED, ERROR, EVENT_SERVER, "Event server failed to accept connection with error %ve") \
+    LOGGER_ENTRY(IOT_EVENT_SERVER_COMMAND_RECEIVED, VERBOSE, IOT_EVENT_SERVER, "IOT Event Server received message %vN") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %ve") \
+    LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed with %vN") \
     \
     LOGGER_ENTRY(SYSTEM_ERROR, ERROR, SYSTEM, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \
@@ -317,8 +319,8 @@ public:
     // %F - floating point upper case (float)
     // %c - character (char)
     // %v - Custom
-    //      %vn: IPv6 network Address format
-    //      %vN: IPv6 network Address format in caps
+    //      %vn: IPv6 socket Address format
+    //      %vN: IPv6 socket Address format in caps
     //      %vi: IPv6 address
     //      %vi: IPv6 address in caps
     //      %vp: IPv6 port

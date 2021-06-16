@@ -1,1 +1,6 @@
 .vscode/*
+testmemory
+testcommon
+testipv6addr
+iotcloudclient
+iotcloudserver

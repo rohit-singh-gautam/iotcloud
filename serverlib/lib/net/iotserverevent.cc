@@ -3,13 +3,20 @@
 // Private file do not read, copy, share or distribute    //
 ////////////////////////////////////////////////////////////
 
+#include <iot/core/memory.hh>
 #include <iot/iotserverevent.hh>
 #include <iot/message.hh>
 
 namespace rohit {
 
-void iotserverevent::execute(thread_context &ctx) {
-    std::cout << "Connection Received from " << peer_id.get_peer_ipv6_addr() << std::endl;
+void iotserverevent::execute(thread_context &ctx, const event_t event) {
+    if (event == event_t::HUP) {
+        // TODO: Database has to be update with information that connection is closed
+        const auto to_free = this;
+        allocator.free(to_free);
+        return;
+    }
+    ctx.log<log_t::IOT_EVENT_SERVER_COMMAND_RECEIVED>(peer_id.get_peer_ipv6_addr());
 
     size_t read_buffer_size = 1024;
     uint8_t read_buffer[read_buffer_size];

@@ -26,10 +26,10 @@ public:
                 port(port),
                 maxconnection(maxconnection),
                 backlog(backlog) {
-        evtdist.add(socket_id, event_hook_t::IN, *this);
+        evtdist.add(socket_id, event_t::IN, *this);
     }
 
-    void execute(thread_context &ctx) override {
+    void execute(thread_context &ctx, const event_t event) override {
         try {
             socket_t peer_id = socket_id.accept();
             peerevent *p_peerevent = mem.alloc<peerevent>(evtdist, peer_id); 
@@ -47,7 +47,7 @@ protected:
 
 public:
     inline serverpeerevent(event_distributor &evtdist, socket_t peer_id) : peer_id(peer_id) {
-        evtdist.add(peer_id, event_hook_t::IN, *this);
+        evtdist.add(peer_id, event_t::IN, *this);
     }
 
 };

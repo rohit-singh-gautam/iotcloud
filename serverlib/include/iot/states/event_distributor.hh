@@ -11,7 +11,7 @@
 
 namespace rohit {
 
-enum class event_hook_t : uint32_t {
+enum class event_t : uint32_t {
     IN = EPOLLIN,
     OUT = EPOLLOUT,
     IO = IN | OUT,
@@ -23,6 +23,13 @@ enum class event_hook_t : uint32_t {
 
     // We will fill in only events those are required
 };
+
+constexpr bool operator==(const event_t lhs, const event_t rhs) {
+    const uint32_t ilhs = static_cast<uint32_t>(lhs);
+    const uint32_t irhs = static_cast<uint32_t>(rhs);
+    
+    return (ilhs & irhs) == irhs;
+}
 
 class thread_context {
     logger cxtlog;
@@ -40,7 +47,7 @@ private:
     friend class event_distributor;
 
     // This is pure virtual function can be called only from event_distributor
-    virtual void execute(thread_context &ctx) = 0;
+    virtual void execute(thread_context &ctx, const event_t event) = 0;
 
 }; // class event_executor
 
@@ -66,7 +73,7 @@ public:
     // event_executor memory will be used directly
     // clean up is responsibility of event_executor
     // itself.
-    inline err_t add(const int fd, const event_hook_t event, event_executor &executor) const {
+    inline err_t add(const int fd, const event_t event, event_executor &executor) const {
         epoll_event epoll_data;
         epoll_data.events = static_cast<uint32_t>(event) | EPOLLET;
         epoll_data.data.ptr = &executor;

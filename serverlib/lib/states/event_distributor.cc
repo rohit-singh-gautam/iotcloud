@@ -7,6 +7,7 @@
 #include <iot/core/log.hh>
 #include <sys/epoll.h>
 #include <limits>
+#include <iot/core/memory.hh>
 
 namespace rohit {
 
@@ -67,7 +68,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
         }
 
         event_executor *executor = static_cast<event_executor *>(event.data.ptr);
-        executor->execute(ctx);
+        executor->execute(ctx, static_cast<event_t>(event.events));
     }
 
     return nullptr;
