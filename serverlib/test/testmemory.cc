@@ -8,6 +8,7 @@
 #include <stack>
 
 void one_alloc_multiple_times(const int count, const size_t size) {
+    std::cout << "Test one_alloc_multiple_times size " << size << std::endl;
     void **mem_arr = (void **)malloc(count * sizeof(void *));
     for(int index = 0; index < count; ++index) {
         mem_arr[index] = rohit::allocator.alloc(size);
@@ -45,6 +46,7 @@ void zigsaw_multiple_times(const int start, const int end, const int step, const
                 mem.pop();
                 rohit::allocator.free(pmem);
             }
+            alloc = !alloc;
         }
     }
 
@@ -58,7 +60,7 @@ void zigsaw_multiple_times(const int start, const int end, const int step, const
 int main() {
     std::cout << "sizeof(fixed_memory_alloc_info) = " << sizeof(rohit::fixed_memory_alloc_info) << std::endl;
     std::cout << "sizeof(fixed_memory_free_info) = " << sizeof(rohit::fixed_memory_free_info) << std::endl;
-    /*one_alloc_multiple_times(10000, 4);
+    one_alloc_multiple_times(10000, 4);
     one_alloc_multiple_times(10000, 4);
     one_alloc_multiple_times(10000, 4);
     one_alloc_multiple_times(10000, 4);
@@ -73,11 +75,11 @@ int main() {
     one_alloc_multiple_times(10000, 1024);
     one_alloc_multiple_times(10000, 1024);
     one_alloc_multiple_times(10000, 1024);
-    one_alloc_multiple_times(10000, 1024);*/
+    one_alloc_multiple_times(10000, 1024);
 
-    zigsaw_multiple_times(1000, 100000, 1000, 4);
-    zigsaw_multiple_times(1000, 100000, 1000, 25);
-    zigsaw_multiple_times(1000, 100000, 1000, 102);
-    zigsaw_multiple_times(1000, 100000, 1000, 1024);
+    zigsaw_multiple_times(9863, 589332, 731, 4);
+    zigsaw_multiple_times(1000, 10000, 1000, 25);
+    zigsaw_multiple_times(1000, 10000, 1000, 102);
+    zigsaw_multiple_times(1000, 10000, 1000, 1024);
     return 0;
 }

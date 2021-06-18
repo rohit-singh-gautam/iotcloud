@@ -10,6 +10,8 @@ namespace rohit {
 namespace config {
 
 constexpr bool debug = true;
+constexpr bool log_with_check = false;
+constexpr int64_t log_thread_wait_in_millis = 100;
 
 };
 

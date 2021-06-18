@@ -188,4 +188,24 @@ template <> struct type_length<type_identifier::x> { static constexpr size_t con
     TYPE_LIST
 #undef TYPE_LIST_ENTRY
 
+constexpr unsigned long long int operator "" _kb (const unsigned long long int value) { 
+    return 1024 * value;
+}
+
+constexpr unsigned long long int operator "" _mb (const unsigned long long int value) {
+    return 1024_kb * value;
+}
+
+constexpr unsigned long long int operator "" _gb (const unsigned long long int value) {
+    return 1024_mb * value;
+}
+
+constexpr unsigned long long int operator "" _tb (const unsigned long long int value) {
+    return 1024_gb * value;
+}
+
+constexpr unsigned long long int operator "" _pb (const unsigned long long int value) {
+    return 1024_tb * value;
+}
+
 } // namespace rohit 

@@ -32,7 +32,7 @@ constexpr bool operator==(const event_t lhs, const event_t rhs) {
 }
 
 class thread_context {
-    logger cxtlog;
+    logger<false> cxtlog;
 public:
     thread_context() {}
 

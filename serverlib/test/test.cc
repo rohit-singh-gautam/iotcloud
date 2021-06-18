@@ -254,10 +254,11 @@ void test_logs() try {
     using rohit::glog;
 
     std::cout << "Total type of logs count: " << rohit::log_t_count << std::endl;
-    const std::string log_filename = "/tmp/test_logs.txt";
+    const char *log_filename = "/tmp/test_logs.bin";
 
-    remove(log_filename.c_str());
-    logger::init(log_filename);
+    remove(log_filename);
+    std::cout << "Initializing log \n"; 
+    rohit::init_log_thread(log_filename);
 
     std::cout << "Writing log" << std::endl;
     glog.log<log_t::PTHREAD_JOIN_FAILED>(101);
@@ -281,7 +282,8 @@ void test_logs() try {
     glog.log<log_t::TEST_GUID_LOG>(guid, guid);
     glog.log<log_t::TEST_STATE_LOG>(rohit::state_t::LISTEN);
 
-    glog.flush();
+    constexpr auto wait_time = std::chrono::milliseconds(rohit::config::log_thread_wait_in_millis*2);
+    std::this_thread::sleep_for(wait_time);
     sync();
 
     std::cout << "Reading log" << std::endl;
@@ -306,6 +308,8 @@ void test_logs() try {
     test_readlog(log_reader);
     test_readlog(log_reader);
     test_readlog(log_reader);
+
+    rohit::destroy_log_thread();
 
     char guid_str[rohit::guid_t::guid_string_withnull_size] = {};
     rohit::to_string(guid, guid_str);

@@ -14,58 +14,12 @@
 
 namespace rohit {
 
-rohit::logger glog;
+logger<true> glog;
+template<> size_t logger<true>::logger_count = 0;
+template<> size_t logger<false>::logger_count = 0;
+template<> logger<true> *logger<true>::logger_array[logger<true>::max_logger] = {};
+template<> logger<false> *logger<false>::logger_array[logger<false>::max_logger] = {};
 
-int logger::file_descriptor = 0;
-
-void logger::write(const void *data, const size_t length) {
-    log_cluster_entry *log_cluster = log_buf.get_current_cluster();
-
-    if (log_cluster->index + length + sizeof(logger_logs_entry_end_of_cluster) > log_cluster_entry::max_cluster_size) {
-        auto ret = ::write(
-            file_descriptor,
-            log_cluster->buffer + log_cluster->start,
-            log_cluster->index - log_cluster->start);
-        if (ret < 0) {
-            // Log to console
-            std::cerr << "Failed to write log with error: " << errno << "\n";
-        }
-
-        logger_logs_entry_end_of_cluster endofcluster(log_cluster_entry::max_cluster_size - log_cluster->index);
-        memcpy(log_cluster->buffer, (void *)&endofcluster, sizeof(logger_logs_entry_end_of_cluster));
-        ret = ::write(file_descriptor, log_cluster->buffer, endofcluster.length);
-
-        log_buf.next_cluster();
-        log_cluster = log_buf.get_current_cluster();
-    }
-
-    memcpy(log_cluster->buffer + log_cluster->index, data, length);
-    log_cluster->index += length;
-}
-
-void logger::init(const std::string &filename) {
-    // This must be read/write as same class can be used to read
-    file_descriptor = open(filename.c_str(), O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-    if ( file_descriptor < 0 ) {
-        std::cerr << "Failed to open file " << filename << ", error " << errno << ", " << strerror(errno) << "\n";
-    }
-}
-
-void logger::flush() {
-    log_cluster_entry *log_cluster = log_buf.get_current_cluster();
-    if (log_cluster->start == log_cluster->index) return;
-    
-    auto ret = ::write(
-        file_descriptor,
-        log_cluster->buffer + log_cluster->start,
-        log_cluster->index - log_cluster->start);
-    if (ret < 0) {
-        // Log to console
-        std::cerr << "Failed to write log with error: " << errno << "\n";
-    } else {
-        log_cluster->start = log_cluster->index;
-    }
-}
 
 logreader::logreader(const std::string &filename) {
     // This must be read/write as same class can be used to read
@@ -77,7 +31,7 @@ logreader::logreader(const std::string &filename) {
 }
 
 constexpr void writeLogsText(const char * const source, size_t source_size, char *text, size_t &index) {
-    memcpy(text + index, source, source_size);
+    std::copy(source, source + source_size, text + index);
     index += source_size;
 }
 
@@ -134,7 +88,7 @@ void errno_to_string(char *&pStr, const uint8_t *&data_args) {
     const char *errstr = strerror(errnum);
 
     const size_t len = strlen(errstr);
-    memcpy(pStr, errstr, len);
+    std::copy(errstr, errstr + len, pStr);
 
     pStr += len;
 }
@@ -164,11 +118,51 @@ void state_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
+pthread_t log_thread;
+int log_filedescriptor = 0;
+bool log_thread_running = false;
+
+static void *log_thread_function(void *) {
+    constexpr auto wait_time = std::chrono::milliseconds(config::log_thread_wait_in_millis);
+    log_thread_running = true;
+    while(log_thread_running) {
+        std::this_thread::sleep_for(wait_time);
+        flush_all_logger(log_filedescriptor);
+    }
+    
+    flush_all_logger(log_filedescriptor);
+
+    return nullptr;
+}
+
+void init_log_thread(const char *filename) {
+    log_filedescriptor = open(filename, O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+    if ( log_filedescriptor < 0 ) {
+        std::cerr << "Failed to open file " << filename << ", error " << errno << ", " << strerror(errno) << std::endl;
+    }
+
+    auto ret = pthread_create(&log_thread, NULL, &log_thread_function, nullptr);
+    if (ret != 0) {
+        std::cerr << "Failed to create thread, error " << ret << ", " << strerror(ret) << std::endl;
+    }
+}
+
+
+void destroy_log_thread() {
+    log_thread_running = false;
+    auto ret = pthread_join(log_thread, nullptr);
+    if (ret != 0) {
+        std::cerr << "Failed to join log thread, error " << errno << ", " << strerror(errno) << std::endl;
+    }
+    close(log_filedescriptor);
+    log_filedescriptor = 0;
+}
+
 
 template <size_t N>
 constexpr void write_string(char *&pStr, const char (&message)[N]) {
     constexpr size_t n = N-1;
-    memcpy(pStr, message, n);
+    std::copy(message, message + n, pStr);
     pStr += n;
 }
 
@@ -187,9 +181,9 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
 
     *(text + index++) = ':';
 
-    const char *id_str = logger::id_string(logEntry.id);
+    const char *id_str = get_log_id_string(logEntry.id);
     writeLogsText(id_str, text, index);
-    const char *desc_str = logger::id_description(logEntry.id);
+    const char *desc_str = get_log_description(logEntry.id);
 
     char *pStr = text + index;
     *pStr++ = ':';

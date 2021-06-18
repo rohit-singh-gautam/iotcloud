@@ -117,7 +117,8 @@ constexpr const char *err_t_string[] = {
 template <bool null_terminated = true>
 constexpr size_t to_string(const err_t &val, char *dest) {
     auto len = to_string_size<null_terminated>(val);
-    memcpy(dest, err_t_string[(size_t)val], len);
+    const char *errstr = err_t_string[(size_t)val];
+    std::copy(errstr, errstr + len, dest);
     return len;
 }
 
