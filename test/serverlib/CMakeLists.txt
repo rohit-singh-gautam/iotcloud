@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-add_subdirectory(serverlib)
+#add_subdirectory(serverlib)
 
 
 project(ServerLibraryTestLog)
