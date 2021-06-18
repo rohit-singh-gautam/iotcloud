@@ -1,4 +1,7 @@
 .vscode/*
+build/*
+test/build/*
+serverlib/build/*
 testmemory
 testcommon
 testipv6addr

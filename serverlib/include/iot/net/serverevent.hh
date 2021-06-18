@@ -32,7 +32,7 @@ public:
     void execute(thread_context &ctx, const event_t event) override {
         try {
             socket_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = mem.alloc<peerevent>(evtdist, peer_id); 
+            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id); 
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);

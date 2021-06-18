@@ -78,7 +78,7 @@ enum class err_t : log_id_type {
 #undef ERROR_T_ENTRY
 };
 
-constexpr err_t operator++(const err_t &err) { return static_cast<err_t>(static_cast<log_id_type>(err) + 1); }
+constexpr err_t operator++(err_t &err) { return err = static_cast<err_t>(static_cast<log_id_type>(err) + 1); }
 constexpr err_t operator++(err_t err, int) { 
     err_t reterr = err;
     err = static_cast<err_t>(static_cast<log_id_type>(err) + 1);

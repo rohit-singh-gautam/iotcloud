@@ -3,10 +3,7 @@
 // Private file do not read, copy, share or distribute    //
 ////////////////////////////////////////////////////////////
 
-#include <iot/net/serverevent.hh>
+#pragma once
 
-namespace rohit {
-
-
-
-} // namespace rohit
+#define IOT_VERSION_MAJOR @testmemory_VERSION_MAJOR@
+#define IOT_VERSION_MINOR @testmemory_VERSION_MINOR@

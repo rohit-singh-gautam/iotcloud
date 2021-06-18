@@ -6,12 +6,12 @@
 #include <iot/core/math.hh>
 #include <iot/core/log.hh>
 #include <iot/core/guid.hh>
-#include "test.hh"
+#include <testcommon.hh>
 #include <iot/net/serversocket.hh>
 #include <arpa/inet.h>
 #include <iostream>
 #include <sstream>
-#include "../httpserver/http11driver.hh"
+#include "../../../httpserver/http11driver.hh"
 #include <pthread.h>
 #include <iot/states/states.hh>
 
