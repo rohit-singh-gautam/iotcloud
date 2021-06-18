@@ -118,6 +118,11 @@ void state_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
+static inline void flush_all_logger(const int filedescriptor) {
+    logger<true>::flushall(filedescriptor);
+    logger<false>::flushall(filedescriptor);
+}
+
 pthread_t log_thread;
 int log_filedescriptor = 0;
 bool log_thread_running = false;
@@ -129,7 +134,7 @@ static void *log_thread_function(void *) {
         std::this_thread::sleep_for(wait_time);
         flush_all_logger(log_filedescriptor);
     }
-    
+
     flush_all_logger(log_filedescriptor);
 
     return nullptr;

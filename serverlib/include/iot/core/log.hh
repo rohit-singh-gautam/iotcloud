@@ -476,11 +476,6 @@ public:
 
 }; // class logger
 
-inline void flush_all_logger(const int filedescriptor) {
-    logger<true>::flushall(filedescriptor);
-    logger<false>::flushall(filedescriptor);
-}
-
 // This is multi threaded
 extern rohit::logger<true> glog;
 
