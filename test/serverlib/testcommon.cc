@@ -222,7 +222,7 @@ void test_types_what_type() {
 
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
-    rohit::ipv6_addr_t ipv6addr = rohit::string_to_ipv6_addr_t("eb::1");
+    rohit::ipv6_addr_t ipv6addr = rohit::to_ipv6_addr_t("eb::1");
     rohit::ipv6_port_t ipv6port = 8080;
     check_formatstring_args_macro(SIZE_MAX, TEST_IPV6ADDR_LOGS, 'v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
 }
@@ -271,7 +271,7 @@ void test_logs() try {
     }
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("eb::1", 8080);
-    rohit::ipv6_addr_t ipv6addr = rohit::string_to_ipv6_addr_t("eb::1");
+    rohit::ipv6_addr_t ipv6addr = rohit::to_ipv6_addr_t("eb::1");
     rohit::ipv6_port_t ipv6port = 8080;
 
     glog.log<log_t::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);

@@ -4,14 +4,16 @@
 ////////////////////////////////////////////////////////////
 
 #include <iot/core/memory.hh>
-#include <iot/iotserverevent.hh>
+#include <iotserverevent.hh>
 #include <iot/message.hh>
 
 namespace rohit {
 
-void iotserverevent::execute(thread_context &ctx, const event_t event) {
-    if (event == event_t::HUP) {
+void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
+    if ((event & EPOLLHUP) == EPOLLHUP) {
         // TODO: Database has to be update with information that connection is closed
+        ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)peer_id);
+
         const auto to_free = this;
         allocator.free(to_free);
         return;

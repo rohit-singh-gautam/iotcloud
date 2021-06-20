@@ -6,7 +6,6 @@
 #pragma once
 
 #include "types.hh"
-#include <iot/net/socket.hh>
 #include <assert.h>
 #include <iostream>
 
@@ -108,6 +107,7 @@ inline constexpr size_t formatstring_count(const char *arr) {
             case 'E':
             case 'g':
             case 'G':
+            case 'v':
             case 's':
                 ++count;
                 state = formatstring_state::COPY;
@@ -289,6 +289,10 @@ template <const size_t COUNT> struct formatstring_type_list {
                 case 'G':
                     type_list[index++] = type_identifier::guid_t;
                     length += type_length<type_identifier::guid_t>::value;
+                    break;
+                case 'v':
+                    type_list[index++] = type_identifier::uint32_t;
+                    length += type_length<type_identifier::uint32_t>::value;
                     break;
                 case 's':
                     type_list[index++] = type_identifier::state_t;

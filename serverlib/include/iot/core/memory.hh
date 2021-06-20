@@ -127,7 +127,7 @@ public:
     template <typename T, typename... ARGS>
     inline T *alloc(ARGS&... args) {
         constexpr size_t alloc_size = (sizeof(T) + 3) & (~3);
-        static_assert(alloc_size > max_allocation_size, "This allocator support maximum max_allocation_size memory");
+        static_assert(alloc_size <= max_allocation_size, "This allocator support maximum max_allocation_size memory");
 
         return new (get_memory(alloc_size)) T(args...);;
     }

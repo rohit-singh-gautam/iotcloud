@@ -14,6 +14,35 @@
 
 namespace rohit {
 
+    // Supported format specifier
+    // %d or %i - signed integer (int32_t)
+    // %u - unsigned integer (uint32_t)
+    // %o - unsigned integer (uint32_t)(Octal)
+    // %x - unsigned integer (uint32_t)(hex small case)
+    // %X - unsigned integer (uint32_t)(hex capital case)
+    // %f - floating point lower case (float)
+    // %F - floating point upper case (float)
+    // %c - character (char)
+    // %v - Custom
+    //      %vn: IPv6 socket Address format
+    //      %vN: IPv6 socket Address format in caps
+    //      %vi: IPv6 address
+    //      %vi: IPv6 address in caps
+    //      %vp: IPv6 port
+    //      %ve: System errno
+    //      %vE: IOT error
+    //      %vg: GUID lower case
+    //      %vG: GUID upper case
+    //      %vv: Epoll event
+    //      %vs: State of an execution
+    // %% - %
+    //
+    // Supported format length
+    // h - short - 16 bits
+    // hh - ultra short 8 bits
+    // l - long
+    // ll - long long
+
 #define LOGGER_LEVEL_LIST \
     LOGGER_LEVEL_ENTRY(IGNORE) \
     LOGGER_LEVEL_ENTRY(DEBUG) \
@@ -26,6 +55,7 @@ namespace rohit {
 
 #define LOGGER_MODULE_LIST \
     LOGGER_MODULE_ENTRY(SYSTEM) \
+    LOGGER_MODULE_ENTRY(SOCKET) \
     LOGGER_MODULE_ENTRY(EVENT_DISTRIBUTOR) \
     LOGGER_MODULE_ENTRY(EVENT_EXECUTOR) \
     LOGGER_MODULE_ENTRY(EVENT_SERVER) \
@@ -40,6 +70,15 @@ namespace rohit {
     \
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, ERROR, SYSTEM, "Unable to create pthread with error %ve") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, WARNING, SYSTEM, "Unable to join pthread with error %ve") \
+    LOGGER_ENTRY(SOCKET_CREATE_SUCCESS, DEBUG, SOCKET, "Socket %i created") \
+    LOGGER_ENTRY(SOCKET_CREATE_FAILED, DEBUG, SOCKET, "Socket creation failed with error %ve") \
+    LOGGER_ENTRY(SOCKET_CLOSE_SUCCESS, DEBUG, SOCKET, "Socket %i closed") \
+    LOGGER_ENTRY(SOCKET_CLOSE_FAILED, DEBUG, SOCKET, "Socket %i close failed with error %ve") \
+    LOGGER_ENTRY(SOCKET_BIND_SUCCESS, DEBUG, SOCKET, "Socket %i, port %i bind success") \
+    LOGGER_ENTRY(SOCKET_LISTEN_SUCCESS, DEBUG, SOCKET, "Socket %i, port %i listen success") \
+    LOGGER_ENTRY(SOCKET_ACCEPT_SUCCESS, DEBUG, SOCKET, "Socket %i accept success, new socket created %i") \
+    LOGGER_ENTRY(EVENT_DIST_CREATING_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor creating %llu threads") \
+    LOGGER_ENTRY(EVENT_DIST_LOOP_CREATED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor thread loop created") \
     LOGGER_ENTRY(EVENT_DIST_CREATE_FAILED, ERROR, EVENT_DISTRIBUTOR, "Event distributor creation failed with error %ve, terminating application") \
     LOGGER_ENTRY(EVENT_DIST_CREATE_NO_THREAD, ERROR, EVENT_DISTRIBUTOR, "Event distributor failed to create any thread, terminating application") \
     LOGGER_ENTRY(EVENT_DIST_LOOP_WAIT_INTERRUPTED, WARNING, EVENT_DISTRIBUTOR, "Event distributor loop interrupted with error %ve,  waiting for a second and retry") \
@@ -48,13 +87,20 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_DIST_NO_THREAD_CANCEL, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to set thread cancel flag with error %ve, exit may not be proper") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_CANCEL_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to cancel thread with error %ve") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_JOIN_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to join thread with error %ve") \
-    LOGGER_ENTRY(EVENT_DIST_CREATE_SUCCESS, VERBOSE, EVENT_DISTRIBUTOR, "Event distributor creation succeeded") \
+    LOGGER_ENTRY(EVENT_DIST_CREATE_SUCCESS, INFO, EVENT_DISTRIBUTOR, "Event distributor creation succeeded") \
+    LOGGER_ENTRY(EVENT_DIST_TERMINATING, INFO, EVENT_DISTRIBUTOR, "Event distributor TERMINATING") \
+    LOGGER_ENTRY(EVENT_DIST_EVENT_RECEIVED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor event %vv receive") \
+    \
     LOGGER_ENTRY(EVENT_CREATE_FAILED, ERROR, EVENT_EXECUTOR, "Event creation failed with error %ve") \
     LOGGER_ENTRY(EVENT_CREATE_SUCCESS, VERBOSE, EVENT_EXECUTOR, "Event creation succeeded") \
+    \
+    LOGGER_ENTRY(EVENT_SERVER_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "Event server with ID %i received event %vv") \
     LOGGER_ENTRY(EVENT_SERVER_ACCEPT_FAILED, ERROR, EVENT_SERVER, "Event server failed to accept connection with error %ve") \
+    LOGGER_ENTRY(EVENT_SERVER_PEER_CREATED, VERBOSE, EVENT_SERVER, "Event server new peer requested from remote %vN") \
+    \
     LOGGER_ENTRY(IOT_EVENT_SERVER_COMMAND_RECEIVED, VERBOSE, IOT_EVENT_SERVER, "IOT Event Server received message %vN") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %ve") \
-    LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed with %vN") \
+    LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed fd %i") \
     \
     LOGGER_ENTRY(SYSTEM_ERROR, ERROR, SYSTEM, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \
@@ -339,34 +385,6 @@ public:
         unlock();
     }
 
-    // Supported format specifier
-    // %d or %i - signed integer (int32_t)
-    // %u - unsigned integer (uint32_t)
-    // %o - unsigned integer (uint32_t)(Octal)
-    // %x - unsigned integer (uint32_t)(hex small case)
-    // %X - unsigned integer (uint32_t)(hex capital case)
-    // %f - floating point lower case (float)
-    // %F - floating point upper case (float)
-    // %c - character (char)
-    // %v - Custom
-    //      %vn: IPv6 socket Address format
-    //      %vN: IPv6 socket Address format in caps
-    //      %vi: IPv6 address
-    //      %vi: IPv6 address in caps
-    //      %vp: IPv6 port
-    //      %ve: System errno
-    //      %vE: IOT error
-    //      %vg: GUID lower case
-    //      %vG: GUID upper case
-    //      %vs: State of an execution
-    // %% - %
-    //
-    // Supported format length
-    // h - short - 16 bits
-    // hh - ultra short 8 bits
-    // l - long
-    // ll - long long
-    // z - size_t
     template <log_t ID, typename... ARGS>
     void log(const ARGS&... args)
     {
@@ -477,7 +495,7 @@ public:
 }; // class logger
 
 // This is multi threaded
-extern rohit::logger<true> glog;
+extern logger<true> glog;
 
 void init_log_thread(const char *filename);
 void destroy_log_thread();

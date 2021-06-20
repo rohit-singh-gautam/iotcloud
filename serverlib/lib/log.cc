@@ -9,6 +9,7 @@
 #include <iot/core/math.hh>
 #include <iot/states/states.hh>
 #include <iot/net/socket.hh>
+#include <sys/epoll.h>
 #include <cstring>
 #include <iostream>
 
@@ -87,15 +88,20 @@ void errno_to_string(char *&pStr, const uint8_t *&data_args) {
     data_args += sizeof(int32_t);
     const char *errstr = strerror(errnum);
 
+    *pStr++ = '(';
+    auto count =  to_string<int32_t, 10, number_case::lower, false>(errnum, pStr);
+    pStr += count;
+    *pStr++ = ',';
+
     const size_t len = strlen(errstr);
     std::copy(errstr, errstr + len, pStr);
-
     pStr += len;
+    *pStr++ = ')';
 }
 
 void errno_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     const err_t &value = *reinterpret_cast<const err_t *>(data_args);
-    data_args += sizeof(ipv6_port_t);
+    data_args += sizeof(err_t);
     auto count =  to_string<false>(value, pStr);
    
     pStr += count;
@@ -117,6 +123,45 @@ void state_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
    
     pStr += count;
 }
+
+template<std::size_t N>
+void to_string_helper(char *&pStr, const char (&disp_str)[N]) {
+    // Skipping null
+    std::copy(disp_str, disp_str + N - 1, pStr);
+    pStr += N - 1;
+}
+
+constexpr bool evt_contains(const uint32_t event, const uint32_t check_event) {
+    return ((event & check_event) == check_event);
+}
+
+void epoll_event_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const uint32_t event = *(uint32_t *)data_args;
+    data_args += sizeof(uint32_t);
+
+    *pStr++ = '(';
+    auto count =  to_string<int32_t, 10, number_case::lower, false>(event, pStr);
+    pStr += count;
+    *pStr++ = ',';
+
+    if (evt_contains(event, EPOLLIN)) to_string_helper(pStr, "EPOLLIN");
+    if (evt_contains(event, EPOLLPRI)) to_string_helper(pStr, "EPOLLPRI");
+    if (evt_contains(event, EPOLLOUT)) to_string_helper(pStr, "EPOLLOUT");
+    if (evt_contains(event, EPOLLRDNORM)) to_string_helper(pStr, "EPOLLRDNORM");
+    if (evt_contains(event, EPOLLRDBAND)) to_string_helper(pStr, "EPOLLRDBAND");
+    if (evt_contains(event, EPOLLWRNORM)) to_string_helper(pStr, "EPOLLWRNORM");
+    if (evt_contains(event, EPOLLWRBAND)) to_string_helper(pStr, "EPOLLWRBAND");
+    if (evt_contains(event, EPOLLMSG)) to_string_helper(pStr, "EPOLLMSG");
+    if (evt_contains(event, EPOLLERR)) to_string_helper(pStr, "EPOLLERR");
+    if (evt_contains(event, EPOLLHUP)) to_string_helper(pStr, "EPOLLHUP");
+    if (evt_contains(event, EPOLLRDHUP)) to_string_helper(pStr, "EPOLLRDHUP");
+    if (evt_contains(event, EPOLLEXCLUSIVE)) to_string_helper(pStr, "EPOLLEXCLUSIVE");
+    if (evt_contains(event, EPOLLWAKEUP)) to_string_helper(pStr, "EPOLLWAKEUP");
+    if (evt_contains(event, EPOLLONESHOT)) to_string_helper(pStr, "EPOLLONESHOT");
+    if (evt_contains(event, EPOLLET)) to_string_helper(pStr, "EPOLLET"); 
+    *pStr++ = ')';   
+}
+
 
 static inline void flush_all_logger(const int filedescriptor) {
     logger<true>::flushall(filedescriptor);
@@ -330,6 +375,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
                 case 'E': errno_t_to_string_helper(pStr, data_args); break;
                 case 'g': guid_t_to_string_helper(pStr, data_args); break;
                 case 'G': guid_t_to_string_helper<number_case::upper>(pStr, data_args); break;
+                case 'v': epoll_event_to_string_helper(pStr, data_args); break;
                 case 's': state_t_to_string_helper(pStr, data_args); break;
                 default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
@@ -341,6 +387,22 @@ void createLogsString(logger_logs_entry_read &logEntry, char *text) {
     *pStr++ = '\0';
 }
 
+ssize_t log_read_helper(int fd, void *buf, size_t n) {
+    if (n == 0) return 0;
+    ssize_t read_size = read(fd, (void *)buf, n);
+    while(read_size == 0) {
+        read_size = read(fd, (void *)buf, n);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    if (read_size != n) {
+        std::cerr << "Read failure " << errno << std::endl;
+        throw exception_t(err_t::LOG_READ_FAILURE);
+    }
+
+    return read_size;
+}
+
 
 const std::string logreader::readnext() {
     // First read header
@@ -349,48 +411,28 @@ const std::string logreader::readnext() {
     logger_logs_entry_read &log_read = *(logger_logs_entry_read *)data_args;
     ssize_t total_read = 0;
 
-    ssize_t read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
-    if (read_size != sizeof(logger_logs_entry_common)) {
-        std::cerr << "Read failure " << errno << std::endl;
-        throw exception_t(err_t::LOG_READ_FAILURE);
-    }
+    auto read_size = log_read_helper(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
 
     if (log_common.id == log_t::END_OF_CLUSTER) {
         // Reading end of cluster length
-        read_size = read(
+        read_size = log_read_helper(
             file_descriptor,
             (void *)(data_args + read_size),
             sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_common));
-        if (read_size != sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_common)) {
-            std::cerr << "Read failure " << errno << std::endl;
-            throw exception_t(err_t::LOG_READ_FAILURE);
-        }
 
         // Skipping end of cluster length
-        read_size = read(
+        read_size = log_read_helper(
             file_descriptor,
             data_args + sizeof(logger_logs_entry_end_of_cluster),
             log_end_of_cluster.length - sizeof(logger_logs_entry_end_of_cluster));
-        if ((size_t)read_size != log_end_of_cluster.length - sizeof(logger_logs_entry_end_of_cluster)) {
-            std::cerr << "Read failure " << errno << std::endl;
-            throw exception_t(err_t::LOG_READ_FAILURE);
-        }
 
-        read_size = read(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
-        if (read_size != sizeof(logger_logs_entry_common)) {
-            std::cerr << "Read failure " << errno << std::endl;
-            throw exception_t(err_t::LOG_READ_FAILURE);
-        }
+        read_size = log_read_helper(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
     }
 
     total_read += read_size;
 
     size_t data_args_size = get_log_length(log_common.id);
-    read_size = read(file_descriptor, (void *)(data_args + total_read), data_args_size);
-
-    if (read_size != (ssize_t)data_args_size) {
-        throw exception_t(err_t::LOG_READ_FAILURE);
-    }
+    read_size = log_read_helper(file_descriptor, (void *)(data_args + total_read), data_args_size);
 
     createLogsString(log_read, text);
 

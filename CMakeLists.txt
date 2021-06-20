@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.10)
 project(iotcloud)
 
 add_subdirectory(serverlib)
+add_subdirectory(deviceserver)
+add_subdirectory(logreader)
 add_subdirectory(test/serverlib)
 
 set(CMAKE_CXX_STANDARD 20)

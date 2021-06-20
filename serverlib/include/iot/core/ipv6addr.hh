@@ -20,7 +20,7 @@ constexpr size_t ipv6_addr_t_max_hex_string = 40; // "xxxx:xxxx:xxxx:xxxx:xxxx:x
 // Second iteration will file the ipv6_addr_t
 // TODO: Error handling
 template <bool bracesEnd = false>
-constexpr const ipv6_addr_t string_to_ipv6_addr_t(const char *ipv6str, size_t *len = nullptr) {
+constexpr const ipv6_addr_t to_ipv6_addr_t(const char *ipv6str, size_t *len = nullptr) {
     constexpr size_t no_compat = 8;
     size_t compacted_pos_start  = no_compat;
     ipv6_addr_t addr = {};
@@ -123,7 +123,7 @@ constexpr const ipv6_socket_addr_t string_to_ipv6_socket_addr_t(const char *ipv6
     const char *pipv6str = ipv6str + 1; // Skipping opening bracket
     size_t len = 0;
 
-    auto addr = string_to_ipv6_addr_t<true>(pipv6str, &len);
+    auto addr = to_ipv6_addr_t<true>(pipv6str, &len);
     pipv6str += len;
     
     ++pipv6str; // Skipping ':'
@@ -155,7 +155,7 @@ private:
 
 public:
     constexpr ipv6_addr_c(const ipv6_addr_c &value) : addr(value.addr) {}
-    constexpr ipv6_addr_c(const char *value) : addr(string_to_ipv6_addr_t(value)) {}
+    constexpr ipv6_addr_c(const char *value) : addr(to_ipv6_addr_t(value)) {}
 
     constexpr operator ipv6_addr_t() const { return addr; }
 
@@ -175,7 +175,7 @@ inline std::ostream& operator<<(std::ostream& os, const ipv6_socket_addr_t &ipv6
 
 
 constexpr ipv6_socket_addr_t::ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port)
-    : addr(string_to_ipv6_addr_t(addrstr)), port(port) { }
+    : addr(to_ipv6_addr_t(addrstr)), port(port) { }
 
 
 } // namespace rohit

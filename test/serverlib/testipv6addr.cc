@@ -25,7 +25,7 @@ int main() {
         "AA:cB::F9"
     };
     for(const char *addrstr: addrstrlist) {
-        rohit::ipv6_addr_t addr = rohit::string_to_ipv6_addr_t(addrstr);
+        rohit::ipv6_addr_t addr = rohit::to_ipv6_addr_t(addrstr);
         rohit::ipv6_addr_t addr2;
         inet_pton(AF_INET6, addrstr, &addr2);
         std::cout << "Address: " << addr << ", inet_pton: " << addr2 << std::endl;

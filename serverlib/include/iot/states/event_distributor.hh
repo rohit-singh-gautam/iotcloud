@@ -5,31 +5,12 @@
 
 #pragma once
 
+#include <iot/core/error.hh>
 #include <iot/core/log.hh>
 #include <unordered_map>
 #include <sys/epoll.h>
 
 namespace rohit {
-
-enum class event_t : uint32_t {
-    IN = EPOLLIN,
-    OUT = EPOLLOUT,
-    IO = IN | OUT,
-    IN_HUP = EPOLLRDHUP,
-    HUP = EPOLLHUP,
-    IOH = IO | HUP,
-    POLLPRI = EPOLLPRI,
-    ERROR = EPOLLERR,
-
-    // We will fill in only events those are required
-};
-
-constexpr bool operator==(const event_t lhs, const event_t rhs) {
-    const uint32_t ilhs = static_cast<uint32_t>(lhs);
-    const uint32_t irhs = static_cast<uint32_t>(rhs);
-    
-    return (ilhs & irhs) == irhs;
-}
 
 class thread_context {
     logger<false> cxtlog;
@@ -47,7 +28,7 @@ private:
     friend class event_distributor;
 
     // This is pure virtual function can be called only from event_distributor
-    virtual void execute(thread_context &ctx, const event_t event) = 0;
+    virtual void execute(thread_context &ctx, const uint32_t event) = 0;
 
 }; // class event_executor
 
@@ -73,9 +54,9 @@ public:
     // event_executor memory will be used directly
     // clean up is responsibility of event_executor
     // itself.
-    inline err_t add(const int fd, const event_t event, event_executor &executor) const {
+    inline err_t add(const int fd, const uint32_t event, event_executor &executor) const {
         epoll_event epoll_data;
-        epoll_data.events = static_cast<uint32_t>(event) | EPOLLET;
+        epoll_data.events = event | EPOLLET;
         epoll_data.data.ptr = &executor;
 
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
@@ -90,6 +71,8 @@ public:
     }
 
     inline size_t get_thread_count() const { return thread_count; }
+
+    void wait();
 
     void terminate();
     

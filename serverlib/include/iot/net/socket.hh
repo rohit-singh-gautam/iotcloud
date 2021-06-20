@@ -8,6 +8,7 @@
 #include <iot/core/error.hh>
 #include <iot/core/math.hh>
 #include <iot/core/ipv6addr.hh>
+#include <iot/core/log.hh>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -29,7 +30,12 @@ constexpr ipv6_socket_addr_t::operator sockaddr_in6() const {
 
 inline int create_socket() {
     int socket_id = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    if (socket_id < 0) throw exception_t(rohit::error_c::socket_create_ret());
+    if (socket_id < 0) {
+        glog.log<log_t::SOCKET_CREATE_FAILED>(errno);
+        throw exception_t(rohit::error_c::socket_create_ret());
+    }
+
+    glog.log<log_t::SOCKET_CREATE_SUCCESS>(socket_id);
     return socket_id;
 }
 
@@ -44,8 +50,13 @@ public:
 
     inline err_t close() const {
         auto ret = ::close(socket_id);
-        if (ret == -1) return err_t::CLOSE_FAILURE;
-        else return err_t::SUCCESS;
+        if (ret == -1) {
+            glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
+            return err_t::CLOSE_FAILURE;
+        } else {
+            glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
+            return err_t::SUCCESS;
+        }
     }
 
     inline err_t read(void *buf, const size_t buf_size, size_t &read_len) const {
@@ -110,10 +121,14 @@ public:
             close();
             throw exception_t(err_t::BIND_FAILURE);
         }
+        glog.log<log_t::SOCKET_BIND_SUCCESS>(socket_id, port);
 
-        if (blisten && listen(socket_id, backlog) < 0) {
-            close();
-            throw exception_t(err_t::LISTEN_FAILURE);
+        if (blisten) {
+            if (listen(socket_id, backlog) < 0) {
+                close();
+                throw exception_t(err_t::LISTEN_FAILURE);
+            }
+            glog.log<log_t::SOCKET_LISTEN_SUCCESS>(socket_id, port);
         }
     }
 
@@ -121,7 +136,8 @@ public:
         auto client_id = ::accept(socket_id, NULL, NULL);
         if (client_id == -1) {
             throw exception_t(err_t::ACCEPT_FAILURE);
-        } 
+        }
+        glog.log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
         return client_id;
     }
 

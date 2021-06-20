@@ -28,6 +28,7 @@ event_distributor::event_distributor(const int thread_count, const int max_event
         glog.log<log_t::EVENT_DIST_TOO_MANY_THREAD>();
     }
 
+    glog.log<log_t::EVENT_DIST_CREATING_THREAD>(this->thread_count);
     for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
         auto ret = pthread_create(&pthread[cpu_index], NULL, &event_distributor::loop, this);
         if (ret != 0) {
@@ -52,29 +53,43 @@ void *event_distributor::loop(void *pvoid_evtdist) {
     if (ret != 0)
         ctx.log<log_t::EVENT_DIST_NO_THREAD_CANCEL>(ret);
 
+    ctx.log<log_t::EVENT_DIST_LOOP_CREATED>();
     while(true) {
         epoll_event event;
         ret = epoll_wait(pevtdist->epollfd, &event, 1, std::numeric_limits<int>::max());
-        if (ret != 0) {
-            if (ret == EINTR || ret == EINVAL) {
+
+        if (ret == -1) {
+            if (errno == EINTR || errno == EINVAL) {
                 if (pevtdist->is_terminate) pthread_exit(nullptr);
             }
 
-            ctx.log<log_t::EVENT_DIST_LOOP_WAIT_INTERRUPTED>(ret);
+            ctx.log<log_t::EVENT_DIST_LOOP_WAIT_INTERRUPTED>(errno);
             sleep(1);
             // Check again if terminated
             if (pevtdist->is_terminate) pthread_exit(nullptr);
             continue;
+        } else {
+            ctx.log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
         }
 
         event_executor *executor = static_cast<event_executor *>(event.data.ptr);
-        executor->execute(ctx, static_cast<event_t>(event.events));
+        executor->execute(ctx, event.events);
     }
 
     return nullptr;
 }
 
+void event_distributor::wait() {
+    for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
+        auto ret = pthread_join(pthread[cpu_index], NULL);
+        if (ret != 0) {
+            glog.log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
+        }
+    }
+}
+
 void event_distributor::terminate() {
+    glog.log<log_t::EVENT_DIST_TERMINATING>();
     is_terminate = true;
     auto ret = close(epollfd);
     if (ret != 0) {
@@ -90,13 +105,6 @@ void event_distributor::terminate() {
         ret = pthread_cancel(pthread[cpu_index]);
         if (ret != 0) {
             glog.log<log_t::EVENT_DIST_EXIT_THREAD_CANCEL_FAILED>(ret);
-        }
-    }
-
-    for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
-        ret = pthread_join(pthread[cpu_index], NULL);
-        if (ret != 0) {
-            glog.log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
         }
     }
 }

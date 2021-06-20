@@ -6,6 +6,7 @@
 #pragma once
 
 #include <iot/states/event_distributor.hh>
+#include <iot/core/memory.hh>
 #include "socket.hh"
 
 namespace rohit {
@@ -22,17 +23,20 @@ private:
 public:
     inline serverevent(event_distributor &evtdist, const int port, const int maxconnection = 10000, const int backlog = 5)
             :   evtdist(evtdist),
-                socket_id(port, backlog, false),
+                socket_id(port, backlog),
                 port(port),
                 maxconnection(maxconnection),
                 backlog(backlog) {
-        evtdist.add(socket_id, event_t::IN, *this);
+        evtdist.add(socket_id, EPOLLIN, *this);
     }
 
-    void execute(thread_context &ctx, const event_t event) override {
+    void execute(thread_context &ctx, const uint32_t event) override {
+        ctx.log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id, event);
+        if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
             socket_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id); 
+            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id);
+            ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);
@@ -47,7 +51,7 @@ protected:
 
 public:
     inline serverpeerevent(event_distributor &evtdist, socket_t peer_id) : peer_id(peer_id) {
-        evtdist.add(peer_id, event_t::IN, *this);
+        evtdist.add(peer_id, EPOLLIN, *this);
     }
 
 };

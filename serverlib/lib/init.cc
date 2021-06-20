@@ -3,18 +3,19 @@
 // Private file do not read, copy, share or distribute    //
 ////////////////////////////////////////////////////////////
 
-#pragma once
-
-#include <iot/net/serverevent.hh>
+#include <iot/init.hh>
+#include <iot/core/log.hh>
+#include <iot/states/event_distributor.hh>
 
 namespace rohit {
 
-class iotserverevent : public serverpeerevent {
-public:
-    using serverpeerevent::serverpeerevent;
-    
-    void execute(thread_context &ctx, const event_t event) override;
+void init_iot(const char *logfilename, const int thread_count) {
+    init_log_thread(logfilename);
+}
 
-};
+
+void destroy_iot() {
+    destroy_log_thread();
+}
 
 } // namespace rohit
