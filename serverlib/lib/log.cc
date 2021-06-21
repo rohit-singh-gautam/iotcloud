@@ -31,14 +31,14 @@ logreader::logreader(const std::string &filename) {
     }
 }
 
-constexpr void writeLogsText(const char * const source, size_t source_size, char *text, size_t &index) {
-    std::copy(source, source + source_size, text + index);
-    index += source_size;
+constexpr void writeLogsText(const char * const source, size_t source_size, char *&pStr) {
+    std::copy(source, source + source_size, pStr);
+    pStr += source_size;
 }
 
-constexpr void writeLogsText(const char * source, char *text, size_t &index) {
+constexpr void writeLogsText(const char * source, char *&pStr) {
    while(*source) {
-       *(text + index++) = *source++;
+       *pStr++ = *source++;
    }
 }
 
@@ -162,6 +162,28 @@ void epoll_event_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     *pStr++ = ')';   
 }
 
+void add_time_to_string_helper(
+    char *&pStr,
+    const int64_t nanotime)
+{
+    std::chrono::system_clock::duration dur(nanotime);
+    std::chrono::system_clock::time_point currentTime(dur);
+
+    auto transformed = nanotime / 1000000;
+    auto nanos = nanotime % 1000000;
+
+    auto millis = transformed % 1000;
+
+    std::time_t tt;
+    tt = std::chrono::system_clock::to_time_t ( currentTime );
+    auto timeinfo = localtime (&tt);
+    int count = strftime(pStr, 92, "%F %T", timeinfo);
+    pStr += count -1;
+    count = sprintf(pStr, ".%03ld.%06ld", millis, nanos);
+
+    pStr += count;
+}
+
 
 static inline void flush_all_logger(const int filedescriptor) {
     logger<true>::flushall(filedescriptor);
@@ -216,26 +238,27 @@ constexpr void write_string(char *&pStr, const char (&message)[N]) {
     pStr += n;
 }
 
-void createLogsString(logger_logs_entry_read &logEntry, char *text) {
+void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
     const uint8_t *data_args = logEntry.arguments;
 
-    size_t index = 0;
+    add_time_to_string_helper(pStr, logEntry.timestamp);
+
+    *pStr++ = ':';
 
     switch(logEntry.id) {
         default:
             assert(true);
-#define LOGGER_ENTRY(x, y, m, z) case log_t::x: writeLogsText(#y, sizeof(#y) - 1, text, index); break;
+#define LOGGER_ENTRY(x, y, m, z) case log_t::x: writeLogsText(#y, sizeof(#y) - 1, pStr); break;
             LOGGER_LOG_LIST
 #undef LOGGER_ENTRY
     }
 
-    *(text + index++) = ':';
+    *pStr++ = ':';
 
     const char *id_str = get_log_id_string(logEntry.id);
-    writeLogsText(id_str, text, index);
+    writeLogsText(id_str, pStr);
     const char *desc_str = get_log_description(logEntry.id);
 
-    char *pStr = text + index;
     *pStr++ = ':';
 
     formatstring_state state = formatstring_state::COPY;
@@ -391,8 +414,8 @@ ssize_t log_read_helper(int fd, void *buf, size_t n) {
     if (n == 0) return 0;
     ssize_t read_size = read(fd, (void *)buf, n);
     while(read_size == 0) {
-        read_size = read(fd, (void *)buf, n);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        read_size = read(fd, (void *)buf, n);
     }
 
     if (read_size != n) {
@@ -407,32 +430,11 @@ ssize_t log_read_helper(int fd, void *buf, size_t n) {
 const std::string logreader::readnext() {
     // First read header
     logger_logs_entry_common &log_common = *(logger_logs_entry_common *)data_args;
-    logger_logs_entry_end_of_cluster &log_end_of_cluster = *(logger_logs_entry_end_of_cluster *)data_args;
     logger_logs_entry_read &log_read = *(logger_logs_entry_read *)data_args;
-    ssize_t total_read = 0;
-
     auto read_size = log_read_helper(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
 
-    if (log_common.id == log_t::END_OF_CLUSTER) {
-        // Reading end of cluster length
-        read_size = log_read_helper(
-            file_descriptor,
-            (void *)(data_args + read_size),
-            sizeof(logger_logs_entry_end_of_cluster) - sizeof(logger_logs_entry_common));
-
-        // Skipping end of cluster length
-        read_size = log_read_helper(
-            file_descriptor,
-            data_args + sizeof(logger_logs_entry_end_of_cluster),
-            log_end_of_cluster.length - sizeof(logger_logs_entry_end_of_cluster));
-
-        read_size = log_read_helper(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
-    }
-
-    total_read += read_size;
-
     size_t data_args_size = get_log_length(log_common.id);
-    read_size = log_read_helper(file_descriptor, (void *)(data_args + total_read), data_args_size);
+    log_read_helper(file_descriptor, (void *)(data_args + read_size), data_args_size);
 
     createLogsString(log_read, text);
 

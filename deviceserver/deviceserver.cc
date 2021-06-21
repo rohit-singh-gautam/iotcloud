@@ -6,6 +6,7 @@
 #include <iotserverevent.hh>
 #include <iot/init.hh>
 
+constexpr bool sleep_before_create_server = false;
 constexpr int port = 8080;
 constexpr const char *log_path = "/tmp/deviceserver.log";
 
@@ -17,8 +18,10 @@ int main() {
     std::cout << "Creating event distributor" << std::endl;
     rohit::event_distributor evtdist;
 
-    std::cout << "Waiting for a second" << std::endl;
-    sleep(1);
+    if constexpr (sleep_before_create_server) {
+        std::cout << "Waiting for a second" << std::endl;
+        sleep(1);
+    }
 
     // Execution
     std::cout << "Creating a server" << std::endl;

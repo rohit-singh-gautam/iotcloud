@@ -65,9 +65,6 @@ namespace rohit {
     LIST_DEFINITION_END
 
 #define LOGGER_LOG_LIST \
-    \
-    LOGGER_ENTRY(END_OF_CLUSTER, IGNORE, SYSTEM, "This is end of cluster only parameter is its length") \
-    \
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, ERROR, SYSTEM, "Unable to create pthread with error %ve") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, WARNING, SYSTEM, "Unable to join pthread with error %ve") \
     LOGGER_ENTRY(SOCKET_CREATE_SUCCESS, DEBUG, SOCKET, "Socket %i created") \
@@ -233,20 +230,16 @@ public:
     static const constexpr size_t max_size = 240;
 
 public:
+    const int64_t timestamp;
     const log_t id;
 
-    inline constexpr logger_logs_entry_common(const log_t id) : id(id) {}
-} __attribute__((packed));
-
-class logger_logs_entry_end_of_cluster : public logger_logs_entry_common {
-public:
-    const uint8_t length;
-    inline constexpr logger_logs_entry_end_of_cluster(uint8_t length)
-        : logger_logs_entry_common(log_t::END_OF_CLUSTER), length(length) {}
+    inline constexpr logger_logs_entry_common(
+        const int64_t timestamp,
+        const log_t id) : timestamp(timestamp), id(id) {}
 } __attribute__((packed));
 
 template <log_t ID, typename... ARGS>
-class logger_logs_entry : private logger_logs_entry_common {
+class logger_logs_entry : public logger_logs_entry_common {
 public:
     static const constexpr size_t argsize = sizeofvaradic<ARGS...>::size;
     static const constexpr size_t totalsize = sizeof(logger_logs_entry<ID,ARGS...>);
@@ -255,8 +248,8 @@ private:
     uint8_t arguments[argsize];
 
 public:
-    inline constexpr logger_logs_entry(const ARGS&... args)
-            : logger_logs_entry_common(ID) {
+    inline constexpr logger_logs_entry(const int64_t timestamp, const ARGS&... args)
+            : logger_logs_entry_common(timestamp, ID) {
         static_assert(totalsize != log_description<ID>::length, "Total size of argument must be less than 256");
         static_assert(log_description<ID>::type_count == sizeof...(ARGS), "Wrong number of parameters");
         static_assert(check_formatstring_args<ID, ARGS...>() == SIZE_MAX, "Wrong parameter type");
@@ -267,8 +260,8 @@ public:
 template <log_t ID>
 class logger_logs_entry<ID> : public logger_logs_entry_common {
 public:
-    inline constexpr logger_logs_entry()
-            : logger_logs_entry_common(ID) { }
+    inline constexpr logger_logs_entry(const int64_t timestamp)
+            : logger_logs_entry_common(timestamp, ID) { }
 } __attribute__((packed));
 
 class logger_logs_entry_read : public logger_logs_entry_common {
@@ -343,9 +336,11 @@ public:
 
     void flush(const int filedescriptor) {
         lock();
+
+        size_t new_next_write = next_write;
         
-        if (next_write > next_read) {
-            size_t data_size = next_write - next_read;
+        if (new_next_write > next_read) {
+            size_t data_size = new_next_write - next_read;
             auto ret = ::write(
                 filedescriptor,
                 mem_buffer + next_read,
@@ -356,10 +351,10 @@ public:
                     std::cerr << "Failed to write log with error: " << errno << "\n";
                 }
             }
-            next_read = next_write;
-        } else if (next_write < next_read) {
+            next_read = new_next_write;
+        } else if (new_next_write < next_read) {
             size_t first_size = max_log_memory - next_read;
-            // second_size = next_write;
+            // second_size = new_next_write;
             auto ret = ::write(
                 filedescriptor,
                 mem_buffer + next_read,
@@ -371,7 +366,7 @@ public:
                 }
             }
 
-            ret = ::write(filedescriptor, mem_buffer, next_write);
+            ret = ::write(filedescriptor, mem_buffer, new_next_write);
             if constexpr (config::debug) {
                 if (ret < 0) {
                     // Log to console
@@ -379,16 +374,18 @@ public:
                 }
             }
 
-            next_read = next_write;
+            next_read = new_next_write;
         }
 
+        sync();
         unlock();
     }
 
     template <log_t ID, typename... ARGS>
     void log(const ARGS&... args)
     {
-        logger_logs_entry<ID, ARGS...> logs_entry(args...);
+        const int64_t nanosecond = std::chrono::system_clock::now().time_since_epoch().count();
+        logger_logs_entry<ID, ARGS...> logs_entry(nanosecond, args...);
         lock();
 
         if constexpr (config::log_with_check || config::debug) {
