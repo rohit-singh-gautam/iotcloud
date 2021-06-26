@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <string>
 #include <cstring>
+#include <openssl/ssl.h>
 
 namespace rohit {
 
@@ -102,6 +103,53 @@ inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
     return os << client_id.get_local_ipv6_addr();
 }
 
+class socket_ssl_t : public socket_t {
+protected:
+    static int initialize_ssl_count;
+    static SSL_CTX *ctx;
+    SSL *ssl;
+
+    static SSL_CTX *create_context();
+    static void init_openssl();
+    static void cleanup_openssl();
+
+    friend void init_iot(const char *logfilename, const int thread_count);
+    friend void destroy_iot();
+
+    friend class server_socket_ssl_t;
+
+public:
+    inline socket_ssl_t(const int socket_id, SSL *ssl) : socket_t(socket_id), ssl(ssl) { }
+
+    inline err_t read(void *buf, const size_t buf_size, size_t &read_len) const {
+        int ret = SSL_read(ssl, buf, buf_size);
+        if (ret == -1) return err_t::RECEIVE_FAILURE;
+        read_len = ret;
+        return err_t::SUCCESS;
+    }
+
+    inline err_t write(const void *buf, const size_t send_len) const {
+        // TODO: send in part
+        int ret = SSL_write(ssl, buf, send_len);
+        if (ret == -1) return err_t::SEND_FAILURE;
+        return err_t::SUCCESS;
+    }
+
+    inline err_t close() const {
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+        auto ret = ::close(socket_id);
+        if (ret == -1) {
+            glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
+            return err_t::CLOSE_FAILURE;
+        } else {
+            glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
+            return err_t::SUCCESS;
+        }
+    }
+
+};
+
 class server_socket_t : public socket_t {
 public:
     inline server_socket_t(const int port, const int backlog = 5, const bool blisten = true) {
@@ -137,10 +185,33 @@ public:
         if (client_id == -1) {
             throw exception_t(err_t::ACCEPT_FAILURE);
         }
+
         glog.log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
         return client_id;
     }
 
+};
+
+class server_socket_ssl_t : public server_socket_t {
+
+public:
+   using server_socket_t::server_socket_t;
+
+    inline socket_ssl_t accept() {
+        auto client_id = ::accept(socket_id, NULL, NULL);
+        if (client_id == -1) {
+            throw exception_t(err_t::ACCEPT_FAILURE);
+        }
+
+        auto ssl = SSL_new(socket_ssl_t::ctx);
+        SSL_set_fd(ssl, socket_id);
+
+        if (SSL_accept(ssl) <= 0) {
+            throw exception_t(err_t::SSL_CONNECT_FAILED);
+        }
+        glog.log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id, client_id);
+        return {client_id, ssl};
+    }
 };
 
 class client_socket_t : public socket_t {

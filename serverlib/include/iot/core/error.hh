@@ -56,6 +56,8 @@ namespace rohit {
     ERROR_T_ENTRY(SOCKET_CONNECT_UNSUPPORTED_PROTOCOL, "Unsupported protocol") \
     ERROR_T_ENTRY(SOCKET_CONNECT_TIMEOUT, "Unable to connect as it timeout") \
     \
+    ERROR_T_ENTRY(SOCKET_SSL_CONTEXT_FAILED, "Creation on SSL context failed") \
+    \
     ERROR_T_ENTRY(SOCKOPT_FAILURE, "Unable to set socket option") \
     ERROR_T_ENTRY(SOCKOPT_BAD_ID, "Unable to set socket option, bad socket ID") \
     ERROR_T_ENTRY(SOCKOPT_UNKNOWN_OPTION, "Unknown socket option") \
@@ -68,6 +70,8 @@ namespace rohit {
     \
     ERROR_T_ENTRY(EVENT_DIST_CREATE_FAILED, "Event distributor creation failed") \
     ERROR_T_ENTRY(EVENT_CREATE_FAILED, "Event creation failed") \
+    \
+    ERROR_T_ENTRY(SSL_CONNECT_FAILED, "Failed to create SSL session") \
     \
     ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
     LIST_DEFINITION_END
