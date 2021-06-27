@@ -105,4 +105,9 @@ constexpr T to_uint(const char *src, size_t *len = nullptr) {
     return val;
 }
 
+constexpr ipv6_port_t to_ipv6_port_t(const char *src, size_t *len = nullptr) {
+    uint16_t value = to_uint<uint16_t>(src, len);
+    return { value };
+}
+
 } // namespace rohit

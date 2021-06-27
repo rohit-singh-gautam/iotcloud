@@ -50,12 +50,13 @@ union ipv6_addr_t {
 
 class ipv6_port_t {
 private:
-    const uint16_t value;
+    uint16_t value;
 public:
     constexpr ipv6_port_t(const uint16_t value) : value(changeEndian(value)) {}
     constexpr ipv6_port_t(const ipv6_port_t &rhs) : value(rhs.value) {}
     constexpr operator uint16_t() const { return changeEndian(value); }
     constexpr uint16_t get_network_port() const { return value; }
+
 }  __attribute__((packed));;
 
 class ipv6_socket_addr_t {
@@ -66,6 +67,7 @@ public:
     constexpr ipv6_socket_addr_t(const ipv6_addr_t &addr, const ipv6_port_t port) : addr(addr), port(port) { }
     constexpr ipv6_socket_addr_t(const void *addr, const ipv6_port_t port) : addr(*(ipv6_addr_t *)addr), port(port) { }
     constexpr ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port);
+    
     constexpr operator sockaddr_in6() const;
 }  __attribute__((packed));
 
@@ -100,6 +102,7 @@ typedef uint16_t state_type;
 enum class state_t : state_type;
 enum class err_t : log_id_type;
 
+typedef bool bool_t;
 typedef char char_t;
 typedef float float_t;
 typedef double double_t;
@@ -108,6 +111,7 @@ typedef double double_t;
 
 #define TYPE_LIST \
     TYPE_LIST_ENTRY(char_t) \
+    TYPE_LIST_ENTRY(bool_t) \
     TYPE_LIST_ENTRY(int8_t) \
     TYPE_LIST_ENTRY(int16_t) \
     TYPE_LIST_ENTRY(int32_t) \
@@ -132,6 +136,7 @@ enum class type_identifier {
     TYPE_LIST
 #undef TYPE_LIST_ENTRY
 
+    cstring,
     bad_type,
     the_end,
 };
@@ -141,6 +146,7 @@ constexpr const char * type_str[] = {
     TYPE_LIST
 #undef TYPE_LIST_ENTRY
 
+    "cstring",
     "bad_type",
     "the_end"
 };
@@ -150,6 +156,13 @@ struct what_type
 {
     static constexpr const type_identifier value = type_identifier::bad_type;
     static constexpr const char str[] = "bad_type";
+};
+
+template <>
+struct what_type<char *>
+{
+    static constexpr const type_identifier value = type_identifier::cstring;
+    static constexpr const char str[] = "cstring";
 };
 
 #define TYPE_LIST_ENTRY(x) \

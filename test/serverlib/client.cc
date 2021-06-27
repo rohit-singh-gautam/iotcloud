@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) try {
     rohit::message_command_t messageCommand(sourceGuid);
     messageCommand.add(rohit::to_guid(destGuid), rohit::operation_t::SWITCH, (rohit::operation_value_internal_type)rohit::operation_t::operation_switch_t::ON);
     
-    rohit::ipv6_socket_addr_t ipv6addr = rohit::string_to_ipv6_socket_addr_t(argv[1]);
+    rohit::ipv6_socket_addr_t ipv6addr = rohit::to_ipv6_socket_addr_t(argv[1]);
 
     rohit::client_socket_t client_socket(ipv6addr);
     std::cout << "Local Address: " << client_socket << std::endl;   

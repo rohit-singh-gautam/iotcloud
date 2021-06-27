@@ -43,7 +43,7 @@ int main() {
         "[AA:cB::F9]:4533"
     };
     for(const char *addrstr: sockstrlist) {
-        rohit::ipv6_socket_addr_t addr = rohit::string_to_ipv6_socket_addr_t(addrstr);
+        rohit::ipv6_socket_addr_t addr = rohit::to_ipv6_socket_addr_t(addrstr);
         std::cout << "Address: " << addr << std::endl;
     }
 

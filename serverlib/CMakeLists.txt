@@ -10,6 +10,7 @@ find_package(OpenSSL REQUIRED)
 add_library(ServerLibrary
     lib/memory/memory.cc
     lib/net/socket.cc
+    lib/core/configparser.cc
     lib/states/event_distributor.cc
     lib/init.cc
     lib/iotmessage.cc

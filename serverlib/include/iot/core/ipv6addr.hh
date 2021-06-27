@@ -119,7 +119,7 @@ constexpr size_t to_string(const ipv6_addr_t &val, char *dest) {
     return (size_t)(pstr - dest);
 }
 
-constexpr const ipv6_socket_addr_t string_to_ipv6_socket_addr_t(const char *ipv6str, size_t *plen = nullptr) {
+constexpr const ipv6_socket_addr_t to_ipv6_socket_addr_t(const char *ipv6str, size_t *plen = nullptr) {
     const char *pipv6str = ipv6str + 1; // Skipping opening bracket
     size_t len = 0;
 
