@@ -5,16 +5,5 @@
 
 #pragma once
 
-namespace rohit {
-
-namespace config {
-
-constexpr bool debug = true;
-constexpr bool enable_ssl = false;
-constexpr bool log_with_check = false;
-constexpr int64_t log_thread_wait_in_millis = 100;
-
-};
-
-
-};
+#define IOT_VERSION_MAJOR @testmemory_VERSION_MAJOR@
+#define IOT_VERSION_MINOR @testmemory_VERSION_MINOR@

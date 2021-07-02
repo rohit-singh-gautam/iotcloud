@@ -15,6 +15,7 @@ namespace rohit {
 struct commandline_option {
     const char ch;
     const std::string name;
+    const std::string value_help;
     const std::string help;
     const type_identifier type_id;
     void *const variable;
@@ -24,11 +25,12 @@ struct commandline_option {
     commandline_option(
         const char ch,
         const char *name,
+        const char *value_help,
         const char *help,
         T &variable,
         T default_value,
         bool required = false)
-        : ch(ch), name(name), help(help), type_id(what_type<T>::value),
+        : ch(ch), name(name), value_help(value_help), help(help), type_id(what_type<T>::value),
             variable(&variable), required(required) {
         assert(ch != '\0' || name != nullptr);
         variable = default_value;
@@ -39,7 +41,7 @@ struct commandline_option {
         const char *name,
         const char *help,
         bool &variable)
-        : ch(ch), name(name), help(help), type_id(type_identifier::bool_t),
+        : ch(ch), name(name), value_help(), help(help), type_id(type_identifier::bool_t),
             variable(&variable), required(false) {
         assert(ch != '\0' || name != nullptr);
         variable = false;
@@ -47,21 +49,20 @@ struct commandline_option {
 
     inline const std::string get_short_description() const {
         std::string ret;
-        if (!required) {
-            if (ch != '\0') {
-                ret += "[-";
-                ret.push_back(ch);
-                ret += "] ";
-            }
-            if (!name.empty()) ret += "[--" + name + "] ";
-        } else {
-            if (ch != '\0') {
-                ret += "-";
-                ret.push_back(ch);
-                ret += " ";
-            }
-            if (!name.empty()) ret += "--" + name + " ";
+        if (!required) ret += "[";
+        if (ch != '\0') {
+            ret += "-";
+            ret.push_back(ch);
+            if (!name.empty()) ret += "/";
         }
+        if (!name.empty()) ret += "--" + name;
+        if (!value_help.empty() && type_id != type_identifier::bool_t) {
+            ret += " <";
+            ret += value_help;
+            ret += ">";
+        }
+        if (!required) ret += "]";
+        ret += " ";
         return ret;
     }
 

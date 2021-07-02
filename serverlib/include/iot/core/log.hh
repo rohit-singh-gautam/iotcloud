@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <iostream>
 #include <thread>
+#include <unordered_map>
+#include <bitset>
 
 namespace rohit {
 
@@ -62,6 +64,7 @@ namespace rohit {
     LOGGER_MODULE_ENTRY(IOT_EVENT_SERVER) \
     LOGGER_MODULE_ENTRY(TEST) \
     LOGGER_MODULE_ENTRY(MAX_MODULE) \
+    LOGGER_MODULE_ENTRY(UNKNOWN) \
     LIST_DEFINITION_END
 
 #define LOGGER_LOG_LIST \
@@ -89,14 +92,14 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_DIST_TOO_MANY_THREAD, WARNING, EVENT_DISTRIBUTOR, "Event distributor created with threads more than CPUs") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to close epoll with error %ve") \
     LOGGER_ENTRY(EVENT_DIST_NO_THREAD_CANCEL, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to set thread cancel flag with error %ve, exit may not be proper") \
-    LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_CANCEL_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to cancel thread with error %ve") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_JOIN_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to join thread with error %ve") \
+    LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_JOIN_SUCCESS, VERBOSE, EVENT_DISTRIBUTOR, "Event distributor join thread success") \
     LOGGER_ENTRY(EVENT_DIST_CREATE_SUCCESS, INFO, EVENT_DISTRIBUTOR, "Event distributor creation succeeded") \
     LOGGER_ENTRY(EVENT_DIST_TERMINATING, INFO, EVENT_DISTRIBUTOR, "Event distributor TERMINATING") \
     LOGGER_ENTRY(EVENT_DIST_EVENT_RECEIVED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor event %vv receive") \
     \
     LOGGER_ENTRY(EVENT_CREATE_FAILED, ERROR, EVENT_EXECUTOR, "Event creation failed with error %ve") \
-    LOGGER_ENTRY(EVENT_CREATE_SUCCESS, VERBOSE, EVENT_EXECUTOR, "Event creation succeeded") \
+    LOGGER_ENTRY(EVENT_CREATE_SUCCESS, DEBUG, EVENT_EXECUTOR, "Event creation succeeded") \
     \
     LOGGER_ENTRY(EVENT_SERVER_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "Event server with ID %i received event %vv") \
     LOGGER_ENTRY(EVENT_SERVER_ACCEPT_FAILED, ERROR, EVENT_SERVER, "Event server failed to accept connection with error %ve") \
@@ -143,6 +146,21 @@ enum class module_t {
     LOGGER_MODULE_LIST
 #undef LOGGER_MODULE_ENTRY
 };
+
+inline module_t to_module_t(const std::string module_name) {
+    static std::unordered_map<std::string, module_t> module_enum = {
+#define LOGGER_MODULE_ENTRY(x) {#x, module_t::x},
+        LOGGER_MODULE_LIST
+#undef LOGGER_MODULE_ENTRY
+    };
+
+    auto module_itr = module_enum.find(module_name);
+    if (module_itr == module_enum.end()) {
+        return module_t::UNKNOWN;
+    }
+
+    return module_itr->second;
+}
 
 constexpr size_t bits_to_uint64_array_size(const module_t value) {
     return bits_to_uint64_index(static_cast<size_t>(value)) + 1;
@@ -313,6 +331,52 @@ public:
     }
 };
 
+class active_module {
+private:
+    std::bitset<(size_t)module_t::MAX_MODULE> enabled_module_bits;
+
+public:
+    constexpr active_module() : enabled_module_bits() {}
+
+    inline bool add_module(const std::string module_name) {
+        return add_module(to_module_t(module_name));
+    }
+
+    constexpr bool add_module(const module_t module) {
+        if (module == module_t::UNKNOWN) return false;
+        enabled_module_bits.set((size_t)module);
+        return true;
+    }
+
+    inline bool remove_module(const std::string module_name) {
+        return remove_module(to_module_t(module_name));
+    }
+
+    constexpr bool remove_module(const module_t module) {
+        if (module == module_t::UNKNOWN) return false;
+        enabled_module_bits.reset((size_t)module);
+        return true;
+    }
+
+    inline void enable_all() {
+        enabled_module_bits.set();
+    }
+
+    inline void clear_all() {
+        enabled_module_bits.reset();
+    }
+
+    template <log_t ID>
+    constexpr bool is_enabled() {
+        // ERROR and ALERT for all modules always enabled
+        return log_description<ID>::level >= logger_level::ERROR ||
+            enabled_module_bits.test((size_t)log_description<ID>::module);
+    }
+
+}; // class active_module
+
+extern active_module enabled_module;
+
 // This is global
 // Any prameter change will have global impact
 template <bool multi_thread>
@@ -329,6 +393,8 @@ private:
 
     void lock() { logger_thread<multi_thread>::lock(); }
     void unlock() { logger_thread<multi_thread>::unlock(); }
+
+    
 
 public:
     logger() : next_write(0), next_read(0), mem_buffer() {
@@ -391,6 +457,7 @@ public:
     template <log_t ID, typename... ARGS>
     void log(const ARGS&... args)
     {
+        if (!enabled_module.is_enabled<ID>()) return;
         const int64_t nanosecond = std::chrono::system_clock::now().time_since_epoch().count();
         logger_logs_entry<ID, ARGS...> logs_entry(nanosecond, args...);
         lock();

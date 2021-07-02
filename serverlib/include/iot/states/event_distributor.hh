@@ -48,6 +48,8 @@ private:
     // till it exit
     static void *loop(void *pevtdist);
 
+    friend class terminate_executor;
+
 public:
     event_distributor(const int thread_count = 0, const int max_event_size = event_distributor::max_event_size);
 

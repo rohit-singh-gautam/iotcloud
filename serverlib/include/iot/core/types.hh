@@ -104,6 +104,7 @@ enum class err_t : log_id_type;
 
 typedef bool bool_t;
 typedef char char_t;
+typedef char * string_t;
 typedef float float_t;
 typedef double double_t;
 
@@ -122,6 +123,7 @@ typedef double double_t;
     TYPE_LIST_ENTRY(uint64_t) \
     TYPE_LIST_ENTRY(float_t) \
     TYPE_LIST_ENTRY(double_t) \
+    TYPE_LIST_ENTRY(string_t) \
     TYPE_LIST_ENTRY(err_t) \
     TYPE_LIST_ENTRY(state_t) \
     TYPE_LIST_ENTRY(guid_t) \
@@ -136,7 +138,6 @@ enum class type_identifier {
     TYPE_LIST
 #undef TYPE_LIST_ENTRY
 
-    cstring,
     bad_type,
     the_end,
 };
@@ -146,10 +147,13 @@ constexpr const char * type_str[] = {
     TYPE_LIST
 #undef TYPE_LIST_ENTRY
 
-    "cstring",
     "bad_type",
     "the_end"
 };
+
+constexpr const char * to_string(const type_identifier id) {
+    return type_str[static_cast<size_t>(id)];
+}
 
 template <typename T>
 struct what_type
@@ -159,10 +163,10 @@ struct what_type
 };
 
 template <>
-struct what_type<char *>
+struct what_type<const char *>
 {
-    static constexpr const type_identifier value = type_identifier::cstring;
-    static constexpr const char str[] = "cstring";
+    static constexpr const type_identifier value = type_identifier::string_t;
+    static constexpr const char str[] = "string_t";
 };
 
 #define TYPE_LIST_ENTRY(x) \

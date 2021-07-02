@@ -21,6 +21,7 @@ template<> size_t logger<false>::logger_count = 0;
 template<> logger<true> *logger<true>::logger_array[logger<true>::max_logger] = {};
 template<> logger<false> *logger<false>::logger_array[logger<false>::max_logger] = {};
 
+active_module enabled_module;
 
 logreader::logreader(const std::string &filename) {
     // This must be read/write as same class can be used to read
@@ -144,21 +145,21 @@ void epoll_event_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
     *pStr++ = ',';
 
-    if (evt_contains(event, EPOLLIN)) to_string_helper(pStr, "EPOLLIN");
-    if (evt_contains(event, EPOLLPRI)) to_string_helper(pStr, "EPOLLPRI");
-    if (evt_contains(event, EPOLLOUT)) to_string_helper(pStr, "EPOLLOUT");
-    if (evt_contains(event, EPOLLRDNORM)) to_string_helper(pStr, "EPOLLRDNORM");
-    if (evt_contains(event, EPOLLRDBAND)) to_string_helper(pStr, "EPOLLRDBAND");
-    if (evt_contains(event, EPOLLWRNORM)) to_string_helper(pStr, "EPOLLWRNORM");
-    if (evt_contains(event, EPOLLWRBAND)) to_string_helper(pStr, "EPOLLWRBAND");
-    if (evt_contains(event, EPOLLMSG)) to_string_helper(pStr, "EPOLLMSG");
-    if (evt_contains(event, EPOLLERR)) to_string_helper(pStr, "EPOLLERR");
-    if (evt_contains(event, EPOLLHUP)) to_string_helper(pStr, "EPOLLHUP");
-    if (evt_contains(event, EPOLLRDHUP)) to_string_helper(pStr, "EPOLLRDHUP");
-    if (evt_contains(event, EPOLLEXCLUSIVE)) to_string_helper(pStr, "EPOLLEXCLUSIVE");
-    if (evt_contains(event, EPOLLWAKEUP)) to_string_helper(pStr, "EPOLLWAKEUP");
-    if (evt_contains(event, EPOLLONESHOT)) to_string_helper(pStr, "EPOLLONESHOT");
-    if (evt_contains(event, EPOLLET)) to_string_helper(pStr, "EPOLLET"); 
+    if (evt_contains(event, EPOLLIN)) to_string_helper(pStr, " EPOLLIN");
+    if (evt_contains(event, EPOLLPRI)) to_string_helper(pStr, " EPOLLPRI");
+    if (evt_contains(event, EPOLLOUT)) to_string_helper(pStr, " EPOLLOUT");
+    if (evt_contains(event, EPOLLRDNORM)) to_string_helper(pStr, " EPOLLRDNORM");
+    if (evt_contains(event, EPOLLRDBAND)) to_string_helper(pStr, " EPOLLRDBAND");
+    if (evt_contains(event, EPOLLWRNORM)) to_string_helper(pStr, " EPOLLWRNORM");
+    if (evt_contains(event, EPOLLWRBAND)) to_string_helper(pStr, " EPOLLWRBAND");
+    if (evt_contains(event, EPOLLMSG)) to_string_helper(pStr, " EPOLLMSG");
+    if (evt_contains(event, EPOLLERR)) to_string_helper(pStr, " EPOLLERR");
+    if (evt_contains(event, EPOLLHUP)) to_string_helper(pStr, " EPOLLHUP");
+    if (evt_contains(event, EPOLLRDHUP)) to_string_helper(pStr, " EPOLLRDHUP");
+    if (evt_contains(event, EPOLLEXCLUSIVE)) to_string_helper(pStr, " EPOLLEXCLUSIVE");
+    if (evt_contains(event, EPOLLWAKEUP)) to_string_helper(pStr, " EPOLLWAKEUP");
+    if (evt_contains(event, EPOLLONESHOT)) to_string_helper(pStr, " EPOLLONESHOT");
+    if (evt_contains(event, EPOLLET)) to_string_helper(pStr, " EPOLLET"); 
     *pStr++ = ')';   
 }
 

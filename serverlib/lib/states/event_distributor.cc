@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <limits>
 #include <iot/core/memory.hh>
+#include <sys/eventfd.h>
 
 namespace rohit {
 
@@ -57,6 +58,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
     while(true) {
         epoll_event event;
         ret = epoll_wait(pevtdist->epollfd, &event, 1, std::numeric_limits<int>::max());
+        std::cout << "Reached here in thread " << pthread_self() << " event " << event.events << std::endl;
 
         if (ret == -1) {
             if (errno == EINTR || errno == EINVAL) {
@@ -84,28 +86,45 @@ void event_distributor::wait() {
         auto ret = pthread_join(pthread[cpu_index], NULL);
         if (ret != 0) {
             glog.log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
+        } else {
+            glog.log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_SUCCESS>();
         }
     }
 }
 
+class terminate_executor : event_executor {
+private:
+    event_distributor &evtdist;
+    int terminatefd;
+public:
+    terminate_executor(event_distributor &evtdist, int terminatefd) : evtdist(evtdist), terminatefd(terminatefd) {
+        evtdist.add(terminatefd, EPOLLIN, *this);
+    }
+
+private:
+    void execute(thread_context &ctx, const uint32_t event) override {
+        pthread_exit(nullptr);
+    }
+};
+
 void event_distributor::terminate() {
     glog.log<log_t::EVENT_DIST_TERMINATING>();
     is_terminate = true;
+
+    epoll_event epoll_data;
+    epoll_data.events = EPOLLIN | EPOLLET;
+    epoll_data.data.ptr = nullptr;
+
+    for(int thread_index = 0; thread_index < thread_count; ++thread_index) {
+        auto tempfd = eventfd(1, EFD_SEMAPHORE);
+        terminate_executor termateexecutor(*this, tempfd);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        close(tempfd);
+    }
+
     auto ret = close(epollfd);
     if (ret != 0) {
         glog.log<log_t::EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED>(ret);
-    }
-
-    // Wait for fd to close
-    // One second is sufficient as this server is designed for
-    // very small request
-    sleep(1);
-
-    for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
-        ret = pthread_cancel(pthread[cpu_index]);
-        if (ret != 0) {
-            glog.log<log_t::EVENT_DIST_EXIT_THREAD_CANCEL_FAILED>(ret);
-        }
     }
 }
 

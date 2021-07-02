@@ -35,13 +35,17 @@ public:
         if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
             socket_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id);
+            peerevent *p_peerevent = new peerevent(evtdist, peer_id);
             ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);
             }
         }
+    }
+
+    void close() {
+        socket_id.close();
     }
 };
 

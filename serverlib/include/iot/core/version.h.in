@@ -5,5 +5,5 @@
 
 #pragma once
 
-#define IOT_VERSION_MAJOR @testmemory_VERSION_MAJOR@
-#define IOT_VERSION_MINOR @testmemory_VERSION_MINOR@
+#define IOT_VERSION_MAJOR @ServerLibrary_VERSION_MAJOR@
+#define IOT_VERSION_MINOR @ServerLibrary_VERSION_MINOR@

@@ -15,13 +15,13 @@ extern void cleanup_openssl();
 
 void init_iot(const char *logfilename, const int thread_count) {
     init_log_thread(logfilename);
-    socket_ssl_t::init_openssl();
+    if constexpr (config::enable_ssl) socket_ssl_t::init_openssl();
 }
 
 
 void destroy_iot() {
     destroy_log_thread();
-    socket_ssl_t::cleanup_openssl();
+    if constexpr (config::enable_ssl) socket_ssl_t::cleanup_openssl();
 }
 
 } // namespace rohit
