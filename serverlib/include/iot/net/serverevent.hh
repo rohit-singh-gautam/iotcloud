@@ -35,11 +35,49 @@ public:
         if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
             socket_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = new peerevent(evtdist, peer_id);
+            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id);
             ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);
+            }
+        }
+    }
+
+    void close() {
+        socket_id.close();
+    }
+};
+
+template <typename peerevent>
+class serverevent_ssl : public event_executor {
+private:
+    event_distributor &evtdist;
+    server_socket_ssl_t socket_id;
+    const int port;
+    const int maxconnection;
+    const int backlog;
+
+public:
+    inline serverevent_ssl(event_distributor &evtdist, const int port, const int maxconnection = 10000, const int backlog = 5)
+            :   evtdist(evtdist),
+                socket_id(port, backlog),
+                port(port),
+                maxconnection(maxconnection),
+                backlog(backlog) {
+        evtdist.add(socket_id, EPOLLIN, *this);
+    }
+
+    void execute(thread_context &ctx, const uint32_t event) override {
+        ctx.log<log_t::EVENT_SERVER_SSL_RECEIVED_EVENT>((int)socket_id, event);
+        if ((event & EPOLLHUP) == EPOLLHUP) return;
+        try {
+            socket_ssl_t peer_id = socket_id.accept();
+            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id);
+            ctx.log<log_t::EVENT_SERVER_SSL_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+        } catch (const exception_t e) {
+            if (e == err_t::ACCEPT_FAILURE) {
+                ctx.log<log_t::EVENT_SERVER_SSL_ACCEPT_FAILED>(errno);
             }
         }
     }
@@ -58,6 +96,16 @@ public:
         evtdist.add(peer_id, EPOLLIN, *this);
     }
 
+};
+
+class serverpeerevent_ssl : public event_executor {
+protected:
+    socket_ssl_t peer_id;
+
+public:
+    inline serverpeerevent_ssl(event_distributor &evtdist, socket_ssl_t peer_id) : peer_id(peer_id) {
+        evtdist.add(peer_id, EPOLLIN, *this);
+    }
 };
 
 } // namespace rohit

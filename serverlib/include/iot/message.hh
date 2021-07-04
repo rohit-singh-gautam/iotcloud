@@ -19,10 +19,6 @@ typedef uint16_t operation_value_internal_type;
 class operation_t {
 public:
     enum operation_internal_t : operation_internal_type {
-        /*CONNECTION_ESTABLISH,
-        KEEP_LIVE,
-        REGISTER,
-        REMOVE,*/
         SWITCH,
         LEVEL_256,
         PWM_1024,
@@ -88,6 +84,9 @@ std::ostream& operator<<(std::ostream& os, const command_t &command);
 
 enum class message_code_t : uint16_t {
     UNKNOWN,
+    CONNECT,
+    KEEP_ALIVE,
+    UNAUTHORIZED,
     SUCCESS,
     COMMAND,
 };
@@ -126,6 +125,11 @@ std::ostream& operator<<(std::ostream& os, const message_base_t &message);
 class message_unknown_t : public message_base_t {
 public:
     inline constexpr message_unknown_t() : message_base_t(message_code_t::UNKNOWN) { }
+};
+
+class message_keep_alive_t : public message_base_t {
+public:
+    inline constexpr message_keep_alive_t() : message_base_t(message_code_t::KEEP_ALIVE) { }
 };
 
 class message_success_t : public message_base_t {

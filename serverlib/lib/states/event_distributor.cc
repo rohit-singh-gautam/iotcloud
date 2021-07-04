@@ -58,7 +58,6 @@ void *event_distributor::loop(void *pvoid_evtdist) {
     while(true) {
         epoll_event event;
         ret = epoll_wait(pevtdist->epollfd, &event, 1, std::numeric_limits<int>::max());
-        std::cout << "Reached here in thread " << pthread_self() << " event " << event.events << std::endl;
 
         if (ret == -1) {
             if (errno == EINTR || errno == EINVAL) {

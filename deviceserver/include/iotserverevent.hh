@@ -19,4 +19,14 @@ public:
 
 };
 
+class iotserverevent_ssl : public serverpeerevent_ssl {
+public:
+    using serverpeerevent_ssl::serverpeerevent_ssl;
+    
+    void execute(thread_context &ctx, const uint32_t event) override;
+
+    void close(thread_context &ctx);
+
+};
+
 } // namespace rohit
