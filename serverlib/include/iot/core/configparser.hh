@@ -36,6 +36,43 @@ struct commandline_option {
         variable = default_value;
     }
 
+    template <typename T>
+    commandline_option(
+        const char *name,
+        const char *value_help,
+        const char *help,
+        T &variable,
+        T default_value,
+        bool required = false)
+        : ch('\0'), name(name), value_help(value_help), help(help), type_id(what_type<T>::value),
+            variable(&variable), required(required) {
+        assert(name != nullptr);
+        variable = default_value;
+    }
+
+    template <typename T>
+    commandline_option(
+        const char ch,
+        const char *name,
+        const char *value_help,
+        const char *help,
+        T &variable)
+        : ch(ch), name(name), value_help(value_help), help(help), type_id(what_type<T>::value),
+            variable(&variable), required(true) {
+        assert(ch != '\0' || name != nullptr);
+    }
+
+    template <typename T>
+    commandline_option(
+        const char *name,
+        const char *value_help,
+        const char *help,
+        T &variable)
+        : ch('\0'), name(name), value_help(value_help), help(help), type_id(what_type<T>::value),
+            variable(&variable), required(true) {
+        assert(name != nullptr);
+    }
+
     inline commandline_option(
         const char ch,
         const char *name,
@@ -44,6 +81,16 @@ struct commandline_option {
         : ch(ch), name(name), value_help(), help(help), type_id(type_identifier::bool_t),
             variable(&variable), required(false) {
         assert(ch != '\0' || name != nullptr);
+        variable = false;
+    }
+
+    inline commandline_option(
+        const char *name,
+        const char *help,
+        bool &variable)
+        : ch('\0'), name(name), value_help(), help(help), type_id(type_identifier::bool_t),
+            variable(&variable), required(false) {
+        assert(name != nullptr);
         variable = false;
     }
 

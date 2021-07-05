@@ -10,14 +10,17 @@
 namespace rohit {
 
 void iotserverevent::close(thread_context &ctx) {
+    ctx.remove_event(peer_id);
+    peer_id.close();
+
     ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)peer_id);
 
     const auto to_free = this;
-    allocator.free(to_free);
+    delete to_free;
 }
 
 void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
-    if ((event & EPOLLHUP) == EPOLLHUP) {
+    if ((event & (EPOLLHUP | EPOLLRDHUP)) != 0) {
         // TODO: Database has to be update with information that connection is closed
         close(ctx);
         return;
@@ -35,7 +38,7 @@ void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
 
     if (read_buffer_length == 0) {
         // read_buffer_length returns 0 when properly client shutdown
-        close(ctx);
+        // We may not close here just return
         return;
     }
 
@@ -60,14 +63,17 @@ void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
 }
 
 void iotserverevent_ssl::close(thread_context &ctx) {
+    ctx.remove_event(peer_id);
+    peer_id.close();
+
     ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)peer_id);
 
     const auto to_free = this;
-    allocator.free(to_free);
+    //delete to_free;
 }
 
 void iotserverevent_ssl::execute(thread_context &ctx, const uint32_t event) {
-    if ((event & EPOLLHUP) == EPOLLHUP) {
+    if ((event & (EPOLLHUP | EPOLLRDHUP )) != 0) {
         // TODO: Database has to be update with information that connection is closed
         close(ctx);
         return;
@@ -80,12 +86,12 @@ void iotserverevent_ssl::execute(thread_context &ctx, const uint32_t event) {
     auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
     
     if (isFailure(err)) {
+        std::cout << "Closing SSL peer connection " << std::endl;
         ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(errno);
     }
 
     if (read_buffer_length == 0) {
         // read_buffer_length returns 0 when properly client shutdown
-        close(ctx);
         return;
     }
 

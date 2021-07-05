@@ -12,6 +12,7 @@
 #include <sys/epoll.h>
 #include <cstring>
 #include <iostream>
+#include <chrono>
 
 namespace rohit {
 
@@ -23,9 +24,11 @@ template<> logger<false> *logger<false>::logger_array[logger<false>::max_logger]
 
 active_module enabled_module;
 
-logreader::logreader(const std::string &filename) {
+logreader::logreader(const std::string &filename) : 
+    file_descriptor(open(filename.c_str(), O_RDONLY)),
+    text(),
+    priqueue() {
     // This must be read/write as same class can be used to read
-    file_descriptor = open(filename.c_str(), O_RDONLY);
     if ( file_descriptor < 0 ) {
         std::cerr << "Failed to open file " << filename << ", error " << errno << "\n";
         throw exception_t(err_t::LOG_FILE_OPEN_FAILURE);
@@ -411,33 +414,78 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
     *pStr++ = '\0';
 }
 
-ssize_t log_read_helper(int fd, void *buf, size_t n) {
-    if (n == 0) return 0;
+ssize_t log_read_helper(int fd, void *buf, size_t n, bool bwait = false) {
     ssize_t read_size = read(fd, (void *)buf, n);
     while(read_size == 0) {
+        if (!bwait) return 0;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         read_size = read(fd, (void *)buf, n);
     }
 
     if (read_size != n) {
-        std::cerr << "Read failure " << errno << std::endl;
+        std::cerr << "Read failure error: " << errno 
+            << ", read_size: " << read_size 
+            << ", requested_size" << n
+            << ", bwait: " << bwait << std::endl;
         throw exception_t(err_t::LOG_READ_FAILURE);
     }
 
     return read_size;
 }
 
+logger_logs_entry_read *logreader::readnext() {
+    uint8_t log_common_mem[sizeof(logger_logs_entry_common)] = {0};
+    logger_logs_entry_common *log_common = (logger_logs_entry_common *)log_common_mem;
+    auto read_size = log_read_helper(file_descriptor, (void *)log_common_mem, sizeof(logger_logs_entry_common));
 
-const std::string logreader::readnext() {
-    // First read header
-    logger_logs_entry_common &log_common = *(logger_logs_entry_common *)data_args;
-    logger_logs_entry_read &log_read = *(logger_logs_entry_read *)data_args;
-    auto read_size = log_read_helper(file_descriptor, (void *)data_args, sizeof(logger_logs_entry_common));
+    if (read_size == 0) return nullptr;
 
-    size_t data_args_size = get_log_length(log_common.id);
-    log_read_helper(file_descriptor, (void *)(data_args + read_size), data_args_size);
+    size_t data_args_size = get_log_length(log_common->id);
 
-    createLogsString(log_read, text);
+    uint8_t *log_mem = new uint8_t[sizeof(logger_logs_entry_common) + data_args_size];
+
+    logger_logs_entry_read *log_read = (logger_logs_entry_read *)log_mem;
+    std::copy(log_common_mem, log_common_mem + sizeof(logger_logs_entry_common), log_mem);
+
+    if (data_args_size != 0)
+        log_read_helper(file_descriptor, (void *)(log_mem + read_size), data_args_size, true);
+
+    return log_read;
+}
+
+const std::string logreader::readnextstring() {
+    logger_logs_entry_read *logread = nullptr;
+    while(true) {
+        logger_logs_entry_read *logreadtemp = logreader::readnext();
+
+        if (logreadtemp == nullptr) {
+            if (!priqueue.empty()) {
+                uint64_t current_time = std::chrono::system_clock::now().time_since_epoch().count();
+                if (current_time - last_read_time >= buffer_time_in_nanos * 3 / 2) {
+                    logread = priqueue.top();
+                    priqueue.pop();
+                    break;
+                }
+            }
+        } else {
+            if (priqueue.empty()) {
+                priqueue.push(logreadtemp);
+                last_read_time = std::chrono::system_clock::now().time_since_epoch().count();
+            } else if (priqueue.top()->timestamp - logreadtemp->timestamp < buffer_time_in_nanos) {
+                priqueue.push(logreadtemp);
+            } else {
+                logread = priqueue.top();
+                priqueue.pop();
+                priqueue.push(logreadtemp);
+                break;
+            }
+            continue;
+        }
+
+        std::this_thread::sleep_for(std::chrono::nanoseconds(buffer_time_in_nanos));
+    }
+    
+    createLogsString(*logread, text);
 
     return std::string(text);
 }

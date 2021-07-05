@@ -13,12 +13,13 @@ namespace rohit {
 int socket_ssl_t::initialize_ssl_count = 0;
 SSL_CTX *socket_ssl_t::ctx;
 
-SSL_CTX *socket_ssl_t::create_context()
+SSL_CTX *socket_ssl_t::create_context(bool isclient)
 {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
 
-    method = TLS_client_method();
+    if (isclient) method = TLS_client_method();
+    else method = TLS_server_method();
 
     ctx = SSL_CTX_new(method);
     if (!ctx) {
@@ -29,13 +30,14 @@ SSL_CTX *socket_ssl_t::create_context()
     return ctx;
 }
 
-void socket_ssl_t::init_openssl()
+void socket_ssl_t::init_openssl(bool isclient)
 {
     if (!initialize_ssl_count) {
         glog.log<log_t::SOCKET_SSL_INITIALIZE>();
+        if (isclient) SSL_library_init();
         SSL_load_error_strings();	
-        OpenSSL_add_ssl_algorithms();
-        ctx = create_context();
+        OpenSSL_add_all_algorithms();
+        ctx = create_context(isclient);
         ++initialize_ssl_count;
     } else {
         ++initialize_ssl_count;

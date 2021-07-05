@@ -12,7 +12,8 @@ namespace config {
 constexpr bool debug = true;
 constexpr bool enable_ssl = true;
 constexpr bool log_with_check = false;
-constexpr int64_t log_thread_wait_in_millis = 100;
+constexpr int64_t log_thread_wait_in_millis = 50;
+constexpr int socket_backlog = 5;
 
 };
 

@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     rohit::logreader log_reader(argv[1]);
 
     while(true) {
-        auto logstr = log_reader.readnext();
+        auto logstr = log_reader.readnextstring();
         std::cout << logstr << std::endl;
     }
     

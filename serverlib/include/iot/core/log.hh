@@ -13,6 +13,7 @@
 #include <thread>
 #include <unordered_map>
 #include <bitset>
+#include <queue>
 
 namespace rohit {
 
@@ -80,9 +81,14 @@ namespace rohit {
     \
     LOGGER_ENTRY(SOCKET_SSL_INITIALIZE, INFO, SOCKET, "Socket initialize SSL") \
     LOGGER_ENTRY(SOCKET_SSL_INITIALIZE_ATTEMPT, DEBUG, SOCKET, "Socket initialize SSL attempt  %i") \
+    LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_SUCCESS, INFO, SOCKET, "Loaded SSL certificate") \
+    LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_FAILED, ERROR, SOCKET, "Unable to load SSL certificate, exiting") \
+    LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_SUCCESS, INFO, SOCKET, "Loaded Primary Key") \
+    LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_FAILED, ERROR, SOCKET, "Unable to load Primary Key, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP, INFO, SOCKET, "Socket cleanup SSL") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP_ATTEMPT, DEBUG, SOCKET, "Socket cleanup SSL left %i") \
     LOGGER_ENTRY(SOCKET_SSL_ACCEPT_SUCCESS, DEBUG, SOCKET, "SSL Socket %i accept success, new socket created %i") \
+    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_FAILED, ERROR, SOCKET, "SSL Socket %i accept failed, client socket %i") \
     \
     LOGGER_ENTRY(EVENT_DIST_CREATING_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor creating %llu threads") \
     LOGGER_ENTRY(EVENT_DIST_LOOP_CREATED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor thread loop created") \
@@ -100,6 +106,8 @@ namespace rohit {
     \
     LOGGER_ENTRY(EVENT_CREATE_FAILED, ERROR, EVENT_EXECUTOR, "Event creation failed with error %ve") \
     LOGGER_ENTRY(EVENT_CREATE_SUCCESS, DEBUG, EVENT_EXECUTOR, "Event creation succeeded") \
+    LOGGER_ENTRY(EVENT_REMOVE_SUCCESS, DEBUG, EVENT_EXECUTOR, "Event removal succeeded") \
+    LOGGER_ENTRY(EVENT_REMOVE_FAILED, INFO, EVENT_EXECUTOR, "Event removal failed with error %ve") \
     \
     LOGGER_ENTRY(EVENT_SERVER_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "Event server with ID %i received event %vv") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "SSL Event server with ID %i received event %vv") \
@@ -261,7 +269,7 @@ public:
     const int64_t timestamp;
     const log_t id;
 
-    inline constexpr logger_logs_entry_common(
+    constexpr logger_logs_entry_common(
         const int64_t timestamp,
         const log_t id) : timestamp(timestamp), id(id) {}
 } __attribute__((packed));
@@ -574,20 +582,38 @@ extern logger<true> glog;
 void init_log_thread(const char *filename);
 void destroy_log_thread();
 
+
+class logger_logs_entry_read_compare {
+public:
+    inline bool operator() (logger_logs_entry_read *lhs, logger_logs_entry_read *rhs) {
+        return lhs->timestamp > rhs->timestamp;
+    }
+};
+
 // This is not global
 // No need to write very optimise reader
 class logreader {
 private:
-    int file_descriptor;
+    const int file_descriptor;
     char text[1024];
 
-    static const constexpr size_t args_size = logger_logs_entry_common::max_size - sizeof(logger_logs_entry_common);
-    uint8_t data_args[args_size];
+    std::priority_queue<
+        logger_logs_entry_read *, 
+        std::vector<logger_logs_entry_read *>,
+        logger_logs_entry_read_compare> priqueue;
+
+    uint64_t last_read_time = 0;
+    static constexpr int64_t log_thread_wait_in_millis = 50;
+    static constexpr uint64_t buffer_time_in_nanos = config::log_thread_wait_in_millis * 4 * 1000000;
 
 public:
     logreader(const std::string &filename);
 
-    const std::string readnext();
+    // This is blocking call
+    logger_logs_entry_read *readnext();
+
+    // This is blocking call
+    const std::string readnextstring();
 
 }; // class logreader
 

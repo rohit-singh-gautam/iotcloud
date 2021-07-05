@@ -47,7 +47,7 @@ event_distributor::event_distributor(const int thread_count, const int max_event
 
 void *event_distributor::loop(void *pvoid_evtdist) {
     event_distributor *pevtdist = static_cast<event_distributor *>(pvoid_evtdist);
-    thread_context ctx;
+    thread_context ctx(*pevtdist);
 
     // This is infinite loop
     auto ret = pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, nullptr);

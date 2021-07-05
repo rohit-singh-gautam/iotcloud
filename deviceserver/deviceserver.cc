@@ -13,6 +13,8 @@ constexpr char app_name[] = "deviceserver";
 constexpr bool sleep_before_create_server = false;
 rohit::ipv6_port_t port(0);
 rohit::ipv6_port_t secure_port(0);
+const char *cert_file = nullptr;
+const char *prikey_file = nullptr;
 const char *log_file;
 const char *config_folder;
 bool display_version;
@@ -26,6 +28,8 @@ bool parse_and_display(int argc, char *argv[]) {
         {
             {'p', "port", "port address", "Port device server would listen to", port, rohit::ipv6_port_t(0)},
             {'s', "secure_port", "SSL port address", "Port device server would listen to", secure_port, rohit::ipv6_port_t(0)},
+            {'k', "cert_file", "certificate file path", "Path to certificate", cert_file},
+            {"prikey_file", "primary key file path", "Path to primary key, if not provided cert_file will be used", prikey_file, (const char *)nullptr},
             {'l', "log_file", "file path", "Path to save log file", log_file, "/var/log/iotcloud/deviceserver.log"},
             {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file network and logmodule", config_folder, "/etc/iotcloud"},
             {'v', "version", "Display version", display_version}
@@ -47,7 +51,7 @@ rohit::event_distributor *evtdist = nullptr;
 rohit::serverevent<rohit::iotserverevent> *srvevt = nullptr;
 rohit::serverevent_ssl<rohit::iotserverevent_ssl> *srvevt_ssl = nullptr;
 
-void destroy_app(int signum) {
+void destroy_app(int) {
     if (evtdist) {
         evtdist->terminate();
         std::cout << "Destroying IOT" << std::endl;
@@ -72,12 +76,21 @@ void destroy_app(int signum) {
     exit(1);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) try {
     if (!parse_and_display(argc, argv)) return EXIT_SUCCESS;
 
     if (port == 0 && secure_port == 0) {
         std::cout << "Atleast one of port or secure_port must be set" << std::endl;
         return EXIT_SUCCESS;
+    }
+
+    if (secure_port != 0 && cert_file == nullptr) {
+        std::cout << "For secure port cert file is mandatory" << std::endl;
+        return EXIT_SUCCESS;
+    }
+
+    if (cert_file != nullptr && prikey_file == nullptr) {
+        prikey_file = cert_file;
     }
 
     signal(SIGINT, destroy_app);
@@ -107,7 +120,11 @@ int main(int argc, char *argv[]) {
         if (secure_port != 0) {
             // Execution
             std::cout << "Creating a SSL server at port " << secure_port << std::endl;
-            srvevt_ssl = new rohit::serverevent_ssl<rohit::iotserverevent_ssl>(*evtdist, secure_port);
+            srvevt_ssl = new rohit::serverevent_ssl<rohit::iotserverevent_ssl>(
+                *evtdist,
+                secure_port,
+                cert_file,
+                prikey_file);
         }
     }
 
@@ -116,4 +133,10 @@ int main(int argc, char *argv[]) {
     evtdist->wait();
 
     return 0;
+} catch (rohit::exception_t e) {
+    std::cout << "Exception received " << e << std::endl;
+    destroy_app(0);
+} catch (...) {
+    std::cout << "Exception received " << std::endl;
+    destroy_app(0);
 }

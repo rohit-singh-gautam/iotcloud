@@ -16,6 +16,9 @@ const std::string operation_t::displayString[] = {
 
 const std::string message_base_t::displayString[] = {
     "UNKNOWN",
+    "CONNECT",
+    "KEEP_ALIVE",
+    "UNAUTHORIZED",
     "SUCCESS",
     "COMMAND",
 };

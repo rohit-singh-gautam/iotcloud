@@ -49,7 +49,9 @@ bool commandline::parser(int argc, char *argv[]) {
         }
     }
 
-    if (help) return false;
+    if (help) {
+        return false;
+    }
 
     return state == parser_state::OPTION;
 }

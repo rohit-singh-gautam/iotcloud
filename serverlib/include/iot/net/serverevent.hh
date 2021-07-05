@@ -18,15 +18,13 @@ private:
     server_socket_t socket_id;
     const int port;
     const int maxconnection;
-    const int backlog;
 
 public:
-    inline serverevent(event_distributor &evtdist, const int port, const int maxconnection = 10000, const int backlog = 5)
+    inline serverevent(event_distributor &evtdist, const int port, const int maxconnection = 10000)
             :   evtdist(evtdist),
-                socket_id(port, backlog),
+                socket_id(port),
                 port(port),
-                maxconnection(maxconnection),
-                backlog(backlog) {
+                maxconnection(maxconnection) {
         evtdist.add(socket_id, EPOLLIN, *this);
     }
 
@@ -35,7 +33,7 @@ public:
         if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
             socket_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id);
+            peerevent *p_peerevent = new peerevent(evtdist, peer_id);
             ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
@@ -56,15 +54,18 @@ private:
     server_socket_ssl_t socket_id;
     const int port;
     const int maxconnection;
-    const int backlog;
 
 public:
-    inline serverevent_ssl(event_distributor &evtdist, const int port, const int maxconnection = 10000, const int backlog = 5)
+    inline serverevent_ssl(
+        event_distributor &evtdist,
+        const int port,
+        const char *const cert_file,
+        const char *const prikey_file,
+        const int maxconnection = 10000)
             :   evtdist(evtdist),
-                socket_id(port, backlog),
+                socket_id(port, cert_file, prikey_file),
                 port(port),
-                maxconnection(maxconnection),
-                backlog(backlog) {
+                maxconnection(maxconnection) {
         evtdist.add(socket_id, EPOLLIN, *this);
     }
 
@@ -73,7 +74,7 @@ public:
         if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
             socket_ssl_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = allocator.alloc<peerevent>(evtdist, peer_id);
+            peerevent *p_peerevent = new peerevent(evtdist, peer_id);
             ctx.log<log_t::EVENT_SERVER_SSL_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {

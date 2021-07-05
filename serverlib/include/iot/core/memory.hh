@@ -17,20 +17,25 @@ struct fixed_memory_alloc_info {
     uint16_t alloc_size;
     uint8_t  store_index;
     static constexpr uint8_t default_memory_check = 0xaa;
+    static constexpr uint32_t default_memory_check_2 = 0xaaaaeeaa;
     // This is unique memory can be utilized for memory check in debug mode
     uint8_t  memory_check;
+    uint32_t memory_check_2;
 
 
     constexpr fixed_memory_alloc_info(const uint16_t alloc_size, const uint8_t store_index)
-        : alloc_size(alloc_size), store_index(store_index), memory_check(default_memory_check) {}
+        : alloc_size(alloc_size), store_index(store_index),
+            memory_check(default_memory_check), memory_check_2(default_memory_check_2) {}
 
     constexpr fixed_memory_alloc_info(const fixed_memory_alloc_info &info) 
-        : alloc_size(info.alloc_size), store_index(info.store_index), memory_check(info.memory_check) {}
+        : alloc_size(info.alloc_size), store_index(info.store_index),
+        memory_check(info.memory_check), memory_check_2(info.memory_check_2) {}
 
     constexpr fixed_memory_alloc_info operator=(const fixed_memory_alloc_info &rhs) {
         alloc_size = rhs.alloc_size;
         store_index = rhs.store_index;
         memory_check = memory_check;
+        memory_check_2 = memory_check_2;
         return *this;
     }
 
@@ -85,8 +90,8 @@ public:
                 current_capacity(min_capacity >> 1),
                 last_store_index(-1),
                 store_block() {
-        assert(alloc_size >=4); // "Allocation size must be atleast 4"
-        assert(alloc_size == 4 || alloc_size % 4 == 0); //"Allocation size must be aligned to 4"
+        assert(alloc_size >= 8); // "Allocation size must be atleast 8"
+        assert(alloc_size == 8 || alloc_size % 8 == 0); //"Allocation size must be aligned to 8"
 
         pthread_mutex_init(&lock, nullptr);
     }
@@ -101,13 +106,13 @@ public:
 class memory {
 public:
     static constexpr size_t max_allocation_size = 1024;
-    static constexpr size_t max_chunk = max_allocation_size >> 2;
+    static constexpr size_t max_chunk = max_allocation_size >> 3;
 
 private:
     fixed_memory mem_array[max_chunk];
     
     inline uint8_t *get_memory(const size_t alloc_size) {
-        const size_t chunk_index = (alloc_size >> 2) - 1;
+        const size_t chunk_index = (alloc_size >> 3) - 1;
 
         auto &memstore = mem_array[chunk_index];
 
@@ -126,14 +131,14 @@ public:
 
     template <typename T, typename... ARGS>
     inline T *alloc(ARGS&... args) {
-        constexpr size_t alloc_size = (sizeof(T) + 3) & (~3);
+        constexpr size_t alloc_size = (sizeof(T) + 7) & (~7);
         static_assert(alloc_size <= max_allocation_size, "This allocator support maximum max_allocation_size memory");
 
         return new (get_memory(alloc_size)) T(args...);;
     }
 
     inline void *alloc(const size_t alloc_size) {
-        const size_t new_alloc_size = (alloc_size + 3) & (~3);
+        const size_t new_alloc_size = (alloc_size + 7) & (~7);
         return (void *)get_memory(new_alloc_size);
     }
 
@@ -143,17 +148,17 @@ public:
     inline void free(T *value) {
         uint8_t *pheader = (uint8_t *)value - sizeof(fixed_memory_alloc_info);
         fixed_memory_alloc_info *pmeminfo = (fixed_memory_alloc_info *)pheader;
-        const size_t chunk_index = (pmeminfo->alloc_size >> 2) - 1;
+        const size_t chunk_index = (pmeminfo->alloc_size >> 3) - 1;
         mem_array[chunk_index].free(pheader);
     }
 
     template <typename T>
     inline void free_debug(T *value, const size_t alloc_size) {
-        const size_t new_alloc_size = (alloc_size + 3) & (~3);
+        const size_t new_alloc_size = (alloc_size + 7) & (~7);
         uint8_t *pheader = (uint8_t *)value - sizeof(fixed_memory_alloc_info);
         fixed_memory_alloc_info *pmeminfo = (fixed_memory_alloc_info *)pheader;
         assert(new_alloc_size == pmeminfo->alloc_size);
-        const size_t chunk_index = (pmeminfo->alloc_size >> 2) - 1;
+        const size_t chunk_index = (pmeminfo->alloc_size >> 3) - 1;
         mem_array[chunk_index].free(pheader);
     }
 

@@ -57,6 +57,8 @@ namespace rohit {
     ERROR_T_ENTRY(SOCKET_CONNECT_TIMEOUT, "Unable to connect as it timeout") \
     \
     ERROR_T_ENTRY(SOCKET_SSL_CONTEXT_FAILED, "Creation on SSL context failed") \
+    ERROR_T_ENTRY(SOCKET_SSL_CERTIFICATE_FAILED, "Failed to load SSL certificate") \
+    ERROR_T_ENTRY(SOCKET_SSL_PRIKEY_FAILED, "Failed to load Primay Key") \
     \
     ERROR_T_ENTRY(SOCKOPT_FAILURE, "Unable to set socket option") \
     ERROR_T_ENTRY(SOCKOPT_BAD_ID, "Unable to set socket option, bad socket ID") \
@@ -70,6 +72,7 @@ namespace rohit {
     \
     ERROR_T_ENTRY(EVENT_DIST_CREATE_FAILED, "Event distributor creation failed") \
     ERROR_T_ENTRY(EVENT_CREATE_FAILED, "Event creation failed") \
+    ERROR_T_ENTRY(EVENT_REMOVE_FAILED, "Event remove failed") \
     \
     ERROR_T_ENTRY(SSL_CONNECT_FAILED, "Failed to create SSL session") \
     \

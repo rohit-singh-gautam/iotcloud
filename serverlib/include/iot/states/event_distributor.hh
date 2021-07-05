@@ -12,16 +12,7 @@
 
 namespace rohit {
 
-class thread_context {
-    logger<false> cxtlog;
-public:
-    thread_context() {}
-
-    template<log_t ID, typename... ARGS>
-    constexpr void log(const ARGS&... args) {
-        cxtlog.log<ID, ARGS...>(args...);
-    }
-};
+class thread_context;
 
 class event_executor {
 private:
@@ -58,7 +49,7 @@ public:
     // itself.
     inline err_t add(const int fd, const uint32_t event, event_executor &executor) const {
         epoll_event epoll_data;
-        epoll_data.events = event | EPOLLET;
+        epoll_data.events = event | EPOLLET | EPOLLRDHUP;
         epoll_data.data.ptr = &executor;
 
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
@@ -72,6 +63,17 @@ public:
         }
     }
 
+    inline err_t remove(const int fd) {
+        auto ret = epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
+            if (ret == -1) {
+            glog.log<log_t::EVENT_REMOVE_FAILED>(errno);
+            return err_t::EVENT_REMOVE_FAILED;
+        } else {
+            glog.log<log_t::EVENT_REMOVE_SUCCESS>();
+            return err_t::SUCCESS;
+        }
+    }
+
     inline size_t get_thread_count() const { return thread_count; }
 
     void wait();
@@ -79,5 +81,24 @@ public:
     void terminate();
     
 }; // class event_distributor
+
+class thread_context {
+private:
+    logger<false> cxtlog;
+    event_distributor &evtdist;
+
+public:
+    inline thread_context(event_distributor &evtdist) : evtdist(evtdist) {}
+
+    template<log_t ID, typename... ARGS>
+    constexpr void log(const ARGS&... args) {
+        cxtlog.log<ID, ARGS...>(args...);
+    }
+
+    inline err_t remove_event(const int fd) {
+        return evtdist.remove(fd);
+    }
+
+}; // class thread_context
 
 } // namespace rohit

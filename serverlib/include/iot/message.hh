@@ -50,7 +50,7 @@ public:
     }
 
     inline operator const std::string() const { return to_string(); }
-};
+} __attribute__((packed));;
 
 inline std::ostream& operator<<(std::ostream& os, const operation_t &operation) {
     return os << operation.to_string();
@@ -78,7 +78,7 @@ public:
     // Not require to be optimised
     const std::string to_string() const;
     friend std::ostream& operator<<(std::ostream& os, const command_t &command);
-};
+} __attribute__((packed));;
 
 std::ostream& operator<<(std::ostream& os, const command_t &command);
 
@@ -118,24 +118,24 @@ public:
     }
 
     inline operator const std::string() const { return to_string(); }
-};
+} __attribute__((packed));;
 
 std::ostream& operator<<(std::ostream& os, const message_base_t &message);
 
 class message_unknown_t : public message_base_t {
 public:
     inline constexpr message_unknown_t() : message_base_t(message_code_t::UNKNOWN) { }
-};
+} __attribute__((packed));;
 
 class message_keep_alive_t : public message_base_t {
 public:
     inline constexpr message_keep_alive_t() : message_base_t(message_code_t::KEEP_ALIVE) { }
-};
+} __attribute__((packed));;
 
 class message_success_t : public message_base_t {
 public:
     inline constexpr message_success_t() : message_base_t(message_code_t::SUCCESS) { }
-};
+} __attribute__((packed));;
 
 class message_command_t : public message_base_t {
 public:
@@ -165,7 +165,7 @@ public:
     }
     
     friend std::ostream& operator<<(std::ostream& os, const message_command_t &message);
-};
+} __attribute__((packed));;
 
 std::ostream& operator<<(std::ostream& os, const message_command_t &message);
 
