@@ -55,9 +55,10 @@ void *event_distributor::loop(void *pvoid_evtdist) {
         ctx.log<log_t::EVENT_DIST_NO_THREAD_CANCEL>(ret);
 
     ctx.log<log_t::EVENT_DIST_LOOP_CREATED>();
+
+    epoll_event events[event_wait_count];
     while(true) {
-        epoll_event event;
-        ret = epoll_wait(pevtdist->epollfd, &event, 1, std::numeric_limits<int>::max());
+        ret = epoll_wait(pevtdist->epollfd, events, event_wait_count, std::numeric_limits<int>::max());
 
         if (ret == -1) {
             if (errno == EINTR || errno == EINVAL) {
@@ -69,12 +70,14 @@ void *event_distributor::loop(void *pvoid_evtdist) {
             // Check again if terminated
             if (pevtdist->is_terminate) pthread_exit(nullptr);
             continue;
-        } else {
-            ctx.log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
         }
 
-        event_executor *executor = static_cast<event_executor *>(event.data.ptr);
-        executor->execute(ctx, event.events);
+        for(size_t index = 0; index < ret; ++index) {
+            epoll_event &event = events[index];
+            ctx.log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
+            event_executor *executor = static_cast<event_executor *>(event.data.ptr);
+            executor->execute(ctx, event.events);
+        }
     }
 
     return nullptr;
@@ -91,12 +94,13 @@ void event_distributor::wait() {
     }
 }
 
-class terminate_executor : event_executor {
+class terminate_executor : public event_executor {
 private:
     event_distributor &evtdist;
     int terminatefd;
 public:
-    terminate_executor(event_distributor &evtdist, int terminatefd) : evtdist(evtdist), terminatefd(terminatefd) {
+    terminate_executor(event_distributor &evtdist, int terminatefd)
+        : evtdist(evtdist), terminatefd(terminatefd) {
         evtdist.add(terminatefd, EPOLLIN, *this);
     }
 

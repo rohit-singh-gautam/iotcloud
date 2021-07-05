@@ -93,7 +93,8 @@ protected:
     socket_t peer_id;
 
 public:
-    inline serverpeerevent(event_distributor &evtdist, socket_t peer_id) : peer_id(peer_id) {
+    inline serverpeerevent(event_distributor &evtdist, socket_t peer_id) 
+            : peer_id(peer_id) {
         evtdist.add(peer_id, EPOLLIN, *this);
     }
 
@@ -104,7 +105,8 @@ protected:
     socket_ssl_t peer_id;
 
 public:
-    inline serverpeerevent_ssl(event_distributor &evtdist, socket_ssl_t peer_id) : peer_id(peer_id) {
+    inline serverpeerevent_ssl(event_distributor &evtdist, socket_ssl_t peer_id)
+            : peer_id(peer_id) {
         evtdist.add(peer_id, EPOLLIN, *this);
     }
 };

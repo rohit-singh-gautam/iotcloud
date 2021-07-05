@@ -28,6 +28,8 @@ public:
     static constexpr int max_event_size = 1000000;
     static constexpr int max_thread_supported = 64;
 
+    static constexpr int event_wait_count = 1;
+
 private:
     int epollfd;
     size_t thread_count;
@@ -97,6 +99,10 @@ public:
 
     inline err_t remove_event(const int fd) {
         return evtdist.remove(fd);
+    }
+
+    inline err_t add_event(const int fd, const uint32_t event, event_executor &executor) {
+        return evtdist.add(fd, event, executor);
     }
 
 }; // class thread_context
