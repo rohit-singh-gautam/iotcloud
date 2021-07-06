@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) try {
     rohit::init_iot(log_file);
 
     std::cout << "Creating event distributor" << std::endl;
-    evtdist = new rohit::event_distributor(126);
+    evtdist = new rohit::event_distributor();
     evtdist->init();
 
     if constexpr (sleep_before_create_server) {

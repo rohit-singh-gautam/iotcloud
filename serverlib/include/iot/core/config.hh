@@ -13,6 +13,8 @@ constexpr bool debug = true;
 constexpr bool enable_ssl = true;
 constexpr bool log_with_check = false;
 constexpr int64_t log_thread_wait_in_millis = 50;
+constexpr int64_t event_dist_loop_wait_in_millis = 10;
+constexpr int64_t event_dist_deadlock_in_nanos = 10000LL * 1000000LL;
 constexpr int socket_backlog = 5;
 
 };

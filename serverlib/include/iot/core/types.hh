@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <iot/states/statesentry.hh>
 #include <stdint.h>
 #include <stddef.h>
 #include <sys/types.h>
@@ -101,7 +102,12 @@ public:
 typedef uint16_t log_id_type;
 typedef uint16_t state_type;
 
-enum class state_t : state_type;
+enum class state_t : state_type {
+#define STATE_ENTRY(x, y) x,
+        STATE_ENTRY_LIST
+#undef STATE_ENTRY
+};
+
 enum class err_t : log_id_type;
 
 typedef bool bool_t;

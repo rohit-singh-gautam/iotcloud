@@ -28,18 +28,29 @@ public:
     }
 
     inline void init() {
+        int flags = fcntl(socket_id, F_GETFL, 0);
+        if (flags != -1) {
+            flags |= O_NONBLOCK;
+            fcntl(socket_id, F_SETFL, flags);
+        }
         evtdist.add(socket_id, EPOLLIN, *this);
     }
 
 
     void execute(thread_context &ctx, const uint32_t event) override {
         ctx.log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id, event);
-        if ((event & EPOLLHUP) == EPOLLHUP) return;
+        if ((event & (EPOLLHUP | EPOLLRDHUP)) != 0) {
+            ctx.log<log_t::EVENT_SERVER_RECEIVED_CLOSED>();
+            return;
+        }
         try {
-            socket_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = new peerevent(peer_id);
-            evtdist.add(peer_id, EPOLLIN, *p_peerevent);
-            ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+            while(true) {
+                socket_t peer_id = socket_id.accept();
+                if (peer_id.is_null()) break;
+                peerevent *p_peerevent = new peerevent(peer_id);
+                evtdist.add(peer_id, EPOLLIN, *p_peerevent);
+                ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+            }
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);

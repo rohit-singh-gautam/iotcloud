@@ -44,7 +44,7 @@ void test_deviceserver() {
         rohit::err_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
         if (isFailure(err)) {
             ++write_failed;
-            std::cout << err << std::endl;
+            std::cout << "Write failed " << err << std::endl;
             client_socket.close();
             return;
         }
@@ -56,7 +56,7 @@ void test_deviceserver() {
         err = client_socket.read((void *)read_buffer, read_buffer_size, read_buffer_length);
         if (isFailure(err)) {
             ++read_failed;
-            std::cout << err << std::endl;
+            std::cout << "Read failed " << err << std::endl;
             client_socket.close();
             return;
         }

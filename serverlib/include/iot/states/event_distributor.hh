@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <iot/states/statesentry.hh>
 #include <iot/core/error.hh>
 #include <iot/core/log.hh>
 #include <unordered_map>
@@ -48,18 +49,36 @@ public:
     }
 };
 
+struct event_thread_entry {
+    pthread_t pthread;
+    state_t state;
+    uint64_t timestamp;
+
+    inline event_thread_entry() {}
+
+    inline event_thread_entry(const pthread_t pthread)
+            :   pthread(pthread),
+                state(state_t::EVENT_DIST_NONE),
+                timestamp(std::chrono::system_clock::now().time_since_epoch().count())  { }
+
+    inline void set_state(const state_t state) {
+        this->state = state;
+        timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+    }
+};
+
 class event_distributor {
 public:
     static constexpr int max_event_size = 1000000;
     static constexpr int max_thread_supported = 64;
-    static constexpr int event_wait_count = 1;
+    static constexpr int event_wait_count = 1024;
 
     static constexpr uint64_t cleanup_loop_time_in_ns = 2ULL * 1000ULL * 1000000ULL; // two second
 
 private:
     int epollfd;
     size_t thread_count;
-    pthread_t pthread[max_thread_supported];
+    std::unordered_map<pthread_t, event_thread_entry> thread_entry_map;
 
     bool is_terminate;
 
@@ -68,8 +87,6 @@ private:
     static void *loop(void *pevtdist);
     static void *cleanup(void *pevtdist);
 
-
-    pthread_t cleanup_thread;
     pthread_mutex_t cleanup_lock;
     std::unordered_set<event_executor *> closed_received;
     std::queue<event_cleanup> cleanup_queue;
@@ -78,8 +95,6 @@ private:
 
     // true is not yet called and execute must be called
     inline bool delayed_free(event_executor *ptr) {
-        std::cout << "Reached here delayed free, total in queue " << cleanup_queue.size() <<
-                ", Timestamp " << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
         bool call_execute = false;
         pthread_mutex_lock(&cleanup_lock);
         if (closed_received.find(ptr) == closed_received.end()) {
@@ -90,6 +105,11 @@ private:
         }
         pthread_mutex_unlock(&cleanup_lock);
         return call_execute;
+    }
+
+    inline void add_thread_map(pthread_t pthread) {
+        event_thread_entry thread_entry(pthread);
+        thread_entry_map.insert(std::make_pair(pthread, thread_entry));
     }
 
 public:

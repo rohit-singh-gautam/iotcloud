@@ -11,7 +11,12 @@ namespace rohit {
 
 #define STATE_ENTRY_LIST \
     STATE_ENTRY(EVENT_DIST_NONE, "Not yet started") \
-    STATE_ENTRY(EVENT_DIST_EPOLL_WAIT, "Waiting for Event") \
+    STATE_ENTRY(EVENT_DIST_EPOLL_WAIT, "Epoll waiting for Event") \
+    STATE_ENTRY(EVENT_DIST_EPOLL_TERMINATE, "Epoll Terminated") \
+    STATE_ENTRY(EVENT_DIST_EPOLL_ERROR, "Epoll error") \
+    STATE_ENTRY(EVENT_DIST_EPOLL_PROCESSING, "Epoll processing") \
+    STATE_ENTRY(EVENT_DIST_EPOLL_CLOSE, "Epoll close") \
+    STATE_ENTRY(EVENT_DIST_EPOLL_EXECUTE, "Epoll execute") \
     STATE_DEFINITION_END
 
 

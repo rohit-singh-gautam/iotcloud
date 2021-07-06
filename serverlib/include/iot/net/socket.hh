@@ -99,6 +99,8 @@ public:
         return get_local_ipv6_addr();
     }
 
+    inline bool is_null() { return socket_id == 0; }
+
 };
 
 inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
@@ -189,6 +191,9 @@ public:
     inline socket_t accept() {
         auto client_id = ::accept(socket_id, NULL, NULL);
         if (client_id == -1) {
+            if (errno == EAGAIN) {
+                return 0;
+            }
             throw exception_t(err_t::ACCEPT_FAILURE);
         }
 
@@ -232,6 +237,9 @@ public:
     inline socket_ssl_t accept() {
         auto client_id = ::accept(socket_id, NULL, NULL);
         if (client_id == -1) {
+            if (errno == EAGAIN) {
+                return {0, nullptr};
+            }
             throw exception_t(err_t::ACCEPT_FAILURE);
         }
 

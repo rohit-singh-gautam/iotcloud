@@ -6,17 +6,10 @@
 #pragma once
 
 #include <iot/core/types.hh>
-#include "statesentry.hh"
 #include <assert.h>
 #include <unordered_map>
 
 namespace rohit {
-
-enum class state_t : state_type {
-#define STATE_ENTRY(x, y) x,
-        STATE_ENTRY_LIST
-#undef STATE_ENTRY
-};
 
 template <state_t state> struct state_description { };
 #define STATE_ENTRY(x, y) template <> struct state_description<state_t::x> { \
@@ -35,12 +28,12 @@ constexpr size_t to_string(const state_t &val, char *dest) {
     default: // This will avoid error, such condition will never reach
         assert(true);
 #define STATE_ENTRY(x, y) \
-    case state_t::x: \
+    case state_t::x: { \
         constexpr size_t desc_size = sizeof(y) \
                 - (null_terminated ? 0: 1); \
         constexpr const char desc[] = y; \
         std::copy(desc, desc + desc_size, dest); \
-        return desc_size;
+        return desc_size; }
         STATE_ENTRY_LIST
 #undef STATE_ENTRY
     }

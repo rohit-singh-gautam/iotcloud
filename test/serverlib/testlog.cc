@@ -125,7 +125,7 @@ void test_types_what_type() {
     check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
     constexpr rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
     check_formatstring_args_macro(SIZE_MAX, TEST_GUID_LOG, guid, guid);
-    check_formatstring_args_macro(SIZE_MAX, TEST_STATE_LOG, rohit::state_t::LISTEN);
+    check_formatstring_args_macro(SIZE_MAX, TEST_STATE_LOG, rohit::state_t::EVENT_DIST_NONE);
 
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
@@ -187,7 +187,7 @@ void test_logs() try {
 
     rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
     glog.log<log_t::TEST_GUID_LOG>(guid, guid);
-    glog.log<log_t::TEST_STATE_LOG>(rohit::state_t::LISTEN);
+    glog.log<log_t::TEST_STATE_LOG>(rohit::state_t::EVENT_DIST_NONE);
 
     constexpr auto wait_time = std::chrono::milliseconds(rohit::config::log_thread_wait_in_millis*2);
     std::this_thread::sleep_for(wait_time);
