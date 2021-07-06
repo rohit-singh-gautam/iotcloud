@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) try {
             {'r', "repeat", "Repeat Count", "Number of time repeat has to be conducted", repeat, 1U},
             {'c', "count", "Call Count", "Number of time to call in each repeat", call_count, 1U},
             {'p', "parallel_count", "number of threads", "Number of parallel thread to be created", parallel_count, 1U},
-            {'w', "wait", "time in second", "Time to wait for before terminating", wait_time_in_s, 1U},
+            {'w', "wait", "time in second", "Time to wait for before terminating", wait_time_in_ms, 1U},
             {"wait_call", "time in millisecond", "Time to wait in between calls", wait_call_in_ms, 1U},
             {'v', "version", "Display version", display_version}
         }

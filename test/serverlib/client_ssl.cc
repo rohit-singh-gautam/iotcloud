@@ -52,11 +52,7 @@ int main(int argc, char *argv[]) try {
     rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
     std::cout << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
 
-    err = client_socket.close();
-    if (isFailure(err)) {
-        std::cout << err << std::endl;
-        return EXIT_FAILURE;
-    }
+    client_socket.close();
 
     return EXIT_SUCCESS;
 } catch(rohit::exception_t excep) {
