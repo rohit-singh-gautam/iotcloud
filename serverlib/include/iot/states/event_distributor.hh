@@ -24,12 +24,12 @@ private:
     // This is pure virtual function can be called only from event_distributor
     virtual void execute(thread_context &ctx, const uint32_t event) = 0;
 
+public:
+    virtual ~event_executor() { }
+
 }; // class event_executor
 
 class event_cleanup {
-public:
-    static constexpr uint64_t cleanup_time_in_ns = 60ULL * 1000ULL * 1000000ULL; // 60 second
-
 private:
     event_executor *ptr;
     const uint64_t timestamp;
@@ -40,7 +40,7 @@ public:
 
     inline bool to_free() const {
         const uint64_t current_timestamp = std::chrono::system_clock::now().time_since_epoch().count();
-        return timestamp + cleanup_time_in_ns <= current_timestamp;
+        return timestamp + config::event_cleanup_time_in_ns <= current_timestamp;
     }
 
     inline void remove_and_free(std::unordered_set<event_executor *> &closed_received) {

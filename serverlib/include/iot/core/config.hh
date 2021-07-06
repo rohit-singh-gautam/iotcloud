@@ -15,6 +15,7 @@ constexpr bool log_with_check = false;
 constexpr int64_t log_thread_wait_in_millis = 50;
 constexpr int64_t event_dist_loop_wait_in_millis = 10;
 constexpr int64_t event_dist_deadlock_in_nanos = 10000LL * 1000000LL;
+constexpr uint64_t event_cleanup_time_in_ns = 30ULL * 1000ULL * 1000000ULL; // 60 second
 constexpr int socket_backlog = 5;
 
 };

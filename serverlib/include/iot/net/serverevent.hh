@@ -28,11 +28,7 @@ public:
     }
 
     inline void init() {
-        int flags = fcntl(socket_id, F_GETFL, 0);
-        if (flags != -1) {
-            flags |= O_NONBLOCK;
-            fcntl(socket_id, F_SETFL, flags);
-        }
+        socket_id.set_non_blocking();
         evtdist.add(socket_id, EPOLLIN, *this);
     }
 
@@ -48,6 +44,7 @@ public:
                 socket_t peer_id = socket_id.accept();
                 if (peer_id.is_null()) break;
                 peerevent *p_peerevent = new peerevent(peer_id);
+                peer_id.set_non_blocking();
                 evtdist.add(peer_id, EPOLLIN, *p_peerevent);
                 ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
             }
@@ -85,6 +82,7 @@ public:
     }
     
     inline void init() {
+        socket_id.set_non_blocking();
         evtdist.add(socket_id, EPOLLIN, *this);
     }
 
@@ -94,6 +92,7 @@ public:
         try {
             socket_ssl_t peer_id = socket_id.accept();
             peerevent *p_peerevent = new peerevent(peer_id);
+            peer_id.set_non_blocking();
             evtdist.add(peer_id, EPOLLIN, *p_peerevent);
             ctx.log<log_t::EVENT_SERVER_SSL_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {

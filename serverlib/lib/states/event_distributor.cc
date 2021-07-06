@@ -28,6 +28,8 @@ event_distributor::event_distributor(const int thread_count, const int max_event
     if (thread_count > cpu_count) {
         glog.log<log_t::EVENT_DIST_TOO_MANY_THREAD>();
     }
+
+    pthread_mutex_init(&cleanup_lock, nullptr);
 }
 
 void event_distributor::init() {

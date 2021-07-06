@@ -101,6 +101,16 @@ public:
 
     inline bool is_null() { return socket_id == 0; }
 
+    inline bool set_non_blocking() {
+        int flags = fcntl(socket_id, F_GETFL, 0);
+        if (flags != -1) {
+            flags |= O_NONBLOCK;
+            flags = fcntl(socket_id, F_SETFL, flags);
+        }
+
+        return flags != -1;
+    }
+
 };
 
 inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
