@@ -101,7 +101,8 @@ int main(int argc, char *argv[]) try {
     rohit::init_iot(log_file);
 
     std::cout << "Creating event distributor" << std::endl;
-    evtdist = new rohit::event_distributor();
+    evtdist = new rohit::event_distributor(126);
+    evtdist->init();
 
     if constexpr (sleep_before_create_server) {
         std::cout << "Waiting for a second" << std::endl;
@@ -112,6 +113,7 @@ int main(int argc, char *argv[]) try {
         // Execution
         std::cout << "Creating a server at port " << port << std::endl;
         srvevt = new rohit::serverevent<rohit::iotserverevent>(*evtdist, port);
+        srvevt->init();
     }
 
     if constexpr (rohit::config::enable_ssl) {
@@ -123,6 +125,7 @@ int main(int argc, char *argv[]) try {
                 secure_port,
                 cert_file,
                 prikey_file);
+            srvevt_ssl->init();
         }
     }
 

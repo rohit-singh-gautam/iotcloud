@@ -9,6 +9,8 @@
 #include <iot/core/log.hh>
 #include <unordered_map>
 #include <sys/epoll.h>
+#include <queue>
+#include <unordered_set>
 
 namespace rohit {
 
@@ -23,12 +25,36 @@ private:
 
 }; // class event_executor
 
+class event_cleanup {
+public:
+    static constexpr uint64_t cleanup_time_in_ns = 60ULL * 1000ULL * 1000000ULL; // 60 second
+
+private:
+    event_executor *ptr;
+    const uint64_t timestamp;
+
+public:
+    inline event_cleanup(event_executor *ptr)
+            : ptr(ptr), timestamp(std::chrono::system_clock::now().time_since_epoch().count()) { }
+
+    inline bool to_free() const {
+        const uint64_t current_timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+        return timestamp + cleanup_time_in_ns <= current_timestamp;
+    }
+
+    inline void remove_and_free(std::unordered_set<event_executor *> &closed_received) {
+        closed_received.erase(ptr);
+        delete ptr;
+    }
+};
+
 class event_distributor {
 public:
     static constexpr int max_event_size = 1000000;
     static constexpr int max_thread_supported = 64;
-
     static constexpr int event_wait_count = 1;
+
+    static constexpr uint64_t cleanup_loop_time_in_ns = 2ULL * 1000ULL * 1000000ULL; // two second
 
 private:
     int epollfd;
@@ -40,11 +66,36 @@ private:
     // This is a loop will keep on executing
     // till it exit
     static void *loop(void *pevtdist);
+    static void *cleanup(void *pevtdist);
+
+
+    pthread_t cleanup_thread;
+    pthread_mutex_t cleanup_lock;
+    std::unordered_set<event_executor *> closed_received;
+    std::queue<event_cleanup> cleanup_queue;
 
     friend class terminate_executor;
 
+    // true is not yet called and execute must be called
+    inline bool delayed_free(event_executor *ptr) {
+        std::cout << "Reached here delayed free, total in queue " << cleanup_queue.size() <<
+                ", Timestamp " << std::chrono::system_clock::now().time_since_epoch().count() << std::endl;
+        bool call_execute = false;
+        pthread_mutex_lock(&cleanup_lock);
+        if (closed_received.find(ptr) == closed_received.end()) {
+            // Entry has not been made yet
+            call_execute = true;
+            closed_received.insert(ptr);
+            cleanup_queue.push({ ptr });
+        }
+        pthread_mutex_unlock(&cleanup_lock);
+        return call_execute;
+    }
+
 public:
     event_distributor(const int thread_count = 0, const int max_event_size = event_distributor::max_event_size);
+
+    void init();
 
     // event_executor memory will be used directly
     // clean up is responsibility of event_executor

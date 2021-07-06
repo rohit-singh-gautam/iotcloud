@@ -53,11 +53,11 @@ public:
     inline void close() {
         int last_socket_id = __sync_lock_test_and_set(&socket_id, 0);
         if (last_socket_id) {
-            auto ret = ::close(socket_id);
+            auto ret = ::close(last_socket_id);
             if (ret == -1) {
-                glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
+                glog.log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
             } else {
-                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
+                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(last_socket_id);
             }
         }
     }
@@ -147,11 +147,11 @@ public:
         if (last_socket_id) {
             SSL_shutdown(ssl);
             SSL_free(ssl);
-            auto ret = ::close(socket_id);
+            auto ret = ::close(last_socket_id);
             if (ret == -1) {
-                glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
+                glog.log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
             } else {
-                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
+                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(last_socket_id);
             }
         }
     }

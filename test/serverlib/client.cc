@@ -68,13 +68,17 @@ void test_deviceserver() {
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_time_in_ms));
+    std::cout << "Waiting for close " << pthread_self() << std::endl;
     client_socket.close();
+    std::cout << "Closed " << pthread_self() << std::endl;
 }
 
 void *parallel_test(void *) {
     for(uint32_t repeat_index = 0; repeat_index < repeat; ++repeat_index) {
         test_deviceserver();
     }
+
+    std::cout << "Returning from thread " << pthread_self() << std::endl;
     return nullptr;
 }
 
@@ -112,10 +116,12 @@ int main(int argc, char *argv[]) try {
 
         for(uint32_t thread_index = 0; thread_index < parallel_count; ++thread_index) {
             pthread_create(&pthread[thread_index], NULL, parallel_test, nullptr);
+            std::cout << "Readhed here thread created " << pthread[thread_index] << std::endl;
         }
 
         for(uint32_t thread_index = 0; thread_index < parallel_count; ++thread_index) {
-            pthread_join(pthread[thread_index], NULL);
+            pthread_join(pthread[thread_index], nullptr);
+            std::cout << "Readhed here thread created " << pthread[thread_index] << std::endl;
         }
     }
 

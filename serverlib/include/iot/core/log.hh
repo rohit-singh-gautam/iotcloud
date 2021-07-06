@@ -97,7 +97,6 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_DIST_LOOP_WAIT_INTERRUPTED, WARNING, EVENT_DISTRIBUTOR, "Event distributor loop interrupted with error %ve,  waiting for a second and retry") \
     LOGGER_ENTRY(EVENT_DIST_TOO_MANY_THREAD, WARNING, EVENT_DISTRIBUTOR, "Event distributor created with threads more than CPUs") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to close epoll with error %ve") \
-    LOGGER_ENTRY(EVENT_DIST_NO_THREAD_CANCEL, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to set thread cancel flag with error %ve, exit may not be proper") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_JOIN_FAILED, WARNING, EVENT_DISTRIBUTOR, "Event distributor unable to join thread with error %ve") \
     LOGGER_ENTRY(EVENT_DIST_EXIT_THREAD_JOIN_SUCCESS, VERBOSE, EVENT_DISTRIBUTOR, "Event distributor join thread success") \
     LOGGER_ENTRY(EVENT_DIST_CREATE_SUCCESS, INFO, EVENT_DISTRIBUTOR, "Event distributor creation succeeded") \
