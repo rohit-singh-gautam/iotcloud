@@ -5,6 +5,7 @@
 
 #include <iot/core/configparser.hh>
 #include <iot/core/conversion.hh>
+#include <libgen.h>
 
 namespace rohit {
 
@@ -14,6 +15,7 @@ enum class parser_state {
 };
 
 bool commandline::parser(int argc, char *argv[]) {
+    name = basename(argv[0]);
     parser_state state = parser_state::OPTION;
     commandline_option *optionentry;
     for(int arg_index = 1; arg_index < argc; ++arg_index) {

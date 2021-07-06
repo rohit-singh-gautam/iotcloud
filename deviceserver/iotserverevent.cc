@@ -10,10 +10,9 @@
 namespace rohit {
 
 void iotserverevent::close(thread_context &ctx) {
-    ctx.remove_event(peer_id);
+    int last_peer_id = peer_id;
     peer_id.close();
-
-    ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)peer_id);
+    ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
 
     const auto to_free = this;
     delete to_free;
@@ -59,10 +58,9 @@ void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
 }
 
 void iotserverevent_ssl::close(thread_context &ctx) {
-    ctx.remove_event(peer_id);
+    int last_peer_id = peer_id;
     peer_id.close();
-
-    ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)peer_id);
+    ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
 
     const auto to_free = this;
     //delete to_free;

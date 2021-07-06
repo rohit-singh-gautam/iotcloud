@@ -64,6 +64,7 @@ public:
     ipv6_addr_t addr;
     ipv6_port_t port;
 
+    constexpr ipv6_socket_addr_t() : addr(), port(0) { }
     constexpr ipv6_socket_addr_t(const ipv6_addr_t &addr, const ipv6_port_t port) : addr(addr), port(port) { }
     constexpr ipv6_socket_addr_t(const void *addr, const ipv6_port_t port) : addr(*(ipv6_addr_t *)addr), port(port) { }
     constexpr ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port);
@@ -94,6 +95,7 @@ public:
     constexpr guid_t(const uint8_t *guid_binary) : guid_8() { std::copy(guid_binary, guid_binary + size, guid_8); }
 
     constexpr uint8_t operator[](size_t index) const { return guid_8[index]; }
+
 } __attribute__((packed)); // class guid_t
 
 typedef uint16_t log_id_type;

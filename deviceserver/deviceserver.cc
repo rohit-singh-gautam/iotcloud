@@ -9,7 +9,6 @@
 #include <iot/core/version.h>
 #include <signal.h>
 
-constexpr char app_name[] = "deviceserver";
 constexpr bool sleep_before_create_server = false;
 rohit::ipv6_port_t port(0);
 rohit::ipv6_port_t secure_port(0);
@@ -21,7 +20,6 @@ bool display_version;
 
 bool parse_and_display(int argc, char *argv[]) {
     rohit::commandline param_parser(
-        app_name,
         "IOT device server that is used to push data on all the devices",
         "Device server is designed to keep hold on all the IOT devices connected to internet. "
         "All devices share their state with this server and even devices are contolled by this server. ",
@@ -40,7 +38,7 @@ bool parse_and_display(int argc, char *argv[]) {
     if (!ret) std::cout << param_parser.usage() << std::endl;
 
     if (display_version) {
-        std::cout << app_name << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
+        std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
         return false;
     }
 

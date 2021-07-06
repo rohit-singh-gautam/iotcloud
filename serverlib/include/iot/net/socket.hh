@@ -43,21 +43,22 @@ inline int create_socket() {
 
 class socket_t {
 protected:
-    const int socket_id;
+    int socket_id;
 
     inline socket_t() : socket_id(create_socket()) {}
 public:
     inline constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
     inline operator int() const { return socket_id; }
 
-    inline err_t close() const {
-        auto ret = ::close(socket_id);
-        if (ret == -1) {
-            glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
-            return err_t::CLOSE_FAILURE;
-        } else {
-            glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
-            return err_t::SUCCESS;
+    inline void close() {
+        int last_socket_id = __sync_lock_test_and_set(&socket_id, 0);
+        if (last_socket_id) {
+            auto ret = ::close(socket_id);
+            if (ret == -1) {
+                glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
+            } else {
+                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
+            }
         }
     }
 
@@ -141,16 +142,17 @@ public:
         return err_t::SUCCESS;
     }
 
-    inline err_t close() const {
-        SSL_shutdown(ssl);
-        SSL_free(ssl);
-        auto ret = ::close(socket_id);
-        if (ret == -1) {
-            glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
-            return err_t::CLOSE_FAILURE;
-        } else {
-            glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
-            return err_t::SUCCESS;
+    inline void close() {
+        int last_socket_id = __sync_lock_test_and_set(&socket_id, 0);
+        if (last_socket_id) {
+            SSL_shutdown(ssl);
+            SSL_free(ssl);
+            auto ret = ::close(socket_id);
+            if (ret == -1) {
+                glog.log<log_t::SOCKET_CLOSE_FAILED>(socket_id, errno);
+            } else {
+                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(socket_id);
+            }
         }
     }
 

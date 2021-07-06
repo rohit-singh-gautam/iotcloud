@@ -122,7 +122,7 @@ struct commandline_option {
 
 class commandline {
 private:
-    const std::string name;
+    std::string name;
     const std::string short_description;
     const std::string summary;
     std::unordered_map<std::string, commandline_option *> options_name;
@@ -133,11 +133,10 @@ private:
 
 public:
     commandline(
-        const char *name,
         const char *short_description,
         const char *summary,
         std::initializer_list<commandline_option> options_in) 
-            : name(name), short_description(short_description), summary(summary), options(options_in)
+            : short_description(short_description), summary(summary), options(options_in)
     {
         options.push_back({'h', "help", "Display this help", help});
         for(commandline_option &value: options) {
@@ -149,6 +148,9 @@ public:
     bool parser(int argc, char *argv[]);
 
     const std::string usage() const;
+    const std::string get_name() const {
+        return name;
+    }
 
 };
 
