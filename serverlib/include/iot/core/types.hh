@@ -65,7 +65,7 @@ public:
     ipv6_addr_t addr;
     ipv6_port_t port;
 
-    constexpr ipv6_socket_addr_t() : addr(), port(0) { }
+    constexpr ipv6_socket_addr_t() : addr({0}), port(0) { }
     constexpr ipv6_socket_addr_t(const ipv6_addr_t &addr, const ipv6_port_t port) : addr(addr), port(port) { }
     constexpr ipv6_socket_addr_t(const void *addr, const ipv6_port_t port) : addr(*(ipv6_addr_t *)addr), port(port) { }
     constexpr ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port);
