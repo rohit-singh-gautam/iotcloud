@@ -198,6 +198,10 @@ pthread_t log_thread;
 int log_filedescriptor = 0;
 bool log_thread_running = false;
 
+void segv_log_flush() {
+    flush_all_logger(log_filedescriptor);
+}
+
 static void *log_thread_function(void *) {
     constexpr auto wait_time = std::chrono::milliseconds(config::log_thread_wait_in_millis);
     log_thread_running = true;

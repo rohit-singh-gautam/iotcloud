@@ -582,6 +582,7 @@ extern logger<true> glog;
 
 void init_log_thread(const char *filename);
 void destroy_log_thread();
+void segv_log_flush();
 
 
 class logger_logs_entry_read_compare {

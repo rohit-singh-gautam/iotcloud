@@ -49,7 +49,7 @@ rohit::event_distributor *evtdist = nullptr;
 rohit::serverevent<rohit::iotserverevent> *srvevt = nullptr;
 rohit::serverevent_ssl<rohit::iotserverevent_ssl> *srvevt_ssl = nullptr;
 
-void destroy_app(int) {
+void destroy_app() {
     if (evtdist) {
         evtdist->terminate();
         std::cout << "Destroying IOT" << std::endl;
@@ -70,8 +70,35 @@ void destroy_app(int) {
     delete evtdist;
 
     std::cout << "All thread joined" << std::endl;
+}
+
+void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
+    destroy_app();
+
+    exit(0);
+}
+
+void signal_segmentation_fault(int signal, siginfo_t *siginfo, void *args) {
+    rohit::segv_log_flush();
 
     exit(1);
+}
+
+void set_sigaction() {
+    struct sigaction sa = { 0 };
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = signal_destroy_app;
+    sa.sa_flags   = SA_SIGINFO;
+
+    sigaction(SIGINT, &sa, nullptr);
+    sigaction(SIGTERM, &sa, nullptr);
+
+    struct sigaction sa_segv = { 0 };
+    sigemptyset(&sa_segv.sa_mask);
+    sa_segv.sa_sigaction = signal_segmentation_fault;
+    sa_segv.sa_flags   = SA_SIGINFO;
+
+    sigaction(SIGSEGV, &sa, nullptr);
 }
 
 int main(int argc, char *argv[]) try {
@@ -91,8 +118,7 @@ int main(int argc, char *argv[]) try {
         prikey_file = cert_file;
     }
 
-    signal(SIGINT, destroy_app);
-    signal(SIGTERM, destroy_app);
+    set_sigaction();
 
     rohit::enabled_module.enable_all();
 
@@ -136,8 +162,8 @@ int main(int argc, char *argv[]) try {
     return 0;
 } catch (rohit::exception_t e) {
     std::cout << "Exception received " << e << std::endl;
-    destroy_app(0);
+    destroy_app();
 } catch (...) {
     std::cout << "Exception received " << std::endl;
-    destroy_app(0);
+    destroy_app();
 }
