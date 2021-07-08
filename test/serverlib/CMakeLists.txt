@@ -26,8 +26,3 @@ target_link_libraries(ServerLibraryTestLog PUBLIC ${lib_common})
 target_link_libraries(ServerLibraryTestMemory PUBLIC ${lib_common})
 target_link_libraries(ServerLibraryTestIPv6Addr PUBLIC ${lib_common})
 target_link_libraries(ServerLibraryTestSocketClient PUBLIC ${lib_common})
-
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
