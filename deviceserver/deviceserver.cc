@@ -8,15 +8,12 @@
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>
 #include <signal.h>
+#include <json.hpp>
 
-constexpr bool sleep_before_create_server = false;
-rohit::ipv6_port_t port(0);
-rohit::ipv6_port_t secure_port(0);
-const char *cert_file = nullptr;
-const char *prikey_file = nullptr;
 const char *log_file;
 const char *config_folder;
 bool display_version;
+bool log_debug_mode;
 
 bool parse_and_display(int argc, char *argv[]) {
     rohit::commandline param_parser(
@@ -24,13 +21,10 @@ bool parse_and_display(int argc, char *argv[]) {
         "Device server is designed to keep hold on all the IOT devices connected to internet. "
         "All devices share their state with this server and even devices are contolled by this server. ",
         {
-            {'p', "port", "port address", "Port device server would listen to", port, rohit::ipv6_port_t(0)},
-            {'s', "secure_port", "SSL port address", "Port device server would listen to", secure_port, rohit::ipv6_port_t(0)},
-            {'k', "cert_file", "certificate file path", "Path to certificate", cert_file},
-            {"prikey_file", "primary key file path", "Path to primary key, if not provided cert_file will be used", prikey_file, (const char *)nullptr},
             {'l', "log_file", "file path", "Path to save log file", log_file, "/var/log/iotcloud/deviceserver.log"},
-            {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file network and logmodule", config_folder, "/etc/iotcloud"},
-            {'v', "version", "Display version", display_version}
+            {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file iot.json and logmodule.json", config_folder, "/etc/iotcloud"},
+            {'v', "version", "Display version", display_version},
+            {'d', "debug", "Dumps all the logs, logs file will be very big", log_debug_mode}
         }
     );
 
@@ -46,8 +40,76 @@ bool parse_and_display(int argc, char *argv[]) {
 }
 
 rohit::event_distributor *evtdist = nullptr;
-rohit::serverevent<rohit::iotserverevent> *srvevt = nullptr;
-rohit::serverevent_ssl<rohit::iotserverevent_ssl> *srvevt_ssl = nullptr;
+std::vector<rohit::serverevent<rohit::iotserverevent> *> srvevts;
+std::vector<rohit::serverevent_ssl<rohit::iotserverevent_ssl> *> srvevts_ssl;
+
+const std::string load_config_string(const char *const configfile) {
+    int fd = open(configfile, O_RDONLY);
+    if ( fd == -1 ) {
+        perror("Unable to open file");
+        return 0;
+    }
+
+    struct stat bufstat;
+    fstat(fd, &bufstat);
+
+    int size = bufstat.st_size;
+    char buffer[size];
+
+    auto read_size = read(fd, buffer, size);
+    std::string buffer_str = std::string(buffer);
+    
+    return buffer_str;
+}
+
+void load_and_execute_config(const std::string configfile) {
+    std::string buffer = load_config_string(configfile.c_str());
+
+    auto config = json::JSON::Load(buffer);
+
+    auto servers = config["servers"];
+
+    for(auto server: servers.ArrayRange()) {
+        const auto IP = server["IP"].ToString();
+        const auto TYPE = server["TYPE"].ToString();
+        const auto port = server["port"].ToInt();
+
+        if (IP != "*") {
+            std::cout << "Only * is supported for IP address, skipping creation of this server" << std::endl;
+            continue;
+        }
+
+        if (port == 0) {
+            std::cout << "Port not provided or it is 0, skipping creation of this server" << std::endl;
+            continue;
+        }
+
+        if (TYPE == "simple") {
+            std::cout << "Creating a server at port " << port << std::endl;
+            rohit::serverevent<rohit::iotserverevent> *srvevt =
+                new rohit::serverevent<rohit::iotserverevent>(*evtdist, port);
+            srvevt->init();
+            srvevts.push_back(srvevt);
+        } else if (TYPE == "ssl") {
+            const auto cert_file = server["CertFile"].ToString();
+            const auto prikey_file_temp = server["PrikeyFile"].ToString();
+            const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
+
+            std::cout << "Creating a SSL server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
+            auto srvevt_ssl = new rohit::serverevent_ssl<rohit::iotserverevent_ssl>(
+                *evtdist,
+                port,
+                cert_file.c_str(),
+                prikey_file.c_str());
+            srvevt_ssl->init();
+
+            srvevts_ssl.push_back(srvevt_ssl);
+        } else {
+            std::cout << "Unknown server type " << TYPE << ", skipping creation of this server" << std::endl;
+            continue;
+        }
+    }
+}
 
 void destroy_app() {
     if (evtdist) {
@@ -56,12 +118,12 @@ void destroy_app() {
         rohit::destroy_iot();
     }
 
-    if (srvevt) {
+    for(auto srvevt: srvevts) {
         srvevt->close();
         delete srvevt;
     }
 
-    if (srvevt_ssl) {
+    for(auto srvevt_ssl: srvevts_ssl) {
         srvevt_ssl->close();
         delete srvevt_ssl;
     }
@@ -104,23 +166,11 @@ void set_sigaction() {
 int main(int argc, char *argv[]) try {
     if (!parse_and_display(argc, argv)) return EXIT_SUCCESS;
 
-    if (port == 0 && secure_port == 0) {
-        std::cout << "Atleast one of port or secure_port must be set" << std::endl;
-        return EXIT_SUCCESS;
-    }
-
-    if (secure_port != 0 && cert_file == nullptr) {
-        std::cout << "For secure port cert file is mandatory" << std::endl;
-        return EXIT_SUCCESS;
-    }
-
-    if (cert_file != nullptr && prikey_file == nullptr) {
-        prikey_file = cert_file;
-    }
-
     set_sigaction();
 
-    rohit::enabled_module.enable_all();
+    if (log_debug_mode) {
+        rohit::enabled_log_module.enable_all();
+    }
 
     // Initialization
     std::cout << "Opening log file at " << log_file << std::endl;
@@ -130,30 +180,11 @@ int main(int argc, char *argv[]) try {
     evtdist = new rohit::event_distributor();
     evtdist->init();
 
-    if constexpr (sleep_before_create_server) {
-        std::cout << "Waiting for a second" << std::endl;
-        sleep(1);
-    }
+    const auto str_config_folder = std::string(config_folder);
+    const auto configfile = str_config_folder + "/iot.json";
 
-    if (port != 0) {
-        // Execution
-        std::cout << "Creating a server at port " << port << std::endl;
-        srvevt = new rohit::serverevent<rohit::iotserverevent>(*evtdist, port);
-        srvevt->init();
-    }
-
-    if constexpr (rohit::config::enable_ssl) {
-        if (secure_port != 0) {
-            // Execution
-            std::cout << "Creating a SSL server at port " << secure_port << std::endl;
-            srvevt_ssl = new rohit::serverevent_ssl<rohit::iotserverevent_ssl>(
-                *evtdist,
-                secure_port,
-                cert_file,
-                prikey_file);
-            srvevt_ssl->init();
-        }
-    }
+    // Loading servers
+    load_and_execute_config(configfile);
 
     // Wait and terminate
     std::cout << "Waiting for all thread to join" << std::endl;

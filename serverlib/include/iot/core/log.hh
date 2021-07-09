@@ -387,7 +387,7 @@ public:
 
 }; // class active_module
 
-extern active_module enabled_module;
+extern active_module enabled_log_module;
 
 // This is global
 // Any prameter change will have global impact
@@ -469,7 +469,7 @@ public:
     template <log_t ID, typename... ARGS>
     void log(const ARGS&... args)
     {
-        if (!enabled_module.is_enabled<ID>()) return;
+        if (!enabled_log_module.is_enabled<ID>()) return;
         const int64_t nanosecond = std::chrono::system_clock::now().time_since_epoch().count();
         logger_logs_entry<ID, ARGS...> logs_entry(nanosecond, args...);
         lock();

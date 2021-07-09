@@ -1,0 +1,22 @@
+{
+    "servers" :[
+        {
+            "TYPE" : "simple",
+            "port" : 8080,
+            "IP"   : "*"
+        },
+        {
+            "TYPE" : "ssl",
+            "port" : 8081,
+            "IP"   : "*",
+            "CertFile" : "/home/rohit/iotcloud/key/testcert.pem",
+            "PrikeyFile" : "/home/rohit/iotcloud/key/testcert.pem"
+        },
+        {
+            "name" : "Protected",
+            "TYPE" : "secure",
+            "port" : 8082,
+            "IP"   : "*"
+        }
+    ]
+}

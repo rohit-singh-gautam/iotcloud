@@ -22,7 +22,7 @@ template<> size_t logger<false>::logger_count = 0;
 template<> logger<true> *logger<true>::logger_array[logger<true>::max_logger] = {};
 template<> logger<false> *logger<false>::logger_array[logger<false>::max_logger] = {};
 
-active_module enabled_module;
+active_module enabled_log_module;
 
 logreader::logreader(const std::string &filename) : 
     file_descriptor(open(filename.c_str(), O_RDONLY)),

@@ -46,10 +46,12 @@ void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
             rohit::message_unknown_t unknownMessage;
             write_buffer_size = sizeof(unknownMessage);
             write_buffer = (void *)&unknownMessage;
+            std::cout << "------Reply Start---------\n" << unknownMessage << "\n------Reply End---------\n";
         } else {
             rohit::message_success_t successMessage;
             write_buffer_size = sizeof(successMessage);
             write_buffer = (void *)&successMessage;
+            std::cout << "------Reply Start---------\n" << successMessage << "\n------Reply End---------\n";
         }
 
         err = peer_id.write(write_buffer, write_buffer_size);
