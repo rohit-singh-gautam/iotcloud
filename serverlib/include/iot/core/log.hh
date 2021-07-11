@@ -120,6 +120,8 @@ namespace rohit {
     LOGGER_ENTRY(IOT_EVENT_SERVER_COMMAND_RECEIVED, VERBOSE, IOT_EVENT_SERVER, "IOT Event Server received message %vN") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %ve") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed fd %i") \
+    LOGGER_ENTRY(IOT_EVENT_SERVER_WRITE_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer write failed with error %ve") \
+    LOGGER_ENTRY(IOT_EVENT_SERVER_ZERO_WRITE, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer written zero byte") \
     \
     LOGGER_ENTRY(SYSTEM_ERROR, ERROR, SYSTEM, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \

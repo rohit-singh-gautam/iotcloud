@@ -54,7 +54,23 @@ void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
             std::cout << "------Reply Start---------\n" << successMessage << "\n------Reply End---------\n";
         }
 
-        err = peer_id.write(write_buffer, write_buffer_size);
+        int attempt_to_write = 0;
+        while(attempt_to_write < config::attempt_to_write) {
+            size_t written_length;
+            err = peer_id.write(write_buffer, write_buffer_size, written_length);
+            if (isFailure(err)) {
+                ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+                break;
+            }
+            
+            if (written_length != 0) break;
+            ++attempt_to_write;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+
+        if (attempt_to_write == config::attempt_to_write) {
+            ctx.log<log_t::IOT_EVENT_SERVER_ZERO_WRITE>();
+        }
     }
 }
 

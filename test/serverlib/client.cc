@@ -43,12 +43,16 @@ void test_deviceserver() {
 
     for(uint32_t call_index = 0; call_index < call_count; ++call_index) {
         ++calls;
-        rohit::err_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
+        size_t written_length = 0;
+        rohit::err_t err = client_socket.write((void*)&messageCommand, messageCommand.length(), written_length);
         if (isFailure(err)) {
             ++write_failed;
             std::cout << "Write failed " << err << std::endl;
             client_socket.close();
             return;
+        } else if (written_length == 0) {
+            ++write_failed;
+            std::cout << "Zero bytes written " << std::endl;
         }
 
         size_t read_buffer_size = sizeof(rohit::message_command_t);
@@ -58,7 +62,7 @@ void test_deviceserver() {
         err = client_socket.read((void *)read_buffer, read_buffer_size, read_buffer_length);
         if (isFailure(err)) {
             ++read_failed;
-            std::cout << "Read failed " << err << std::endl;
+            std::cout << "Read failed " << strerror(errno) << std::endl;
             client_socket.close();
             return;
         }
@@ -139,7 +143,7 @@ int main(int argc, char *argv[]) try {
             {'r', "repeat", "Repeat Count", "Number of time repeat has to be conducted", repeat, 1U},
             {'c', "count", "Call Count", "Number of time to call in each repeat", call_count, 1U},
             {'p', "parallel_count", "number of threads", "Number of parallel thread to be created", parallel_count, 1U},
-            {'w', "wait", "time in second", "Time to wait for before terminating", wait_time_in_ms, 1U},
+            {'w', "wait", "time in millisecond", "Time to wait for before terminating", wait_time_in_ms, 1U},
             {"wait_call", "time in millisecond", "Time to wait in between calls", wait_call_in_ms, 1U},
             {'v', "version", "Display version", display_version}
         }
