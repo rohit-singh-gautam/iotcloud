@@ -13,6 +13,7 @@ find_package(PostgreSQL REQUIRED)
 
 add_library(ServerLibrary
     lib/memory/memory.cc
+    lib/security/crypto.cc
     lib/net/socket.cc
     lib/core/configparser.cc
     lib/states/event_distributor.cc

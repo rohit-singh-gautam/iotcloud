@@ -1,4 +1,7 @@
-
+-- ////////////////////////////////////////////////////////////
+-- // Copyright 2021 Rohit Jairaj Singh (rohit@singh.org.in) //
+-- // Private file do not read, copy, share or distribute    //
+-- ////////////////////////////////////////////////////////////
 -- CREATE USER iotuser;
 -- CREATE DATABASE iot;
 -- GRANT ALL PRIVILEGES ON DATABASE "iot" TO iotuser;
@@ -20,10 +23,21 @@ DROP TABLE IF EXISTS AUTHORIZATIONS CASCADE;
 DROP TYPE IF EXISTS PUBLIC_DEVICE_TYPE;
 
 CREATE TABLE PROTECTED_DEVICE (
-    ID          UUID        PRIMARY KEY,
-    PUBLICKEY   BYTEA,
-    MODELID     UUID
+    ID              UUID    PRIMARY KEY,
+    SYMMETRIC_KEY   BYTEA,                  -- This will be created by authentication server
+    KEY_EXPIRY      TIMESTAMP,
+    MODELID         UUID
 );
+
+-- Below table is heavily edited hence has to be optimized.
+-- Avoiding primary key will help with it
+CREATE TABLE PROTECTED_DEVICE_RANDOMIZATION (
+    DEVICE_ID       UUID,
+    RANDOM_ID       UUID   
+);
+
+CREATE INDEX PROTECTED_DEVICE_RANDOMIZATION_DEVICE_ID_INDEX ON PROTECTED_DEVICE_RANDOMIZATION USING HASH (DEVICE_ID);
+CREATE INDEX PROTECTED_DEVICE_RANDOMIZATION_RANDOM_ID_INDEX ON PROTECTED_DEVICE_RANDOMIZATION USING HASH (RANDOM_ID);
 
 CREATE TABLE MODEL (
     ID          INTEGER     PRIMARY KEY,
