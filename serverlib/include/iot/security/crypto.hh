@@ -45,23 +45,26 @@ struct key_aes_256_gsm_t : key_t {
 } __attribute__((packed));
 
 struct encrypted_data_aes_256_gsm_t {
+    uint8_t aad[16];
     uint8_t initialization_vector[96/8];
     uint8_t tag[96/8];
     uint16_t data_size;
 
-    static constexpr size_t const_size = sizeof(initialization_vector) + sizeof(tag) + sizeof(data_size);
+    static constexpr size_t const_size =
+            sizeof(aad) + sizeof(initialization_vector) +
+            sizeof(tag) + sizeof(data_size);
     uint8_t data[0];
 } __attribute__((packed));
 
 // Parameters:
 // data [in]: Plain binary data
 // encrypted_data [out]: Encrypted data, memory allocated by openssl
-err_t encrypt(const key_t &key, const mem &data, openssl_mem &encrypted_data);
+err_t encrypt(const key_t &key, const guid_t &random, const mem &data, openssl_mem &encrypted_data);
 
 // Parameters:
 // data [in]: Encrypted data
 // decrypted_data [out]: Decrypted data, memory allocated
-err_t decrypt(const key_t &key, const mem &encrypt_data, openssl_mem &decrypted_data);
+err_t decrypt(const key_t &key, const mem &encrypted_data, openssl_mem &decrypted_data);
 
 
 } // namespace crypto

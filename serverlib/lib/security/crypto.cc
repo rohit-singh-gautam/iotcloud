@@ -13,21 +13,21 @@ namespace crypto {
 // Parameters:
 // data [in]: Plain binary data
 // encrypted_data [out]: Encrypted data, memory allocated by openssl
-err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const mem &data, openssl_mem &encrypted_data);
+err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const guid_t &random, const mem &data, openssl_mem &encrypted_data);
 
 // Parameters:
 // data [in]: Encrypted data
 // decrypted_data [out]: Decrypted data, memory allocated
 err_t decrypt_aes_256_gsm(
     const key_aes_256_gsm_t &key,
-    const encrypted_data_aes_256_gsm_t &encrypt_data,
+    const encrypted_data_aes_256_gsm_t &encrypted_data,
     openssl_mem &decrypted_data);
 
-err_t encrypt(const key_t &key, const mem &data, openssl_mem &encrypted_data) {
+err_t encrypt(const key_t &key, const guid_t &random, const mem &data, openssl_mem &encrypted_data) {
     switch(key.id) {
     case encryption_id_t::aes_256_gsm: {
         const key_aes_256_gsm_t * const aes_key = (const key_aes_256_gsm_t *)&key;
-        return encrypt_aes_256_gsm(*aes_key, data, encrypted_data);
+        return encrypt_aes_256_gsm(*aes_key, random, data, encrypted_data);
     }
 
     default:
@@ -35,11 +35,11 @@ err_t encrypt(const key_t &key, const mem &data, openssl_mem &encrypted_data) {
     }
 }
 
-err_t decrypt(const key_t &key, const mem &encrypt_data, openssl_mem &decrypted_data) {
+err_t decrypt(const key_t &key, const mem &encrypted_data, openssl_mem &decrypted_data) {
     switch(key.id) {
     case encryption_id_t::aes_256_gsm: {
         const key_aes_256_gsm_t *aes_key = (const key_aes_256_gsm_t *)&key;
-        encrypted_data_aes_256_gsm_t *aes_encrypt_data = (encrypted_data_aes_256_gsm_t *)encrypt_data.ptr;
+        encrypted_data_aes_256_gsm_t *aes_encrypt_data = (encrypted_data_aes_256_gsm_t *)encrypted_data.ptr;
         return decrypt_aes_256_gsm(*aes_key, *aes_encrypt_data, decrypted_data);
     }
 
@@ -48,7 +48,7 @@ err_t decrypt(const key_t &key, const mem &encrypt_data, openssl_mem &decrypted_
     }
 }
 
-err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const mem &data, openssl_mem &encrypted_data) {
+err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const guid_t &random, const mem &data, openssl_mem &encrypted_data) {
     encrypted_data.size =
         encrypted_data_aes_256_gsm_t::const_size + ((data.size + 0xf) & ~0xf);
     encrypted_data.ptr = OPENSSL_malloc(encrypted_data.size);
@@ -73,6 +73,12 @@ err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const mem &data, openssl
     }
 
     int length;
+    if (ret == err_t::SUCCESS) {
+        std::copy((uint8_t *)&random, (uint8_t *)&random + sizeof(guid_t), encrypt_data->aad);
+        if (EVP_EncryptUpdate(ctx, NULL, &length, encrypt_data->aad, sizeof(encrypted_data_aes_256_gsm_t::aad)) == 0)
+            ret = err_t::CRYPTO_ENCRYPT_AES_FAILED;
+    }
+
     if (ret == err_t::SUCCESS) {
         if (EVP_EncryptUpdate(ctx, encrypt_data->data, &length, (const uint8_t *)data.ptr, data.size) == 0)
             ret = err_t::CRYPTO_ENCRYPT_AES_FAILED;
@@ -104,10 +110,10 @@ err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const mem &data, openssl
 
 err_t decrypt_aes_256_gsm(
     const key_aes_256_gsm_t &key,
-    const encrypted_data_aes_256_gsm_t &encrypt_data,
+    const encrypted_data_aes_256_gsm_t &encrypted_data,
     openssl_mem &decrypted_data)
 {
-    decrypted_data.ptr = (uint8_t *)OPENSSL_malloc(encrypt_data.data_size);
+    decrypted_data.ptr = (uint8_t *)OPENSSL_malloc(encrypted_data.data_size);
     if (decrypted_data.ptr == nullptr)  return err_t::CRYPTO_MEMORY_FAILURE;
 
     err_t ret = err_t::SUCCESS;
@@ -120,25 +126,30 @@ err_t decrypt_aes_256_gsm(
     }
 
     if (ret == err_t::SUCCESS) {
-        if (EVP_DecryptInit_ex(ctx, NULL, NULL, key.symetric_key, encrypt_data.initialization_vector) == 0)
+        if (EVP_DecryptInit_ex(ctx, NULL, NULL, key.symetric_key, encrypted_data.initialization_vector) == 0)
             ret = err_t::CRYPTO_INIT_AES_FAILED;
     }
 
     int length;
     if (ret == err_t::SUCCESS) {
+        if (EVP_DecryptUpdate(ctx, NULL, &length, encrypted_data.aad, sizeof(encrypted_data_aes_256_gsm_t::aad)) == 0)
+            ret = err_t::CRYPTO_DECRYPT_AES_FAILED;
+    }
+
+    if (ret == err_t::SUCCESS) {
         if (EVP_DecryptUpdate(
                 ctx,
                 (uint8_t *)decrypted_data.ptr,
                 &length,
-                (const uint8_t *)encrypt_data.data,
-                encrypt_data.data_size) == 0)
+                (const uint8_t *)encrypted_data.data,
+                encrypted_data.data_size) == 0)
             ret = err_t::CRYPTO_DECRYPT_AES_FAILED;
     }
 
     if (ret == err_t::SUCCESS) {
         decrypted_data.size = length;
 
-        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, sizeof(encrypted_data_aes_256_gsm_t::tag), (void *)encrypt_data.tag) == 0)
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, sizeof(encrypted_data_aes_256_gsm_t::tag), (void *)encrypted_data.tag) == 0)
             ret = err_t::CRYPTO_ENCRYPT_AES_FAILED;
     }
 

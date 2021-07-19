@@ -11,15 +11,18 @@ uint16_t failure = 0;
 
 void test_aes_256_gsm() {
     rohit::crypto::key_aes_256_gsm_t key;
+    uint8_t random_value[16];
     
-    // Creating random symetric key
+    // Creating random symmetric key
     RAND_bytes(key.symetric_key, sizeof(key.symetric_key));
+    RAND_bytes(random_value, sizeof(random_value));
+    rohit::guid_t random_guid(random_value);
 
     constexpr char message[] = "This is a test.";
     rohit::crypto::mem data = {(void *)message, sizeof(message)};
 
     rohit::crypto::openssl_mem encrypted_data;
-    rohit::err_t ret = encrypt(key, data, encrypted_data);
+    rohit::err_t ret = encrypt(key, random_guid, data, encrypted_data);
 
     if (ret != rohit::err_t::SUCCESS) {
         std::cout << "Failed to encrypt data with err: " << ret;
