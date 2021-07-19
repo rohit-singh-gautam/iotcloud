@@ -134,7 +134,7 @@ public:
         constexpr size_t alloc_size = (sizeof(T) + 7) & (~7);
         static_assert(alloc_size <= max_allocation_size, "This allocator support maximum max_allocation_size memory");
 
-        return new (get_memory(alloc_size)) T(args...);;
+        return new (get_memory(alloc_size)) T(args...);
     }
 
     inline void *alloc(const size_t alloc_size) {
