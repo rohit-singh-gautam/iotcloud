@@ -12,6 +12,11 @@
 
 namespace rohit {
 
+constexpr ipv6_port_t to_ipv6_port_t(const char *src, size_t *len = nullptr) {
+    uint16_t value = to_uint<uint16_t>(src, len);
+    return { value };
+}
+
 constexpr size_t ipv6_addr_t_max_hex_string = 40; // "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx"
 
 // This function parse ipv6 string to ipv6_addr_t
@@ -176,6 +181,5 @@ inline std::ostream& operator<<(std::ostream& os, const ipv6_socket_addr_t &ipv6
 
 constexpr ipv6_socket_addr_t::ipv6_socket_addr_t(const char *addrstr, const ipv6_port_t port)
     : addr(to_ipv6_addr_t(addrstr)), port(port) { }
-
 
 } // namespace rohit

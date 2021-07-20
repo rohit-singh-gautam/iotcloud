@@ -4,9 +4,9 @@
 ////////////////////////////////////////////////////////////
 
 #pragma once
+#include <stdint.h>
 
 namespace rohit {
-
 namespace config {
 
 constexpr bool debug = true;
@@ -20,6 +20,4 @@ constexpr uint64_t attempt_to_write = 10;
 constexpr int socket_backlog = 5;
 
 };
-
-
 };

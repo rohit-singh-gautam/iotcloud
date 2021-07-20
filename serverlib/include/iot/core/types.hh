@@ -96,6 +96,18 @@ public:
 
     constexpr uint8_t operator[](size_t index) const { return guid_8[index]; }
 
+    constexpr operator void *() { return (void *)guid_8; }
+    constexpr operator const void *() const { return (const void *)guid_8; }
+    constexpr operator uint8_t *() { return guid_8; }
+    constexpr operator const uint8_t *() const { return guid_8; }
+
+    /* Below are not good for packed
+    constexpr operator uint16_t *() { return guid_16; }
+    constexpr operator const uint16_t *() const { return guid_16; }
+    constexpr operator uint32_t *() { return guid_32; }
+    constexpr operator const uint32_t *() const { return guid_32; }
+    constexpr operator uint64_t *() { return guid_64; }
+    constexpr operator const uint64_t *() const { return guid_64; } */
 } __attribute__((packed)); // class guid_t
 
 typedef uint16_t log_id_type;

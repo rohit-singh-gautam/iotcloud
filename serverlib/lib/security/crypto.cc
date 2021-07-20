@@ -3,6 +3,7 @@
 // Private file do not read, copy, share or distribute    //
 ////////////////////////////////////////////////////////////
 
+#include <iot/core/math.hh>
 #include <iot/security/crypto.hh>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -10,14 +11,51 @@
 namespace rohit {
 namespace crypto {
 
-// Parameters:
-// data [in]: Plain binary data
-// encrypted_data [out]: Encrypted data, memory allocated by openssl
+std::ostream& operator<<(std::ostream& os, const mem &binary) {
+    char str_val[3];
+    for(auto value: binary) {
+        to_string<uint8_t, 16, number_case::upper>(value, str_val);
+        os << str_val;
+    }
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key) {
+    int curve;
+    auto ret = ec_get_curve(key, curve);
+    if (ret != err_t::SUCCESS) {
+        return os << "Unable to find curve";
+    }
+    
+    os << "(curve:" << OBJ_nid2sn(curve);
+
+    openssl_mem public_ec_key;
+    ret = get_public_key_binary(key, public_ec_key);
+    if (ret == err_t::SUCCESS) {
+        os << ";public:" << public_ec_key;
+    }
+
+    openssl_mem private_ec_key;
+    ret = get_private_key_binary(key, private_ec_key);
+    if (ret == err_t::SUCCESS) {
+        os << ";private:" << private_ec_key;
+    }
+
+    return os << ")";
+}
+
+std::ostream& operator<<(std::ostream& os, const key_aes_256_gsm_t &key) {
+    os << "aes_256_gsm:";
+    char str_val[3];
+    for(auto value: key) {
+        to_string<uint8_t, 16, number_case::upper>(value, str_val);
+        os << str_val;
+    }
+    return os;
+}
+
 err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const guid_t &random, const mem &data, openssl_mem &encrypted_data);
 
-// Parameters:
-// data [in]: Encrypted data
-// decrypted_data [out]: Decrypted data, memory allocated
 err_t decrypt_aes_256_gsm(
     const key_aes_256_gsm_t &key,
     const encrypted_data_aes_256_gsm_t &encrypted_data,
@@ -98,11 +136,9 @@ err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const guid_t &random, co
             ret = err_t::CRYPTO_ENCRYPT_AES_FAILED;
     }
 
-    if (ctx != nullptr) EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(ctx);
     if (ret != err_t::SUCCESS) {
-        OPENSSL_free(encrypted_data.ptr);
-        encrypted_data.ptr = nullptr;
-        encrypted_data.size = 0;
+        encrypted_data.free();
     }
 
     return ret;
@@ -162,14 +198,255 @@ err_t decrypt_aes_256_gsm(
         decrypted_data.size += length;
     }
 
-    if (ctx != nullptr) EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(ctx);
     if (ret != err_t::SUCCESS) {
-        OPENSSL_free(decrypted_data.ptr);
-        decrypted_data.ptr = nullptr;
-        decrypted_data.size = 0;
+        decrypted_data.free();
     }
 
     return ret;
+}
+
+err_t ec_generate_private_key(const int curve, const mem &prikey_bin, openssl_ec_key_mem &private_key) {
+    BIGNUM *pri_bn = BN_bin2bn((uint8_t *)prikey_bin.ptr, prikey_bin.size, nullptr);
+    if (pri_bn == nullptr) {
+        return err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+
+    err_t ret = err_t::SUCCESS;
+    private_key = EC_KEY_new_by_curve_name(curve);
+    if (private_key == nullptr) {
+        ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+
+    if (ret == err_t::SUCCESS) {
+        if (!EC_KEY_set_private_key(private_key, pri_bn)) ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+
+    BN_clear_free(pri_bn);
+    
+    if (ret != err_t::SUCCESS) {
+        EC_KEY_free(private_key);
+        private_key = nullptr;
+    }
+
+    return ret;
+}
+
+err_t ec_generate_public_key(const int curve, const mem &pubkey_bin, openssl_ec_key_mem &public_key) {
+    BIGNUM *pub_bn = BN_bin2bn((uint8_t *)pubkey_bin.ptr, pubkey_bin.size, nullptr);
+    if (pub_bn == nullptr) {
+        return err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+
+    err_t ret = err_t::SUCCESS;
+    public_key = EC_KEY_new_by_curve_name(curve);
+    if (public_key == nullptr) {
+        ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+
+    const EC_GROUP *ec_group = nullptr;
+    if (ret == err_t::SUCCESS) {
+        ec_group = EC_KEY_get0_group(public_key);
+        if (ec_group == nullptr) {
+            ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+        }
+    }
+
+    EC_POINT *pubkey_point = nullptr;
+    if (ret == err_t::SUCCESS) {
+        pubkey_point = EC_POINT_bn2point(ec_group, pub_bn, nullptr, nullptr);
+        if (pubkey_point == nullptr) {
+            ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+        }
+    }
+
+    if (ret == err_t::SUCCESS) {
+        if (!EC_KEY_set_public_key(public_key, pubkey_point)) ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+
+    BN_clear_free(pub_bn);
+    EC_POINT_free(pubkey_point);
+
+    if (ret != err_t::SUCCESS) {
+        EC_KEY_free(public_key);
+        public_key = nullptr;
+    }
+
+    return ret;
+}
+
+err_t get_aes_256_gsm_key_from_ec(
+    const openssl_ec_key_mem &ec_private_key,
+    const openssl_ec_key_mem &peer_public_ec_key,
+    key_aes_256_gsm_t &key)
+{
+    err_t ret = err_t::SUCCESS;
+
+    const EC_POINT *peer_pubkey_point = nullptr;
+    if (ret == err_t::SUCCESS) {
+        peer_pubkey_point = EC_KEY_get0_public_key(peer_public_ec_key);
+        if (peer_pubkey_point == nullptr) {
+            ret = err_t::CRYPTO_BAD_PUBLIC_KEY;
+        }
+    }
+
+    if (ret == err_t::SUCCESS) {
+        auto length = ECDH_compute_key(
+            key.symetric_key,
+            sizeof(key_aes_256_gsm_t::symetric_key),
+            peer_pubkey_point,
+            ec_private_key,
+            nullptr);
+    }
+
+    return ret;
+
+}
+
+err_t get_symmetric_key_from_ec(
+    const encryption_id_t id,
+    const int curve,
+    const openssl_ec_key_mem &private_ec_key, // This is optimization
+    const openssl_ec_key_mem &peer_public_ec_key,
+    key_t &key)
+{
+    switch(id) {
+    case encryption_id_t::aes_256_gsm: {
+        key_aes_256_gsm_t &aes_key = (key_aes_256_gsm_t &)key;
+        return get_aes_256_gsm_key_from_ec(private_ec_key, peer_public_ec_key, aes_key);
+    }
+
+    default:
+        return err_t::CRYPTO_UNKNOWN_ALGORITHM;
+    }
+}
+
+err_t get_symmetric_key_from_ec(
+    const encryption_id_t id,
+    const int curve,
+    const mem &private_ec_key,
+    const mem &peer_public_ec_key,
+    key_t &key)
+{
+    openssl_ec_key_mem private_key;
+    err_t ret = ec_generate_private_key(curve, private_ec_key, private_key);
+    if (ret != err_t::SUCCESS) return ret;
+
+    openssl_ec_key_mem public_key;
+    ret = ec_generate_public_key(curve,peer_public_ec_key, public_key);
+    if (ret != err_t::SUCCESS) return ret;
+
+    return get_symmetric_key_from_ec(id, curve, private_key, public_key, key);
+
+}
+
+err_t get_symmetric_key_from_ec(
+    const encryption_id_t id,
+    const int curve,
+    const openssl_ec_key_mem &private_ec_key, // This is optimization
+    const mem &peer_public_ec_key,
+    key_t &key)
+{
+    openssl_ec_key_mem public_key;
+    err_t ret = ec_generate_public_key(curve, peer_public_ec_key, public_key);
+    if (ret != err_t::SUCCESS) return ret;
+
+    return get_symmetric_key_from_ec(id, curve, private_ec_key, public_key, key);
+}
+
+err_t generate_ec_key(const int curve, openssl_ec_key_mem &ec_private_key) {
+    ec_private_key = EC_KEY_new_by_curve_name(curve);
+    if (ec_private_key == nullptr) {
+        return err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+    if (!EC_KEY_generate_key(ec_private_key)) {
+        EC_KEY_free(ec_private_key);
+        ec_private_key = nullptr;
+        return err_t::CRYPTO_KEY_GENERATION_FAILED;
+    }
+    return err_t::SUCCESS;
+}
+
+err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &private_ec_key)
+{
+    const BIGNUM * const prikey_num = EC_KEY_get0_private_key(ec_key);
+    if (prikey_num == nullptr) {
+        return err_t::CRYPTO_BAD_PRIVATE_KEY;
+    }
+
+    private_ec_key.size = BN_num_bytes(prikey_num);
+    private_ec_key = OPENSSL_malloc(private_ec_key.size);
+
+    err_t ret = err_t::SUCCESS;
+    if (private_ec_key == nullptr) {
+        ret = err_t::CRYPTO_MEMORY_FAILURE;
+    }
+
+    if (ret == err_t::SUCCESS) {
+        if (BN_bn2bin(prikey_num, (uint8_t *)private_ec_key.ptr) != private_ec_key.size) {
+            ret = err_t::CRYPTO_KEY_ENCODE_FAIL;
+        }
+    }
+
+    if (ret != err_t::SUCCESS) {
+        private_ec_key.free();
+    }
+
+    return ret;
+}
+
+err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key) {
+    const EC_GROUP *ec_group   = EC_KEY_get0_group(ec_key);
+    const EC_POINT *pub        = EC_KEY_get0_public_key(ec_key);
+
+    if (ec_group == nullptr || pub == nullptr) {
+        return err_t::CRYPTO_BAD_PUBLIC_KEY;
+    }
+
+    BN_CTX *pub_bn_ctx = BN_CTX_new();
+    if (pub_bn_ctx == nullptr) return err_t::CRYPTO_MEMORY_FAILURE;
+    
+    BN_CTX_start(pub_bn_ctx);
+
+    BIGNUM *pub_bn = EC_POINT_point2bn(ec_group, pub, POINT_CONVERSION_UNCOMPRESSED,
+                        nullptr, pub_bn_ctx);
+
+    err_t ret = err_t::SUCCESS;
+    if (pub_bn == nullptr) ret = err_t::CRYPTO_MEMORY_FAILURE;
+
+    if (ret == err_t::SUCCESS) {
+        public_ec_key.size = BN_num_bytes(pub_bn);
+        public_ec_key = (uint8_t *)OPENSSL_malloc(public_ec_key.size);
+        if (public_ec_key == nullptr) ret = err_t::CRYPTO_MEMORY_FAILURE;
+    }
+
+    if (ret == err_t::SUCCESS) {
+        if (BN_bn2bin(pub_bn, public_ec_key) != public_ec_key.size) {
+            ret = err_t::CRYPTO_KEY_ENCODE_FAIL;
+        }
+    }
+
+    BN_CTX_end(pub_bn_ctx);
+    BN_CTX_free(pub_bn_ctx);
+    if (pub_bn != nullptr) BN_clear_free(pub_bn);
+
+    if (ret != err_t::SUCCESS) {
+        public_ec_key.free();
+    }
+
+    return ret;
+}
+
+err_t ec_get_curve(const openssl_ec_key_mem &ec_key, int &curve) {
+    const EC_GROUP *ec_group   = EC_KEY_get0_group(ec_key);
+    if (ec_group == nullptr) {
+        return err_t::CRYPTO_BAD_KEY;
+    }
+
+    curve = EC_GROUP_get_curve_name(ec_group);
+    if (!curve) return err_t::CRYPTO_CURVE_NOT_FOUND;
+
+    return err_t::SUCCESS;
 }
 
 } // namespace crypto

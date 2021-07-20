@@ -75,12 +75,19 @@ namespace rohit {
     ERROR_T_ENTRY(EVENT_REMOVE_FAILED, "Event remove failed") \
     \
     ERROR_T_ENTRY(SSL_CONNECT_FAILED, "Failed to create SSL session") \
+    ERROR_T_ENTRY(CRYPTO_MEMORY_BAD_ASSIGNMENT, "Assigning to non null memory, make sure to free it first") \
     ERROR_T_ENTRY(CRYPTO_UNKNOWN_ALGORITHM, "Unknown crypto algorithm") \
     ERROR_T_ENTRY(CRYPTO_MEMORY_FAILURE, "Failed to allocated OpenSSL memory") \
     ERROR_T_ENTRY(CRYPTO_CREATE_CONTEXT_FAILED, "Failed to create OpenSSL encryption/decryption context") \
     ERROR_T_ENTRY(CRYPTO_INIT_AES_FAILED, "Failed to initialize OpenSSL AES encryption/decryption") \
     ERROR_T_ENTRY(CRYPTO_ENCRYPT_AES_FAILED, "Failed OpenSSL AES encryption") \
     ERROR_T_ENTRY(CRYPTO_DECRYPT_AES_FAILED, "Failed OpenSSL AES decryption") \
+    ERROR_T_ENTRY(CRYPTO_KEY_GENERATION_FAILED, "Failed OpenSSL to generate key") \
+    ERROR_T_ENTRY(CRYPTO_BAD_KEY, "Bad key provided") \
+    ERROR_T_ENTRY(CRYPTO_BAD_PUBLIC_KEY, "Bad public key provided") \
+    ERROR_T_ENTRY(CRYPTO_BAD_PRIVATE_KEY, "Bad private key provided") \
+    ERROR_T_ENTRY(CRYPTO_KEY_ENCODE_FAIL, "Failed to encode key to binary") \
+    ERROR_T_ENTRY(CRYPTO_CURVE_NOT_FOUND, "Failed to find curve from key") \
     \
     ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
     LIST_DEFINITION_END
