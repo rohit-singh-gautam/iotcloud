@@ -12,10 +12,8 @@ namespace rohit {
 namespace crypto {
 
 std::ostream& operator<<(std::ostream& os, const mem &binary) {
-    char str_val[3];
     for(auto value: binary) {
-        to_string<uint8_t, 16, number_case::upper>(value, str_val);
-        os << str_val;
+        os << upper_case_numbers[value/16] << upper_case_numbers[value%16];
     }
     return os;
 }
@@ -46,10 +44,8 @@ std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key) {
 
 std::ostream& operator<<(std::ostream& os, const key_aes_256_gsm_t &key) {
     os << "aes_256_gsm:";
-    char str_val[3];
     for(auto value: key) {
-        to_string<uint8_t, 16, number_case::upper>(value, str_val);
-        os << str_val;
+        os << upper_case_numbers[value/16] << upper_case_numbers[value%16];
     }
     return os;
 }
