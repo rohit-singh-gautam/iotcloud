@@ -18,7 +18,7 @@ add_library(ServerLibrary
     lib/core/configparser.cc
     lib/states/event_distributor.cc
     lib/init.cc
-    lib/iotmessage.cc
+    lib/message.cc
     lib/log.cc
 )
 

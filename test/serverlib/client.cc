@@ -33,8 +33,8 @@ int connect_count = 0;
 void test_deviceserver() {
     const char sourceGuid[] = "86512592-6b7b-48c4-8bf3-468501c3d9fa";
     const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
-    rohit::message_command_t messageCommand(sourceGuid);
-    messageCommand.add(rohit::to_guid(destGuid), rohit::operation_t::SWITCH, (rohit::operation_value_internal_type)rohit::operation_t::operation_switch_t::ON);
+    rohit::message_command_t messageCommand;
+    messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
 
     rohit::client_socket_t client_socket(ipv6addr);
     std::cout << "Local Address: " << client_socket << std::endl;   
@@ -80,8 +80,8 @@ void test_deviceserver() {
 void test_deviceserver_ssl() {
     const char sourceGuid[] = "86512592-6b7b-48c4-8bf3-468501c3d9fa";
     const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
-    rohit::message_command_t messageCommand(sourceGuid);
-    messageCommand.add(rohit::to_guid(destGuid), rohit::operation_t::SWITCH, (rohit::operation_value_internal_type)rohit::operation_t::operation_switch_t::ON);
+    rohit::message_command_t messageCommand;
+    messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
 
     rohit::client_socket_ssl_t client_socket(ipv6addr_ssl);
     std::cout << "Local Address: " << client_socket << std::endl;   

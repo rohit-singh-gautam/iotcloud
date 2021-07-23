@@ -14,11 +14,11 @@ TESTCPPFILES=test/test.cc lib/log.cc lib/states/event_distributor.cc \
 TESTHPPFILES=include/iot/net/serversocket.hh test/test.hh include/iot/net/socket.hh $(COMMONHPP)
 TESTLIBFILES=/usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/x86_64-linux-gnu/libresolv.a -pthread
 
-SERVERCPPFILES=lib/iotmessage.cc lib/log.cc server.cc
+SERVERCPPFILES=lib/message.cc lib/log.cc server.cc
 SERVERHPPFILES=include/iot/net/serversocket.hh server.hh include/iot/net/socket.hh $(COMMONHPP)
 SERVERLIBFILES=/usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/x86_64-linux-gnu/libresolv.a -pthread
 
-CLIENTCPPFILES=client.cc lib/iotmessage.cc lib/log.cc
+CLIENTCPPFILES=client.cc lib/message.cc lib/log.cc
 CLIENTHPPFILES=include/iot/message.hh include/iot/net/socket.hh $(COMMONHPP)
 CLIENTLIBFILES=/usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/x86_64-linux-gnu/libresolv.a -pthread
 

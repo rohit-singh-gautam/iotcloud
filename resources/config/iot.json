@@ -9,8 +9,8 @@
             "TYPE" : "ssl",
             "port" : 8081,
             "IP"   : "*",
-            "CertFile" : "/home/rohit/iotcloud/key/testcert.pem",
-            "PrikeyFile" : "/home/rohit/iotcloud/key/testcert.pem"
+            "CertFile" : "/home/rohit/iotcloud/resources/key/testcert.pem",
+            "PrikeyFile" : "/home/rohit/iotcloud/resources/key/testcert.pem"
         },
         {
             "name" : "Protected",

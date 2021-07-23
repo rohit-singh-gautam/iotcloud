@@ -8,34 +8,23 @@
 
 namespace rohit {
 
-const std::string operation_t::displayString[] = {
-    "SWITCH",
-    "LEVEL_256",
-    "PWM_1024",
+const char * operation_t::displayString[] = {
+#define MESSAGE_OPERATION_ENTRY(x) #x,
+    MESSAGE_OPERATION_LIST
+#undef MESSAGE_OPERATION_ENTRY
 };
 
-const std::string message_base_t::displayString[] = {
-    "UNKNOWN",
-    "CONNECT",
-    "KEEP_ALIVE",
-    "UNAUTHORIZED",
-    "SUCCESS",
-    "COMMAND",
+const char * message_base_t::displayString[] = {
+#define MESSAGE_CODE_ENTRY(x) #x,
+    MESSAGE_CODE_LIST
+#undef MESSAGE_CODE_ENTRY
 };
 
 std::ostream& operator<<(std::ostream& os, const command_t &command) {
-    os << command.guid << ":" << command.operation << ":";
-    switch(command.operation) {
-    case operation_t::SWITCH:
-        os << (command.value == (operation_value_internal_type)operation_t::operation_switch_t::OFF ? "OFF" : "ON");
-        break;
-    case operation_t::LEVEL_256:
-    case operation_t::PWM_1024:
-    default:
-        os << command.value;
-        break;
-    }
-    return os;
+     return os  << command.device 
+                << ":" << command.component 
+                << ":" << command.operation 
+                << ":" << command.value;
 }
 
 const std::string command_t::to_string() const {
@@ -65,7 +54,7 @@ std::ostream& operator<<(std::ostream& os, const message_base_t &message) {
 };
 
 std::ostream& operator<<(std::ostream& os, const message_command_t &message) {
-    os << ((message_base_t &)message).to_string() << ":" << message.source << std::endl;
+    os << ((message_base_t &)message).to_string() << std::endl;
     for (uint32_t index=0; index < message.command_count; ++index) {
         os << "\t" << message.commands[index] << std::endl;
     }
