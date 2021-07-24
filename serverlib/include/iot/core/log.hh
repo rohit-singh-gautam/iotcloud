@@ -69,6 +69,8 @@ namespace rohit {
     LIST_DEFINITION_END
 
 #define LOGGER_LOG_LIST \
+    LOGGER_ENTRY(SEGMENTATION_FAULT, ALERT, SYSTEM, "Segmentation fault occurred !!!!!!!!!!!!!!") \
+    \
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, ERROR, SYSTEM, "Unable to create pthread with error %ve") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, WARNING, SYSTEM, "Unable to join pthread with error %ve") \
     LOGGER_ENTRY(SOCKET_CREATE_SUCCESS, DEBUG, SOCKET, "Socket %i created") \
@@ -121,7 +123,7 @@ namespace rohit {
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %ve") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed fd %i") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_WRITE_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer write failed with error %ve") \
-    LOGGER_ENTRY(IOT_EVENT_SERVER_ZERO_WRITE, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer written zero byte") \
+    LOGGER_ENTRY(IOT_EVENT_SERVER_NULL_SOCKET, ERROR, IOT_EVENT_SERVER, "IOT Event Server command received with null socket") \
     \
     LOGGER_ENTRY(SYSTEM_ERROR, ERROR, SYSTEM, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \
@@ -617,7 +619,7 @@ public:
     logger_logs_entry_read *readnext();
 
     // This is blocking call
-    const std::string readnextstring();
+    const std::string readnextstring(bool live = true);
 
 }; // class logreader
 

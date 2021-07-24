@@ -52,6 +52,7 @@ void socket_ssl_t::cleanup_openssl()
     if (initialize_ssl_count == 0) {
         glog.log<log_t::SOCKET_SSL_CLEANUP>();
         SSL_CTX_free(ctx);
+        ctx = nullptr;
         EVP_cleanup();
     } else {
         glog.log<log_t::SOCKET_SSL_CLEANUP_ATTEMPT>(initialize_ssl_count);

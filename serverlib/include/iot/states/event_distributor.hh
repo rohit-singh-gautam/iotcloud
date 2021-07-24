@@ -71,7 +71,7 @@ class event_distributor {
 public:
     static constexpr int max_event_size = 1000000;
     static constexpr int max_thread_supported = 64;
-    static constexpr int event_wait_count = 1024;
+    static constexpr int event_wait_count = 1;
 
     static constexpr uint64_t cleanup_loop_time_in_ns = 2ULL * 1000ULL * 1000000ULL; // two second
 

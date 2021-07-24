@@ -141,8 +141,11 @@ void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
 }
 
 void signal_segmentation_fault(int signal, siginfo_t *siginfo, void *args) {
+    std::cout << "Segmentation fault..." << std::endl;
+    rohit::glog.log<rohit::log_t::SEGMENTATION_FAULT>();
     rohit::segv_log_flush();
 
+    std::cout << "Segmentation fault..." << std::endl;
     exit(1);
 }
 
@@ -160,7 +163,7 @@ void set_sigaction() {
     sa_segv.sa_sigaction = signal_segmentation_fault;
     sa_segv.sa_flags   = SA_SIGINFO;
 
-    sigaction(SIGSEGV, &sa, nullptr);
+    sigaction(SIGSEGV, &sa_segv, nullptr);
 }
 
 int main(int argc, char *argv[]) try {
@@ -177,7 +180,7 @@ int main(int argc, char *argv[]) try {
     rohit::init_iot(log_file);
 
     std::cout << "Creating event distributor" << std::endl;
-    evtdist = new rohit::event_distributor();
+    evtdist = new rohit::event_distributor(2);
     evtdist->init();
 
     const auto str_config_folder = std::string(config_folder);

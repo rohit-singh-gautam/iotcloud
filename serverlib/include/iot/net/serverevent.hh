@@ -45,7 +45,7 @@ public:
                 if (peer_id.is_null()) break;
                 peerevent *p_peerevent = new peerevent(peer_id);
                 peer_id.set_non_blocking();
-                evtdist.add(peer_id, EPOLLIN, *p_peerevent);
+                evtdist.add(peer_id, EPOLLIN | EPOLLOUT, *p_peerevent);
                 ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
             }
         } catch (const exception_t e) {
@@ -63,6 +63,7 @@ public:
 template <typename peerevent>
 class serverevent_ssl : public event_executor {
 private:
+    pthread_mutex_t _lock;
     event_distributor &evtdist;
     server_socket_ssl_t socket_id;
     const int port;
@@ -79,6 +80,11 @@ public:
                 socket_id(port, cert_file, prikey_file),
                 port(port),
                 maxconnection(maxconnection) {
+        pthread_mutex_init(&_lock, nullptr);
+    }
+
+    ~serverevent_ssl() {
+        pthread_mutex_destroy(&_lock);
     }
     
     inline void init() {
@@ -86,20 +92,30 @@ public:
         evtdist.add(socket_id, EPOLLIN, *this);
     }
 
+    inline void lock() {
+        pthread_mutex_lock(&_lock);
+    }
+
+    inline void unlock() {
+        pthread_mutex_unlock(&_lock);
+    }
+
     void execute(thread_context &ctx, const uint32_t event) override {
+        lock();
         ctx.log<log_t::EVENT_SERVER_SSL_RECEIVED_EVENT>((int)socket_id, event);
         if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
             socket_ssl_t peer_id = socket_id.accept();
             peerevent *p_peerevent = new peerevent(peer_id);
             peer_id.set_non_blocking();
-            evtdist.add(peer_id, EPOLLIN, *p_peerevent);
+            evtdist.add(peer_id, EPOLLIN | EPOLLOUT, *p_peerevent);
             ctx.log<log_t::EVENT_SERVER_SSL_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_SSL_ACCEPT_FAILED>(errno);
             }
         }
+        unlock();
     }
 
     void close() {
@@ -120,10 +136,26 @@ public:
 class serverpeerevent_ssl : public event_executor {
 protected:
     socket_ssl_t peer_id;
+    pthread_mutex_t _lock;
 
 public:
     inline serverpeerevent_ssl(socket_ssl_t peer_id)
-            : peer_id(peer_id) { }
+            : peer_id(peer_id) {
+        pthread_mutex_init(&_lock, nullptr);
+    }
+
+    ~serverpeerevent_ssl() {
+        pthread_mutex_destroy(&_lock);
+    }
+
+    inline void lock() {
+        pthread_mutex_lock(&_lock);
+    }
+
+    inline void unlock() {
+        pthread_mutex_unlock(&_lock);
+    }
+
 };
 
 } // namespace rohit

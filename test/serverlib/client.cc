@@ -67,8 +67,14 @@ void test_deviceserver() {
             return;
         }
 
+        std::cout << "Read buffer hex: ";
+        for(int temp = 0; temp < read_buffer_length; ++temp) {
+            uint8_t value = read_buffer[temp];
+            std::cout << rohit::upper_case_numbers[value/16] << rohit::upper_case_numbers[value%16];
+        }
+
         rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
-        std::cout << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
+        std::cout << std::endl << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
 
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_call_in_ms));
     }
@@ -90,7 +96,8 @@ void test_deviceserver_ssl() {
 
     for(uint32_t call_index = 0; call_index < call_count; ++call_index) {
         ++calls;
-        rohit::err_t err = client_socket.write((void*)&messageCommand, messageCommand.length());
+        size_t written_length = 0;
+        rohit::err_t err = client_socket.write((void*)&messageCommand, messageCommand.length(), written_length);
         if (isFailure(err)) {
             ++write_failed;
             std::cout << "Write failed " << err << std::endl;
@@ -111,7 +118,12 @@ void test_deviceserver_ssl() {
         }
 
         rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
-        std::cout << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
+        std::cout << "Read buffer hex: ";
+        for(int temp = 0; temp < read_buffer_length; ++temp) {
+            uint8_t value = read_buffer[temp];
+            std::cout << rohit::upper_case_numbers[value/16] << rohit::upper_case_numbers[value%16];
+        }
+        std::cout << std::endl << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
 
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_call_in_ms));
     }

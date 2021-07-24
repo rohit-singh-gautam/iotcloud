@@ -182,7 +182,7 @@ void add_time_to_string_helper(
     tt = std::chrono::system_clock::to_time_t ( currentTime );
     auto timeinfo = localtime (&tt);
     int count = strftime(pStr, 92, "%F %T", timeinfo);
-    pStr += count -1;
+    pStr += count;
     count = sprintf(pStr, ".%03ld.%06ld", millis, nanos);
 
     pStr += count;
@@ -457,30 +457,37 @@ logger_logs_entry_read *logreader::readnext() {
     return log_read;
 }
 
-const std::string logreader::readnextstring() {
+const std::string logreader::readnextstring(bool live) {
     logger_logs_entry_read *logread = nullptr;
     while(true) {
         logger_logs_entry_read *logreadtemp = logreader::readnext();
 
         if (logreadtemp == nullptr) {
-            if (!priqueue.empty()) {
-                uint64_t current_time = std::chrono::system_clock::now().time_since_epoch().count();
-                if (current_time - last_read_time >= buffer_time_in_nanos * 3 / 2) {
-                    logread = priqueue.top();
-                    priqueue.pop();
-                    break;
+            if (live) {
+                if (!priqueue.empty()) {
+                    uint64_t current_time = std::chrono::system_clock::now().time_since_epoch().count();
+                    if (current_time - last_read_time >= buffer_time_in_nanos * 3) {
+                        logread = priqueue.top();
+                        priqueue.pop();
+                        break;
+                    }
                 }
+            } else {
+                if (priqueue.empty()) return std::string();
+                logread = priqueue.top();
+                priqueue.pop();
+                break;
             }
         } else {
             if (priqueue.empty()) {
                 priqueue.push(logreadtemp);
                 last_read_time = std::chrono::system_clock::now().time_since_epoch().count();
-            } else if (priqueue.top()->timestamp - logreadtemp->timestamp < buffer_time_in_nanos) {
+            } else if (std::abs(priqueue.top()->timestamp - logreadtemp->timestamp) < buffer_time_in_nanos) {
                 priqueue.push(logreadtemp);
             } else {
+                priqueue.push(logreadtemp);
                 logread = priqueue.top();
                 priqueue.pop();
-                priqueue.push(logreadtemp);
                 break;
             }
             continue;

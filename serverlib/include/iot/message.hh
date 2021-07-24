@@ -163,7 +163,7 @@ public:
 
 class message_success_t : public message_base_t {
 public:
-    inline constexpr message_success_t() : message_base_t(message_code_t::SUCCESS) { }
+    constexpr message_success_t() : message_base_t(message_code_t::SUCCESS) { }
 } __attribute__((packed));
 
 class message_command_t : public message_base_t {

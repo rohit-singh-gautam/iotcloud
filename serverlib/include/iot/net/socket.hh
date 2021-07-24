@@ -69,6 +69,35 @@ public:
         return err_t::SUCCESS;
     }
 
+        inline err_t write_wait(
+                const void *buf,
+                const size_t send_len,
+                size_t &actual_sent,
+                int64_t wait_in_millisecond = config::attempt_to_write_wait_in_ms,
+                int write_attempt = config::attempt_to_write) const {
+        int attempt_to_write = 0;
+        while(attempt_to_write < write_attempt) {
+            int ret = ::write(socket_id, buf, send_len);
+            if (ret > 0) {
+                actual_sent = ret;
+                break;
+            }
+
+            if (ret < 0) {
+                return err_t::SEND_FAILURE;
+            }
+            
+            ++attempt_to_write;
+            std::this_thread::sleep_for(std::chrono::milliseconds(wait_in_millisecond));
+        }
+
+        if (attempt_to_write == write_attempt) {
+            return err_t::SOCKET_WRITE_ZERO;
+        }
+
+        return err_t::SUCCESS;
+    }
+
     inline err_t write(const void *buf, const size_t send_len, size_t &actual_sent) const {
         // TODO: send in part
         int ret = ::write(socket_id, buf, send_len);
@@ -141,25 +170,120 @@ protected:
 public:
     inline socket_ssl_t(const int socket_id, SSL *ssl) : socket_t(socket_id), ssl(ssl) { }
 
+    inline err_t read_wait(
+                void *buf,
+                const size_t buf_size,
+                size_t &read_len,
+                int64_t wait_in_millisecond = config::attempt_to_write_wait_in_ms,
+                int write_attempt = config::attempt_to_write) const {
+        int attempt_to_write = 0;
+        while(attempt_to_write < write_attempt) {
+            int ret = SSL_read(ssl, buf, buf_size);
+            if (ret > 0) {
+                read_len = ret;
+                break;
+            }
+
+            auto ssl_error = SSL_get_error(ssl, ret);
+
+            if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
+                std::cout << "SSL error " << ssl_error << std::endl;
+                return err_t::SEND_FAILURE;
+            }
+            
+            ++attempt_to_write;
+            std::this_thread::sleep_for(std::chrono::milliseconds(wait_in_millisecond));
+        }
+
+        if (attempt_to_write == write_attempt) {
+            return err_t::SOCKET_WRITE_ZERO;
+        }
+
+        return err_t::SUCCESS;
+    }
+
     inline err_t read(void *buf, const size_t buf_size, size_t &read_len) const {
         int ret = SSL_read(ssl, buf, buf_size);
-        if (ret == -1) return err_t::RECEIVE_FAILURE;
+        if (ret == -1) {
+            if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
+                read_len = 0;
+                return err_t::SUCCESS;
+            }
+            std::cout << "SSL Read error" << std::endl;
+            return err_t::RECEIVE_FAILURE;
+        }
         read_len = ret;
         return err_t::SUCCESS;
     }
 
-    inline err_t write(const void *buf, const size_t send_len) const {
+    inline err_t write_wait(
+                const void *buf,
+                const size_t send_len,
+                size_t &actual_sent,
+                int64_t wait_in_millisecond = config::attempt_to_write_wait_in_ms,
+                int write_attempt = config::attempt_to_write) const {
+        int attempt_to_write = 0;
+        while(attempt_to_write < write_attempt) {
+            int ret = SSL_write(ssl, buf, send_len);
+            if (ret > 0) {
+                actual_sent = ret;
+                break;
+            }
+
+            auto ssl_error = SSL_get_error(ssl, ret);
+
+            if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
+                return err_t::SEND_FAILURE;
+            }
+            
+            ++attempt_to_write;
+            std::this_thread::sleep_for(std::chrono::milliseconds(wait_in_millisecond));
+        }
+
+        if (attempt_to_write == write_attempt) {
+            return err_t::SOCKET_WRITE_ZERO;
+        }
+
+        return err_t::SUCCESS;
+    }
+
+    inline err_t write(const void *buf, const size_t send_len, size_t &actual_sent) const {
         // TODO: send in part
         int ret = SSL_write(ssl, buf, send_len);
-        if (ret == -1) return err_t::SEND_FAILURE;
+        if (ret <= 0) {
+            if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_WRITE) {
+                actual_sent = 0;
+                return err_t::SUCCESS;
+            }
+            return err_t::SEND_FAILURE;
+        }
+        actual_sent = ret;
         return err_t::SUCCESS;
     }
 
     inline void close() {
         int last_socket_id = __sync_lock_test_and_set(&socket_id, 0);
         if (last_socket_id) {
-            SSL_shutdown(ssl);
+            int attempt_to_write = 0;
+            while(attempt_to_write < config::attempt_to_write * 2) {
+                auto ret = SSL_shutdown(ssl);
+                if (ret > 0) {
+                    break;
+                }
+
+                auto ssl_error = SSL_get_error(ssl, ret);
+                std::cout << "SSL_error " << ssl_error << std::endl;
+
+                if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
+                    // TODO: Log this error
+                    break;
+                }
+                
+                ++attempt_to_write;
+                std::this_thread::sleep_for(std::chrono::milliseconds(config::attempt_to_write_wait_in_ms));
+            }
             SSL_free(ssl);
+            ssl = nullptr;
             auto ret = ::close(last_socket_id);
             if (ret == -1) {
                 glog.log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
@@ -168,6 +292,8 @@ public:
             }
         }
     }
+
+    inline bool is_closed() { return socket_id == 0; }
 
 };
 
@@ -257,11 +383,23 @@ public:
         auto ssl = SSL_new(socket_ssl_t::ctx);
         SSL_set_fd(ssl, client_id);
 
-        auto ssl_ret = SSL_accept(ssl); 
-        if (ssl_ret <= 0) {
-            ERR_print_errors_fp(stdout);
-            glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id, client_id);
-            throw exception_t(err_t::ACCEPT_FAILURE);
+        int attempt_to_write = 0;
+        while(attempt_to_write < config::attempt_to_write) {
+            auto ssl_ret = SSL_accept(ssl);
+            if (ssl_ret > 0) break;
+            auto ssl_error = SSL_get_error(ssl, ssl_ret);
+            if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+                ERR_print_errors_fp(stdout);
+                std::cout << "Error " << SSL_get_error(ssl, ssl_ret) << std::endl;
+                glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id, client_id);
+                SSL_shutdown(ssl);
+                SSL_free(ssl);
+                ::close(client_id);
+                throw exception_t(err_t::ACCEPT_FAILURE);
+            }
+
+            ++attempt_to_write;
+            std::this_thread::sleep_for(std::chrono::milliseconds(config::attempt_to_write_wait_in_ms));
         }
 
         glog.log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id, client_id);
