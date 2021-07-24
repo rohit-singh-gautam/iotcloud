@@ -105,11 +105,14 @@ public:
         ctx.log<log_t::EVENT_SERVER_SSL_RECEIVED_EVENT>((int)socket_id, event);
         if ((event & EPOLLHUP) == EPOLLHUP) return;
         try {
-            socket_ssl_t peer_id = socket_id.accept();
-            peerevent *p_peerevent = new peerevent(peer_id);
-            peer_id.set_non_blocking();
-            evtdist.add(peer_id, EPOLLIN | EPOLLOUT, *p_peerevent);
-            ctx.log<log_t::EVENT_SERVER_SSL_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+            while(true) {
+                socket_ssl_t peer_id = socket_id.accept();
+                if (peer_id == 0) break;
+                peerevent *p_peerevent = new peerevent(peer_id);
+                peer_id.set_non_blocking();
+                evtdist.add(peer_id, EPOLLIN | EPOLLOUT, *p_peerevent);
+                ctx.log<log_t::EVENT_SERVER_SSL_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+            }
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
                 ctx.log<log_t::EVENT_SERVER_SSL_ACCEPT_FAILED>(errno);
