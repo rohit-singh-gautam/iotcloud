@@ -447,5 +447,34 @@ public:
     }
 };
 
+template <bool use_ssl>
+struct socket_variant_t  {
+    typedef socket_ssl_t type;
+};
+
+template <>
+struct socket_variant_t<false>  {
+    typedef socket_t type;
+};
+
+template <bool use_ssl>
+struct server_socket_variant_t  {
+    typedef server_socket_ssl_t type;
+};
+
+template <>
+struct server_socket_variant_t<false>  {
+    typedef server_socket_t type;
+};
+
+template <bool use_ssl>
+struct client_socket_variant_t  {
+    typedef client_socket_ssl_t type;
+};
+
+template <>
+struct client_socket_variant_t<false>  {
+    typedef client_socket_t type;
+};
 
 } // namespace rohit

@@ -41,9 +41,12 @@ bool parse_and_display(int argc, char *argv[]) {
     return ret;
 }
 
+typedef rohit::serverevent<rohit::iotserverevent<false>, false> serverevent_type;
+typedef rohit::serverevent<rohit::iotserverevent<true>, true> serverevent_ssl_type;
+
 rohit::event_distributor *evtdist = nullptr;
-std::vector<rohit::serverevent<rohit::iotserverevent> *> srvevts;
-std::vector<rohit::serverevent_ssl<rohit::iotserverevent_ssl> *> srvevts_ssl;
+std::vector<serverevent_type *> srvevts;
+std::vector<serverevent_ssl_type *> srvevts_ssl;
 
 const std::string load_config_string(const char *const configfile) {
     int fd = open(configfile, O_RDONLY);
@@ -88,8 +91,8 @@ void load_and_execute_config(const std::string configfile) {
 
         if (TYPE == "simple") {
             std::cout << "Creating a server at port " << port << std::endl;
-            rohit::serverevent<rohit::iotserverevent> *srvevt =
-                new rohit::serverevent<rohit::iotserverevent>(*evtdist, port);
+            auto srvevt =
+                new serverevent_type(*evtdist, port);
             srvevt->init();
             srvevts.push_back(srvevt);
         } else if (TYPE == "ssl") {
@@ -98,7 +101,7 @@ void load_and_execute_config(const std::string configfile) {
             const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
 
             std::cout << "Creating a SSL server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
-            auto srvevt_ssl = new rohit::serverevent_ssl<rohit::iotserverevent_ssl>(
+            auto srvevt_ssl = new serverevent_ssl_type(
                 *evtdist,
                 port,
                 cert_file.c_str(),

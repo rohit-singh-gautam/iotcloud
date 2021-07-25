@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <iot/core/pthread_helper.hh>
 #include <iot/core/varadic.hh>
 #include <iot/core/bits.hh>
 #include <iot/core/config.hh>
@@ -323,30 +324,6 @@ public:
     // This class does not have constructor as this will be alway mapped to memory
 } __attribute__((packed));
 
-template <bool multi_thread>
-class logger_thread {
-public:
-    inline void lock() {}
-    inline void unlock() {}
-};
-
-template <>
-class logger_thread<true> {
-public:
-    pthread_mutex_t _lock;
-
-    inline logger_thread() {
-        pthread_mutex_init(&_lock, nullptr);
-    }
-
-    inline void lock() {
-        pthread_mutex_lock(&_lock);
-    }
-    inline void unlock() {
-        pthread_mutex_unlock(&_lock);
-    }
-};
-
 class active_module {
 private:
     std::bitset<(size_t)module_t::MAX_MODULE> enabled_module_bits;
@@ -396,7 +373,7 @@ extern active_module enabled_log_module;
 // This is global
 // Any prameter change will have global impact
 template <bool multi_thread>
-class logger : public logger_thread<multi_thread> {
+class logger : public pthread_lock_c<multi_thread> {
 public:
     static constexpr size_t max_log_memory = 1_mb;
     static constexpr std::chrono::milliseconds wait_for_free = std::chrono::milliseconds(1);
@@ -407,8 +384,8 @@ private:
 
     uint8_t mem_buffer[max_log_memory];
 
-    void lock() { logger_thread<multi_thread>::lock(); }
-    void unlock() { logger_thread<multi_thread>::unlock(); }
+    void lock() { pthread_lock_c<multi_thread>::lock(); }
+    void unlock() { pthread_lock_c<multi_thread>::unlock(); }
 
     
 
