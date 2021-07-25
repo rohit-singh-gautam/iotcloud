@@ -31,7 +31,7 @@ void iotserverevent::execute(thread_context &ctx, const uint32_t event) {
     auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
     
     if (isFailure(err)) {
-        ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(errno);
+        ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
     }
 
     if (read_buffer_length > 0) {
@@ -95,9 +95,7 @@ void iotserverevent_ssl::execute(thread_context &ctx, const uint32_t event) {
     if (isFailure(err)) {
         // Most probably SSL_ERROR_ZERO_RETURN
         std::cout << "Closing SSL peer connection " << std::endl;
-        ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(errno);
-        unlock();
-        return;
+        ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
     }
 
     if (read_buffer_length > 0) {

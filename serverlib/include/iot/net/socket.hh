@@ -187,6 +187,7 @@ public:
             auto ssl_error = SSL_get_error(ssl, ret);
 
             if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
+                read_len = 0;
                 return error_c::ssl_error_ret(ssl_error);
             }
             
@@ -195,6 +196,7 @@ public:
         }
 
         if (attempt_to_write == write_attempt) {
+            read_len = 0;
             return err_t::SOCKET_WRITE_ZERO;
         }
 

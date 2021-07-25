@@ -14,6 +14,7 @@ const char *log_file;
 const char *config_folder;
 bool display_version;
 bool log_debug_mode;
+int thread_count;
 
 bool parse_and_display(int argc, char *argv[]) {
     rohit::commandline param_parser(
@@ -23,6 +24,7 @@ bool parse_and_display(int argc, char *argv[]) {
         {
             {'l', "log_file", "file path", "Path to save log file", log_file, "/var/log/iotcloud/deviceserver.log"},
             {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file iot.json and logmodule.json", config_folder, "/etc/iotcloud"},
+            {'t', "thread_count", "number of thread", "Number of threads that listen to socket, 0 means number of CPU", thread_count, 0},
             {'v', "version", "Display version", display_version},
             {'d', "debug", "Dumps all the logs, logs file will be very big", log_debug_mode}
         }
@@ -141,7 +143,6 @@ void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
 }
 
 void signal_segmentation_fault(int signal, siginfo_t *siginfo, void *args) {
-    std::cout << "Segmentation fault..." << std::endl;
     rohit::glog.log<rohit::log_t::SEGMENTATION_FAULT>();
     rohit::segv_log_flush();
 
@@ -180,7 +181,7 @@ int main(int argc, char *argv[]) try {
     rohit::init_iot(log_file);
 
     std::cout << "Creating event distributor" << std::endl;
-    evtdist = new rohit::event_distributor(2);
+    evtdist = new rohit::event_distributor();
     evtdist->init();
 
     const auto str_config_folder = std::string(config_folder);
