@@ -43,6 +43,22 @@ constexpr bool to_type(const type_identifier id, void *store, const char *value)
         *(uint64_t *)store = to_uint<uint64_t>(value);
         break;
 
+    case type_identifier::int8_t:
+        *(int8_t *)store = to_int<int8_t>(value);
+        break;
+
+    case type_identifier::int16_t:
+        *(int16_t *)store = to_int<int16_t>(value);
+        break;
+
+    case type_identifier::int32_t:
+        *(int32_t *)store = to_int<int32_t>(value);
+        break;
+
+    case type_identifier::int64_t:
+        *(int64_t *)store = to_int<int64_t>(value);
+        break;
+
     case type_identifier::string_t:
         *(const char **)store = value;
         break;

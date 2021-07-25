@@ -89,7 +89,7 @@ constexpr size_t floatToString(char *dest, T val) {
 
 template <typename T, T radix = 10>
 constexpr T to_uint(const char *src, size_t *len = nullptr) {
-    static_assert(std::is_integral_v<T>, "Only integral type allowed");
+    static_assert(std::is_integral_v<T> && std::is_unsigned_v<T>, "Only unsigned integral type allowed");
     T val = 0;
     char current = 0;
     const char *psrc = src;
@@ -103,6 +103,37 @@ constexpr T to_uint(const char *src, size_t *len = nullptr) {
     if (len != nullptr) *len = (size_t)(psrc - src);
 
     return val;
+}
+
+template <typename T, T radix = 10>
+constexpr T to_int(const char *src, size_t *len = nullptr) {
+    static_assert(std::is_integral_v<T> && std::is_signed_v<T>, "Only signed integral type allowed");
+    T val = 0;
+    char current = 0;
+    const char *psrc = src;
+
+    //Checking for sign
+    T sign = 1;
+    switch(*psrc) {
+    case '-':
+        sign = -1;
+    case '+':
+        ++psrc;
+        break;
+    default:
+        break;
+    }
+
+    if ((current = *psrc++)) {
+        val = char_to_int[(size_t)current];
+        while((current = *psrc++)) {
+            val = val * radix + char_to_int[(size_t)current];
+        }
+    }
+
+    if (len != nullptr) *len = (size_t)(psrc - src);
+
+    return val * sign;
 }
 
 } // namespace rohit
