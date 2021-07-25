@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <openssl/ssl.h>
 #include <fcntl.h>
 #include <cstring>
 
@@ -60,6 +61,13 @@ namespace rohit {
     ERROR_T_ENTRY(SOCKET_SSL_CONTEXT_FAILED, "Creation on SSL context failed") \
     ERROR_T_ENTRY(SOCKET_SSL_CERTIFICATE_FAILED, "Failed to load SSL certificate") \
     ERROR_T_ENTRY(SOCKET_SSL_PRIKEY_FAILED, "Failed to load Primay Key") \
+    \
+    ERROR_T_ENTRY(SOCKET_SSL_WANT_READ, "Non blocking SSL, want to read more data") \
+    ERROR_T_ENTRY(SOCKET_SSL_WANT_WRITE, "Non blocking SSL, want to write more data") \
+    ERROR_T_ENTRY(SOCKET_SSL_WANT_X509_LOOKUP, "Non blocking SSL, looking for certificate") \
+    ERROR_T_ENTRY(SOCKET_SSL_SYSCALL_ERROR, "SSL syscall error, probably connection is closed or wrong parameter") \
+    ERROR_T_ENTRY(SOCKET_SSL_ZERO_RETURN, "SSL zero bytes returned no data") \
+    ERROR_T_ENTRY(SOCKET_SSL_ERROR, "SSL error, Openssl call failed") \
     \
     ERROR_T_ENTRY(SOCKOPT_FAILURE, "Unable to set socket option") \
     ERROR_T_ENTRY(SOCKOPT_BAD_ID, "Unable to set socket option, bad socket ID") \
@@ -226,7 +234,18 @@ public:
         }
     }
 
-}; // class err_t
+    static inline err_t ssl_error_ret(int ssl_error) {
+        switch (ssl_error) {
+            case SSL_ERROR_WANT_READ: return err_t::SOCKET_SSL_WANT_READ;
+            case SSL_ERROR_WANT_WRITE: return err_t::SOCKET_SSL_WANT_WRITE;
+            case SSL_ERROR_WANT_X509_LOOKUP: return err_t::SOCKET_SSL_WANT_X509_LOOKUP;
+            case SSL_ERROR_SYSCALL: return err_t::SOCKET_SSL_SYSCALL_ERROR;
+            case SSL_ERROR_ZERO_RETURN: return err_t::SOCKET_SSL_ZERO_RETURN;
+            default: return err_t::SOCKET_SSL_ERROR;
+        }
+    }
+
+}; // class error_c
 
 inline std::ostream& operator<<(std::ostream& os, const err_t &error) {
     char str[to_string_size(error)] = {};

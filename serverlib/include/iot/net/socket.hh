@@ -187,8 +187,7 @@ public:
             auto ssl_error = SSL_get_error(ssl, ret);
 
             if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
-                std::cout << "SSL error " << ssl_error << std::endl;
-                return err_t::SEND_FAILURE;
+                return error_c::ssl_error_ret(ssl_error);
             }
             
             ++attempt_to_write;
@@ -205,12 +204,8 @@ public:
     inline err_t read(void *buf, const size_t buf_size, size_t &read_len) const {
         int ret = SSL_read(ssl, buf, buf_size);
         if (ret == -1) {
-            if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_READ) {
-                read_len = 0;
-                return err_t::SUCCESS;
-            }
-            std::cout << "SSL Read error" << std::endl;
-            return err_t::RECEIVE_FAILURE;
+            auto ssl_error = SSL_get_error(ssl, ret);
+            return error_c::ssl_error_ret(ssl_error);
         }
         read_len = ret;
         return err_t::SUCCESS;
@@ -233,7 +228,7 @@ public:
             auto ssl_error = SSL_get_error(ssl, ret);
 
             if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
-                return err_t::SEND_FAILURE;
+                return error_c::ssl_error_ret(ssl_error);
             }
             
             ++attempt_to_write;
@@ -251,11 +246,8 @@ public:
         // TODO: send in part
         int ret = SSL_write(ssl, buf, send_len);
         if (ret <= 0) {
-            if (SSL_get_error(ssl, ret) == SSL_ERROR_WANT_WRITE) {
-                actual_sent = 0;
-                return err_t::SUCCESS;
-            }
-            return err_t::SEND_FAILURE;
+            auto ssl_error = SSL_get_error(ssl, ret);
+            return error_c::ssl_error_ret(ssl_error);
         }
         actual_sent = ret;
         return err_t::SUCCESS;
@@ -272,10 +264,10 @@ public:
                 }
 
                 auto ssl_error = SSL_get_error(ssl, ret);
-                std::cout << "SSL_error " << ssl_error << std::endl;
 
                 if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
-                    // TODO: Log this error
+                    // We will ignore any error here
+                    // This normally fails
                     break;
                 }
                 
@@ -389,13 +381,11 @@ public:
             if (ssl_ret > 0) break;
             auto ssl_error = SSL_get_error(ssl, ssl_ret);
             if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
-                ERR_print_errors_fp(stdout);
-                std::cout << "Error " << SSL_get_error(ssl, ssl_ret) << std::endl;
                 glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id, client_id);
                 SSL_shutdown(ssl);
                 SSL_free(ssl);
                 ::close(client_id);
-                throw exception_t(err_t::ACCEPT_FAILURE);
+                throw exception_t(error_c::ssl_error_ret(ssl_error));
             }
 
             ++attempt_to_write;
