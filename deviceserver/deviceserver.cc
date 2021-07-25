@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) try {
     rohit::init_iot(log_file);
 
     std::cout << "Creating event distributor" << std::endl;
-    evtdist = new rohit::event_distributor();
+    evtdist = new rohit::event_distributor(thread_count);
     evtdist->init();
 
     const auto str_config_folder = std::string(config_folder);

@@ -97,12 +97,12 @@ void *event_distributor::loop(void *pvoid_evtdist) {
             epoll_event &event = events[index];
             ctx.log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
             event_executor *executor = static_cast<event_executor *>(event.data.ptr);
+            thread_entry.set_state(state_t::EVENT_DIST_EPOLL_EXECUTE);
+            executor->execute(ctx, event.events);
             if ((event.events & (EPOLLHUP | EPOLLRDHUP )) != 0) {
                 thread_entry.set_state(state_t::EVENT_DIST_EPOLL_CLOSE);
                 if (!pevtdist->delayed_free(executor)) continue;
             }
-            thread_entry.set_state(state_t::EVENT_DIST_EPOLL_EXECUTE);
-            executor->execute(ctx, event.events);
         }
     }
 
