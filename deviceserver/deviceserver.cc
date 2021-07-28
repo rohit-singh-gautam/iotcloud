@@ -139,6 +139,11 @@ void destroy_app() {
     std::cout << "All thread joined" << std::endl;
 }
 
+void segv_app() {
+    rohit::glog.log<rohit::log_t::SEGMENTATION_FAULT>();
+    rohit::segv_log_flush();
+}
+
 void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
     destroy_app();
 
@@ -146,8 +151,7 @@ void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
 }
 
 void signal_segmentation_fault(int signal, siginfo_t *siginfo, void *args) {
-    rohit::glog.log<rohit::log_t::SEGMENTATION_FAULT>();
-    rohit::segv_log_flush();
+    segv_app();
 
     std::cout << "Segmentation fault..." << std::endl;
     exit(1);
@@ -199,9 +203,9 @@ int main(int argc, char *argv[]) try {
 
     return 0;
 } catch (rohit::exception_t e) {
+    segv_app();
     std::cout << "Exception received " << e << std::endl;
-    destroy_app();
 } catch (...) {
+    segv_app();
     std::cout << "Exception received " << std::endl;
-    destroy_app();
 }
