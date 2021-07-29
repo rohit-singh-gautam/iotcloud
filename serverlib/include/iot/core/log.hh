@@ -90,8 +90,8 @@ namespace rohit {
     LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_FAILED, ERROR, SOCKET, "Unable to load Primary Key, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP, INFO, SOCKET, "Socket cleanup SSL") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP_ATTEMPT, DEBUG, SOCKET, "Socket cleanup SSL left %i") \
-    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_SUCCESS, DEBUG, SOCKET, "SSL Socket %i accept success, new socket created %i") \
-    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_FAILED, ERROR, SOCKET, "SSL Socket %i accept failed, client socket %i") \
+    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_SUCCESS, DEBUG, SOCKET, "SSL Socket %i accept success") \
+    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_FAILED, ERROR, SOCKET, "SSL Socket %i accept failed") \
     \
     LOGGER_ENTRY(EVENT_DIST_CREATING_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor creating %llu threads") \
     LOGGER_ENTRY(EVENT_DIST_LOOP_CREATED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor thread loop created") \
@@ -384,10 +384,8 @@ private:
 
     uint8_t mem_buffer[max_log_memory];
 
-    void lock() { pthread_lock_c<multi_thread>::lock(); }
-    void unlock() { pthread_lock_c<multi_thread>::unlock(); }
-
-    
+    using pthread_lock_c<multi_thread>::lock;
+    using pthread_lock_c<multi_thread>::unlock;
 
 public:
     logger() : next_write(0), next_read(0), mem_buffer() {
@@ -547,12 +545,12 @@ public:
     }
 
     // Maximum 128 thread supported
-    static constexpr size_t max_logger = multi_thread ? 1 : 128;
+    static constexpr size_t max_logger = multi_thread ? 1 : 128+1;
     static size_t logger_count;
     static logger *logger_array[max_logger];
 
     static void logger_add(logger *new_logger) {
-        assert(logger_count <= max_logger);
+        assert(logger_count < max_logger);
         logger_array[logger_count++] = new_logger;
     }
 

@@ -29,7 +29,7 @@ event_distributor::event_distributor(const int thread_count, const int max_event
         glog.log<log_t::EVENT_DIST_TOO_MANY_THREAD>();
     }
 
-    pthread_mutex_init(&cleanup_lock, nullptr);
+    pthread_mutex_init(&eventdist_lock, nullptr);
 }
 
 void event_distributor::init() {
@@ -60,7 +60,10 @@ void event_distributor::init() {
 
 void *event_distributor::loop(void *pvoid_evtdist) {
     event_distributor *pevtdist = static_cast<event_distributor *>(pvoid_evtdist);
+    pthread_mutex_lock(&pevtdist->eventdist_lock);
     thread_context ctx(*pevtdist);
+    pthread_mutex_unlock(&pevtdist->eventdist_lock);
+
     while(pevtdist->thread_entry_map.find(pthread_self()) == pevtdist->thread_entry_map.end()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(config::event_dist_loop_wait_in_millis));
     }
@@ -115,12 +118,12 @@ void *event_distributor::cleanup(void *pvoid_evtdist) {
 
     while(!pevtdist->is_terminate) {
         // Cleaning up logs
-        pthread_mutex_lock(&pevtdist->cleanup_lock);
+        pthread_mutex_lock(&pevtdist->eventdist_lock);
         while (!pevtdist->cleanup_queue.empty() && pevtdist->cleanup_queue.front().to_free()) {
             pevtdist->cleanup_queue.front().remove_and_free(pevtdist->closed_received);
             pevtdist->cleanup_queue.pop();
         }
-        pthread_mutex_unlock(&pevtdist->cleanup_lock);
+        pthread_mutex_unlock(&pevtdist->eventdist_lock);
 
         uint64_t current_time = std::chrono::system_clock::now().time_since_epoch().count();
         for(auto thread_entry: pevtdist->thread_entry_map) {

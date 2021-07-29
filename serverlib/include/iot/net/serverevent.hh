@@ -7,7 +7,8 @@
 
 #include <iot/core/pthread_helper.hh>
 #include <iot/states/event_distributor.hh>
-#include <iot/core/memory.hh>
+#include <iot/states/statesentry.hh>
+#include <iot/states/states.hh>
 #include "socket.hh"
 
 namespace rohit {
@@ -92,11 +93,20 @@ inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
 template <bool use_ssl, bool use_lock = use_ssl>
 class serverpeerevent : public event_executor, public pthread_lock_c<use_lock> {
 protected:
-    socket_variant_t<use_ssl>::type peer_id;
+    struct write_entry {
+        uint8_t *buffer;
+        size_t size;
+    };
 
+    socket_variant_t<use_ssl>::type peer_id;
+    state_t client_state;
+
+    std::queue<write_entry> write_queue;
 public:
     inline serverpeerevent(socket_variant_t<use_ssl>::type peer_id) 
-            : peer_id(peer_id) {}
+              : peer_id(peer_id),
+                client_state(use_ssl ? state_t::SOCKET_PEER_ACCEPT : state_t::SOCKET_PEER_READ),
+                write_queue() {}
 
 };
 

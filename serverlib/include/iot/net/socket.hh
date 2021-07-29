@@ -50,16 +50,18 @@ public:
     inline constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
     inline operator int() const { return socket_id; }
 
-    inline void close() {
+    inline err_t close() {
         int last_socket_id = __sync_lock_test_and_set(&socket_id, 0);
         if (last_socket_id) {
             auto ret = ::close(last_socket_id);
             if (ret == -1) {
                 glog.log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
+                return err_t::CLOSE_FAILURE;
             } else {
                 glog.log<log_t::SOCKET_CLOSE_SUCCESS>(last_socket_id);
             }
         }
+        return err_t::SUCCESS;
     }
 
     inline err_t read(void *buf, const size_t buf_size, size_t &read_len) const {
@@ -103,6 +105,10 @@ public:
         int ret = ::write(socket_id, buf, send_len);
         if (ret == -1) return err_t::SEND_FAILURE;
         actual_sent = ret;
+        return err_t::SUCCESS;
+    }
+
+    constexpr err_t accept() {
         return err_t::SUCCESS;
     }
 
@@ -169,6 +175,22 @@ protected:
 
 public:
     inline socket_ssl_t(const int socket_id, SSL *ssl) : socket_t(socket_id), ssl(ssl) { }
+
+    inline err_t accept() {
+        if (ssl == nullptr) {
+            return err_t::CLOSE_FAILURE;
+        }
+        auto ssl_ret = SSL_accept(ssl);
+        auto ssl_error = SSL_get_error(ssl, ssl_ret);
+        if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+            glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id);
+            close();
+            return error_c::ssl_error_ret(ssl_error);
+        }
+
+        glog.log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id);
+        return err_t::SUCCESS;
+    }
 
     inline err_t read_wait(
                 void *buf,
@@ -255,36 +277,19 @@ public:
         return err_t::SUCCESS;
     }
 
-    inline void close() {
-        int last_socket_id = __sync_lock_test_and_set(&socket_id, 0);
-        if (last_socket_id) {
-            int attempt_to_write = 0;
-            while(attempt_to_write < config::attempt_to_write * 2) {
-                auto ret = SSL_shutdown(ssl);
-                if (ret > 0) {
-                    break;
-                }
-
-                auto ssl_error = SSL_get_error(ssl, ret);
-
-                if (ssl_error != SSL_ERROR_WANT_WRITE && ssl_error != SSL_ERROR_WANT_READ) {
-                    // We will ignore any error here
-                    // This normally fails
-                    break;
-                }
-                
-                ++attempt_to_write;
-                std::this_thread::sleep_for(std::chrono::milliseconds(config::attempt_to_write_wait_in_ms));
-            }
-            SSL_free(ssl);
-            ssl = nullptr;
-            auto ret = ::close(last_socket_id);
-            if (ret == -1) {
-                glog.log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
-            } else {
-                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(last_socket_id);
+    inline err_t close() {
+        auto ret = SSL_shutdown(ssl);
+        if (ret <= 0) {
+            auto ssl_error = SSL_get_error(ssl, ret);
+            if (ssl_error == SSL_ERROR_WANT_WRITE || ssl_error == SSL_ERROR_WANT_READ) {
+                // We will ignore any error here as it is normally fail and will be ignored
+                return error_c::ssl_error_ret(ssl_error);
             }
         }
+            
+        SSL_free(ssl);
+        ssl = nullptr;
+        return socket_t::close();
     }
 
     inline bool is_closed() { return socket_id == 0; }
@@ -377,26 +382,10 @@ public:
         auto ssl = SSL_new(socket_ssl_t::ctx);
         SSL_set_fd(ssl, client_id);
 
-        int attempt_to_write = 0;
-        while(attempt_to_write < config::attempt_to_write) {
-            auto ssl_ret = SSL_accept(ssl);
-            if (ssl_ret > 0) break;
-            auto ssl_error = SSL_get_error(ssl, ssl_ret);
-            if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
-                glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id, client_id);
-                SSL_shutdown(ssl);
-                SSL_free(ssl);
-                ::close(client_id);
-                throw exception_t(error_c::ssl_error_ret(ssl_error));
-            }
-
-            ++attempt_to_write;
-            std::this_thread::sleep_for(std::chrono::milliseconds(config::attempt_to_write_wait_in_ms));
-        }
-
-        glog.log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id, client_id);
+        glog.log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
         return {client_id, ssl};
     }
+
 };
 
 class client_socket_t : public socket_t {

@@ -16,6 +16,8 @@ private:
     using serverpeerevent<use_ssl>::peer_id;
     using serverpeerevent<use_ssl>::lock;
     using serverpeerevent<use_ssl>::unlock;
+    using serverpeerevent<use_ssl>::client_state;
+    using serverpeerevent<use_ssl>::write_queue;
 
 public:
     using serverpeerevent<use_ssl>::serverpeerevent;
@@ -29,57 +31,134 @@ template <bool use_ssl>
 void iotserverevent<use_ssl>::close(thread_context &ctx) {
     int last_peer_id = peer_id;
     if (last_peer_id) {
-        peer_id.close();
-        ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
+        auto ret = peer_id.close();
+        if (ret != err_t::SOCKET_RETRY) {
+            ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
+            client_state = state_t::SOCKET_PEER_CLOSED;
+        } else {
+            client_state = state_t::SOCKET_PEER_CLOSE;
+        }
     }
 }
 
 template <bool use_ssl>
 void iotserverevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
     lock();
-    if ((event & (EPOLLHUP | EPOLLRDHUP)) != 0) {
+    if ((event & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
         // TODO: Database has to be update with information that connection is closed
         close(ctx);
         unlock();
         return;
     }
-    ctx.log<log_t::IOT_EVENT_SERVER_COMMAND_RECEIVED>(peer_id.get_peer_ipv6_addr());
 
-    size_t read_buffer_size = 1024;
-    uint8_t read_buffer[read_buffer_size];
-    size_t read_buffer_length;
-    auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
-    
-    if (isFailure(err)) {
-        ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
+    // if state is SOCKET_PEER_EVENT change state based on event
+    if (client_state == state_t::SOCKET_PEER_EVENT) {
+        ctx.log<log_t::IOT_EVENT_SERVER_COMMAND_RECEIVED>(peer_id.get_peer_ipv6_addr());
+        if (event & EPOLLIN) client_state = state_t::SOCKET_PEER_READ;
+        else if (event & EPOLLOUT) client_state = state_t::SOCKET_PEER_WRITE;
     }
 
-    if (read_buffer_length > 0) {
-        rohit::message_base_t *base = (rohit::message_base_t *)read_buffer;
+    switch (client_state) {
+        case state_t::SOCKET_PEER_ACCEPT: {
+            auto err = peer_id.accept();
+            if (err == err_t::SUCCESS) {
+                client_state = state_t::SOCKET_PEER_EVENT;
+            } else {
+                close(ctx);
+            }
+            break;
+        }
+        case state_t::SOCKET_PEER_CLOSE: {
+            close(ctx);
+            break;
+        }
+        case state_t::SOCKET_PEER_READ: {
+            size_t read_buffer_size = 1024;
+            uint8_t read_buffer[read_buffer_size];
+            size_t read_buffer_length;
 
-        std::cout << "------Request Start---------\n" << *base << "\n------Request End---------\n";
+            auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
 
-        size_t write_buffer_size = 0;
-        uint8_t write_buffer[std::max(sizeof(rohit::message_unknown_t), sizeof(rohit::message_success_t))];
+            if (err == err_t::SOCKET_RETRY) {
+                // No state change required
+                break;
+            }
+            if (isFailure(err)) {
+                ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
+                client_state = state_t::SOCKET_PEER_EVENT;
+                break;
+            }
 
-        if (*base != rohit::message_code_t::COMMAND) {
-            std::cout << "Returning unknown" << std::endl;
-            rohit::message_unknown_t unknownMessage;
-            write_buffer_size = sizeof(unknownMessage);
-            std::copy((uint8_t *)&unknownMessage, (uint8_t *)&unknownMessage + sizeof(unknownMessage), write_buffer);
-        } else {
-            std::cout << "Returning success" << std::endl;
-            rohit::message_success_t successMessage;
-            write_buffer_size = sizeof(successMessage);
-            std::copy((uint8_t *)&successMessage, (uint8_t *)&successMessage + sizeof(successMessage), write_buffer);
+            if (read_buffer_length == 0) {
+                // No data indication that wait
+                client_state = state_t::SOCKET_PEER_EVENT;
+                break;
+            }
+
+            rohit::message_base_t *base = (rohit::message_base_t *)read_buffer;
+
+            if constexpr (config::debug) {
+                std::cout << "------Request Start---------\n" << *base << "\n------Request End---------\n";
+            }
+
+            size_t write_buffer_size = 0;
+            uint8_t *write_buffer;
+
+            if (*base != rohit::message_code_t::COMMAND) {
+                write_buffer_size = sizeof(rohit::message_unknown_t);
+                write_buffer = new uint8_t[write_buffer_size];
+                rohit::message_unknown_t *punknownMessage = new (write_buffer) rohit::message_unknown_t();
+            } else {
+                write_buffer_size = sizeof(rohit::message_success_t);
+                write_buffer = new uint8_t[write_buffer_size];
+                rohit::message_success_t *psuccessMessage = new (write_buffer) rohit::message_success_t();
+            }
+
+            if constexpr (config::debug) {
+                message_base_t *write_base = (message_base_t *)write_buffer;
+                std::cout << "------Response Start---------\n" << *write_base << "\n------Response End---------\n";
+            }
+
+            size_t written_length;
+            err = peer_id.write(write_buffer, write_buffer_size, written_length);
+            if (err == err_t::SOCKET_RETRY) {
+                write_queue.push({write_buffer,write_buffer_size});
+                break;
+            }
+            delete[] write_buffer;
+
+            if (isFailure(err)) {
+                ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+            }
+
+            client_state = state_t::SOCKET_PEER_EVENT;
+            break;
+        }
+        case state_t::SOCKET_PEER_WRITE: {
+            err_t err = err_t::SUCCESS;
+            while (!write_queue.empty()) {
+
+                auto write_buffer = write_queue.front();
+
+                size_t written_length;
+                err = peer_id.write(write_buffer.buffer, write_buffer.size, written_length);
+                if (err == err_t::SOCKET_RETRY) {
+                    break;
+                }
+                write_queue.pop();
+                delete[] write_buffer.buffer;
+
+                if (isFailure(err)) {
+                    ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+                }
+            }
+
+            if (err != err_t::SOCKET_RETRY) client_state = state_t::SOCKET_PEER_EVENT;
+            break;
         }
 
-        size_t written_length;
-        err = peer_id.write_wait(write_buffer, write_buffer_size, written_length);
-        if (isFailure(err)) {
-            ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
-        }
     }
+
     unlock();
 }
 

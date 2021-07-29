@@ -39,5 +39,15 @@ constexpr size_t to_string(const state_t &val, char *dest) {
     }
 }
 
+inline std::ostream& operator<<(std::ostream& os, const state_t &state) {
+    switch (state) {
+    default: // This will avoid error, such condition will never reach
+        assert(true);
+#define STATE_ENTRY(x, y) case state_t::x: return os << y;
+        STATE_ENTRY_LIST
+#undef STATE_ENTRY
+    }
+}
+
 
 } // namespace rohit

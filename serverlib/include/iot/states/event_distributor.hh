@@ -87,7 +87,7 @@ private:
     static void *loop(void *pevtdist);
     static void *cleanup(void *pevtdist);
 
-    pthread_mutex_t cleanup_lock;
+    pthread_mutex_t eventdist_lock;
     std::unordered_set<event_executor *> closed_received;
     std::queue<event_cleanup> cleanup_queue;
 
@@ -96,14 +96,14 @@ private:
     // true is not yet called and execute must be called
     inline bool delayed_free(event_executor *ptr) {
         bool call_execute = false;
-        pthread_mutex_lock(&cleanup_lock);
+        pthread_mutex_lock(&eventdist_lock);
         if (closed_received.find(ptr) == closed_received.end()) {
             // Entry has not been made yet
             call_execute = true;
             closed_received.insert(ptr);
             cleanup_queue.push({ ptr });
         }
-        pthread_mutex_unlock(&cleanup_lock);
+        pthread_mutex_unlock(&eventdist_lock);
         return call_execute;
     }
 

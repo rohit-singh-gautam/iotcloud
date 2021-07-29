@@ -57,6 +57,7 @@ namespace rohit {
     ERROR_T_ENTRY(SOCKET_CONNECT_UNSUPPORTED_PROTOCOL, "Unsupported protocol") \
     ERROR_T_ENTRY(SOCKET_CONNECT_TIMEOUT, "Unable to connect as it timeout") \
     ERROR_T_ENTRY(SOCKET_WRITE_ZERO, "Socket write written zero byte") \
+    ERROR_T_ENTRY(SOCKET_RETRY, "Socket retry last operation") \
     \
     ERROR_T_ENTRY(SOCKET_SSL_CONTEXT_FAILED, "Creation on SSL context failed") \
     ERROR_T_ENTRY(SOCKET_SSL_CERTIFICATE_FAILED, "Failed to load SSL certificate") \
@@ -236,9 +237,9 @@ public:
 
     static inline err_t ssl_error_ret(int ssl_error) {
         switch (ssl_error) {
-            case SSL_ERROR_WANT_READ: return err_t::SOCKET_SSL_WANT_READ;
-            case SSL_ERROR_WANT_WRITE: return err_t::SOCKET_SSL_WANT_WRITE;
-            case SSL_ERROR_WANT_X509_LOOKUP: return err_t::SOCKET_SSL_WANT_X509_LOOKUP;
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_X509_LOOKUP: return err_t::SOCKET_RETRY;
             case SSL_ERROR_SYSCALL: return err_t::SOCKET_SSL_SYSCALL_ERROR;
             case SSL_ERROR_ZERO_RETURN: return err_t::SOCKET_SSL_ZERO_RETURN;
             default: return err_t::SOCKET_SSL_ERROR;

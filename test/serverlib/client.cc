@@ -16,7 +16,7 @@
 #include <iostream>
 
 rohit::ipv6_socket_addr_t ipv6addr;
-rohit::ipv6_socket_addr_t ipv6addr_ssl;
+
 uint32_t repeat;
 uint32_t call_count;
 uint32_t wait_time_in_ms;
@@ -89,7 +89,7 @@ void test_deviceserver_ssl() {
     rohit::message_command_t messageCommand;
     messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
 
-    rohit::client_socket_ssl_t client_socket(ipv6addr_ssl);
+    rohit::client_socket_ssl_t client_socket(ipv6addr);
     std::cout << "Local Address: " << client_socket << std::endl;   
     std::cout << "Connected: " << client_socket.get_local_ipv6_addr() << " -> " << client_socket.get_peer_ipv6_addr() << std::endl;
     ++connect_count;
@@ -150,7 +150,6 @@ int main(int argc, char *argv[]) try {
         "Test client would test DeviceServer by calling it multiple times",
         {
             {'a', "address", "IPV6 address with port", "Device server address e.g. [::1]:8080", ipv6addr},
-            {'s', "secure_address", "IPV6 address with port", "Device server SSL address e.g. [::1]:8081", ipv6addr_ssl, rohit::ipv6_socket_addr_t()},
             {"use_ssl", "Device server SSL address", use_ssl},
             {'r', "repeat", "Repeat Count", "Number of time repeat has to be conducted", repeat, 1U},
             {'c', "count", "Call Count", "Number of time to call in each repeat", call_count, 1U},
