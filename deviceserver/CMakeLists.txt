@@ -15,4 +15,7 @@ include_directories(DeviceServer PUBLIC
     ${PROJECT_SOURCE_DIR}/../thirdparty/SimpleJSON
     )
 
-target_link_libraries(DeviceServer PUBLIC ServerLibrary)
+target_link_libraries(DeviceServer PUBLIC
+    HTTPServer
+    ServerLibrary
+)
