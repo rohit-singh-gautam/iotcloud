@@ -10,6 +10,8 @@ include_directories(DeviceServer PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/../serverlib/include
     ${PROJECT_SOURCE_DIR}/../serverlib/include
+    ${PROJECT_BINARY_DIR}/../httpparser
+    ${PROJECT_SOURCE_DIR}/../httpparser
     ${PROJECT_SOURCE_DIR}/../thirdparty/SimpleJSON
 )
 

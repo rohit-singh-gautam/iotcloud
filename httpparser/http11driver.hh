@@ -5,14 +5,14 @@
 
 #pragma once
 
+#include <iostream>
 #include <string>
-#include <istream>
 
 #include <http11parser.hh>
 #include <http11scanner.hh>
 #include <http11.hh>
 
-namespace iotcloud {
+namespace rohit {
 
 class http11driver {
 public:
@@ -25,8 +25,8 @@ public:
 private:
     void parse_internal(std::istream &iss);
 
-    iotcloud::parser *parser  = nullptr;
-    iotcloud::http11scanner *scanner = nullptr;
+    rohit::parser *parser  = nullptr;
+    rohit::http11scanner *scanner = nullptr;
 
 public:
     friend std::ostream& operator<<(std::ostream& os, const http11driver& driver);
@@ -41,4 +41,4 @@ inline const char *skipFirstAndSpace(const char *str) {
     return str;
 }
 
-}
+} // namespace rohit

@@ -29,6 +29,8 @@ add_custom_command(
 add_library(HTTPParser
     ${BISON_OUTPUT}
     ${FLEX_OUTPUT}
+    http11driver.cc
+    http11.cc
 )
 
 include_directories(HTTPParser PUBLIC

@@ -12,7 +12,7 @@
 #include <http11parser.hh>
 #include <location.hh>
 
-namespace iotcloud {
+namespace rohit {
 
 class http11scanner : public yyFlexLexer{
 protected:
@@ -32,8 +32,8 @@ public:
    void BEGIN_REQUEST();
 
 private:
-   iotcloud::parser::semantic_type *yylval = nullptr;
+   rohit::parser::semantic_type *yylval = nullptr;
 
 };
 
-} //iotcloud
+} // namespace rohit

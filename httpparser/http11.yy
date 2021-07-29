@@ -7,7 +7,7 @@
 %debug
 %language "C++"
 
-%define api.namespace { iotcloud }
+%define api.namespace { rohit }
 %define api.parser.class {parser}
 %define api.value.type variant
 %define parse.error verbose
@@ -16,7 +16,7 @@
 
 %code requires{
     #include <http11.hh>
-    namespace iotcloud {
+    namespace rohit {
         class http11scanner;
         class http11driver;
     }
@@ -29,7 +29,7 @@
 #include <http11driver.hh>
 
 #undef  YY_DECL
-#define YY_DECL int iotcloud::http11scanner::yylex(iotcloud::parser::semantic_type * const lval, iotcloud::parser::location_type *loc)
+#define YY_DECL int rohit::http11scanner::yylex(rohit::parser::semantic_type * const lval, rohit::parser::location_type *loc)
 
 #undef yylex
 #define yylex scanner.yylex
@@ -77,7 +77,7 @@ field:
 %%
 
 void 
-iotcloud::parser::error( const location_type &l, const std::string &err_message )
+rohit::parser::error( const location_type &l, const std::string &err_message )
 {
    std::cerr << "Error: " << err_message << " at " << l << std::endl;
 }

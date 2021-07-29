@@ -6,7 +6,7 @@
 #include <http11driver.hh>
 #include <sstream>
 
-iotcloud::http11driver::~http11driver()
+rohit::http11driver::~http11driver()
 {
    delete(scanner);
    scanner = nullptr;
@@ -14,12 +14,12 @@ iotcloud::http11driver::~http11driver()
    parser = nullptr;
 }
 
-void iotcloud::http11driver::parse(std::string &text) {
+void rohit::http11driver::parse(std::string &text) {
     std::stringstream textstream(text);
     parse_internal(textstream);
 }
 
-void iotcloud::http11driver::parse_internal(std::istream &textstream) {
+void rohit::http11driver::parse_internal(std::istream &textstream) {
     delete(scanner);
     try
     {
@@ -35,7 +35,7 @@ void iotcloud::http11driver::parse_internal(std::istream &textstream) {
     delete(parser); 
     try
     {
-        parser = new iotcloud::parser(*scanner, *this);
+        parser = new rohit::parser(*scanner, *this);
     }
     catch( std::bad_alloc &ba )
     {

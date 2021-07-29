@@ -5,9 +5,9 @@
 #include <iostream>
 
 #undef  YY_DECL
-#define YY_DECL int iotcloud::http11scanner::yylex(iotcloud::parser::semantic_type * const lval, iotcloud::parser::location_type *loc)
+#define YY_DECL int rohit::http11scanner::yylex(rohit::parser::semantic_type * const lval, rohit::parser::location_type *loc)
 
-using token = iotcloud::parser::token;
+using token = rohit::parser::token;
 
 #define YY_USER_ACTION loc->step(); loc->columns(yyleng);
 
@@ -27,7 +27,7 @@ using token = iotcloud::parser::token;
 %}
 
 %option c++ nounput debug yylineno noyywrap batch
-%option yyclass="iotcloud::http11scanner"
+%option yyclass="rohit::http11scanner"
 %x REQUEST
 %x RESPONSE
 %x HEADER
@@ -154,6 +154,6 @@ space               [ \t]+
 
 %%
 
-void iotcloud::http11scanner::BEGIN_REQUEST() {
+void rohit::http11scanner::BEGIN_REQUEST() {
     BEGIN(REQUEST);
 }

@@ -4,6 +4,7 @@
 ////////////////////////////////////////////////////////////
 
 #include <iotserverevent.hh>
+#include <iothttpevent.hh>
 #include <iot/init.hh>
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>
@@ -43,10 +44,14 @@ bool parse_and_display(int argc, char *argv[]) {
 
 typedef rohit::serverevent<rohit::iotserverevent<false>, false> serverevent_type;
 typedef rohit::serverevent<rohit::iotserverevent<true>, true> serverevent_ssl_type;
+typedef rohit::serverevent<rohit::iothttpevent<false>, false> httpevent_type;
+typedef rohit::serverevent<rohit::iothttpevent<true>, true> httpevent_ssl_type;
 
 rohit::event_distributor *evtdist = nullptr;
 std::vector<serverevent_type *> srvevts;
 std::vector<serverevent_ssl_type *> srvevts_ssl;
+std::vector<httpevent_type *> srvhttpevts;
+std::vector<httpevent_ssl_type *> srvhttpevts_ssl;
 
 const std::string load_config_string(const char *const configfile) {
     int fd = open(configfile, O_RDONLY);
@@ -109,7 +114,27 @@ void load_and_execute_config(const std::string configfile) {
             srvevt_ssl->init();
 
             srvevts_ssl.push_back(srvevt_ssl);
-        } else {
+        } else if (TYPE == "http") {
+            std::cout << "Creating a HTTP server at port " << port << std::endl;
+            auto srvhttpevt =
+                new httpevent_type(*evtdist, port);
+            srvhttpevt->init();
+            srvhttpevts.push_back(srvhttpevt);
+        } else if (TYPE == "https") {
+            const auto cert_file = server["CertFile"].ToString();
+            const auto prikey_file_temp = server["PrikeyFile"].ToString();
+            const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
+
+            std::cout << "Creating a HTTPS server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
+            auto srvhttpevt_ssl = new httpevent_ssl_type(
+                *evtdist,
+                port,
+                cert_file.c_str(),
+                prikey_file.c_str());
+            srvhttpevt_ssl->init();
+
+            srvhttpevts_ssl.push_back(srvhttpevt_ssl);
+        } else{
             std::cout << "Unknown server type " << TYPE << ", skipping creation of this server" << std::endl;
             continue;
         }
@@ -131,6 +156,16 @@ void destroy_app() {
     for(auto srvevt_ssl: srvevts_ssl) {
         srvevt_ssl->close();
         delete srvevt_ssl;
+    }
+
+    for(auto srvhttpevt: srvhttpevts) {
+        srvhttpevt->close();
+        delete srvhttpevt;
+    }
+
+    for(auto srvhttpevt_ssl: srvhttpevts_ssl) {
+        srvhttpevt_ssl->close();
+        delete srvhttpevt_ssl;
     }
 
     evtdist->wait();

@@ -17,6 +17,18 @@
             "TYPE" : "secure",
             "port" : 8082,
             "IP"   : "*"
+        },
+        {
+            "TYPE" : "http",
+            "port" : 8060,
+            "IP"   : "*"
+        },
+        {
+            "TYPE" : "https",
+            "port" : 8061,
+            "IP"   : "*",
+            "CertFile" : "/home/rohit/iotcloud/resources/key/testcert.pem",
+            "PrikeyFile" : "/home/rohit/iotcloud/resources/key/testcert.pem"
         }
     ]
 }
