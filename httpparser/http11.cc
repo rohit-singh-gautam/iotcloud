@@ -8,13 +8,13 @@
 #include <sstream>
 #include <iomanip>
 
-const std::string http_header::strVERSION[] {
+const char *http_header::strVERSION[] {
     "HTTP/1.1",
     "HTTP/2",
     "HTTP/3",
 };
 
-const std::string http_header::strFIELD[] {
+const char *http_header::strFIELD[] {
     // General Header
     "Cache-Control",
     "Connection",
@@ -73,7 +73,7 @@ const std::string http_header::strFIELD[] {
 
 };
 
-const std::string http_header_request::strMETHOD[] {
+const char *http_header_request::strMETHOD[] {
     "OPTIONS",
     "GET",
     "HEAD",
@@ -112,66 +112,8 @@ std::ostream& operator<<(std::ostream& os, const http_header_request& requestHea
               << requestHeader.fields << "\n";
 }
 
-const std::unordered_map<http_header_response::CODE, std::string> http_header_response::strCODE = {
-    // Informational 1xx
-    {100_rc, "Continue"},
-    {101_rc, "Switching Protocols"},
-
-    // Successful 2xx
-    {200_rc, "OK"},
-    {201_rc, "Created"},
-    {202_rc, "Accepted"},
-    {203_rc, "Non-Authoritative Information"},
-    {204_rc, "No Content"},
-    {205_rc, "Reset Content"},
-    {206_rc, "Partial Content"},
-
-    // Redirection 3xx
-    {300_rc, "Multiple Choices"},
-    {301_rc, "Moved Permanently"},
-    {302_rc, "Found"},
-    {303_rc, "See Other"},
-    {304_rc, "Not Modified"},
-    {305_rc, "Use Proxy"},
-    // 306 is unused
-    {307_rc, "Temporary Redirect"},
-
-    // Client Error 4xx
-    {400_rc, "Bad Request"},
-    {401_rc, "Unauthorized"},
-    {402_rc, "Payment Required"},
-    {403_rc, "Forbidden"},
-    {404_rc, "Not Found"},
-    {405_rc, "Method Not Allowed"},
-    {406_rc, "Not Acceptable"},
-    {407_rc, "Proxy Authentication Required"},
-    {408_rc, "Request Timeout"},
-    {409_rc, "Conflict"},
-    {410_rc, "Gone"},
-    {411_rc, "Length Required"},
-    {412_rc, "Precondition Failed"},
-    {413_rc, "Request Entity Too Large"},
-    {414_rc, "Request-URI Too Long"},
-    {415_rc, "Unsupported Media Type"},
-    {416_rc, "Requested Range Not Satisfiable"},
-    {417_rc, "Expectation Failed"},
-
-    // Server Error 5xx
-    {500_rc, "Internal Server Error"},
-    {501_rc, "Not Implemented"},
-    {502_rc, "Bad Gateway"},
-    {503_rc, "Service Unavailable"},
-    {504_rc, "Gateway Timeout"},
-    {505_rc, "HTTP Version Not Supported"},
-};
-
 std::ostream& operator<<(std::ostream& os, const http_header_response::CODE responseCODE) {
-    auto strCODEPair = http_header_response::strCODE.find(responseCODE);
-    if (strCODEPair == http_header_response::strCODE.end() ) {
-        return os << (int)responseCODE << " Unknown";
-    } else {
-        return os << (int)responseCODE << " " << strCODEPair->second;
-    }
+    return os << (int)responseCODE << " " << http_header_response::getCodestring(responseCODE);
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_response& responseHeader) {
