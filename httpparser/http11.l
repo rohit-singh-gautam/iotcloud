@@ -16,9 +16,9 @@ using token = rohit::parser::token;
 #define tokFLOAT(tok) { yylval->emplace<float>(std::stof(yytext)); return token::tok; }
 #define tokSTRING(tok) { yylval->emplace<std::string>(yytext); return token::tok; }
 #define tokCHAR(tok) { yylval->emplace<char>(*yytext); return token::tok; }
-#define tokMETHOD(value) { yylval->emplace<http_header_request::METHOD>(http_header_request::METHOD::value); return token::METHOD; }
-#define tokVERSION(value) { BEGIN(HEADER); yylval->emplace<http_header::VERSION>(http_header::VERSION::value); return token::VERSION; }
-#define tokFIELD(value) { yylval->emplace<http_header::FIELD>(http_header::FIELD::value); return token::FIELD; }
+#define tokMETHOD(value) { yylval->emplace<rohit::http_header_request::METHOD>(rohit::http_header_request::METHOD::value); return token::METHOD; }
+#define tokVERSION(value) { BEGIN(HEADER); yylval->emplace<rohit::http_header::VERSION>(rohit::http_header::VERSION::value); return token::VERSION; }
+#define tokFIELD(value) { yylval->emplace<rohit::http_header::FIELD>(rohit::http_header::FIELD::value); return token::FIELD; }
 #define tokFIELDVALUE(tok) { yylval->emplace<std::string>(skipFirstAndSpace(yytext)); return token::tok; }
 #define tokFIELDCOLON(tok) { return token::tok; }
 
@@ -89,7 +89,6 @@ space               [ \t]+
 <REQUEST>"CONNECT"              tokMETHOD(CONNECT)
 <REQUEST>"HTTP/1.1"             tokVERSION(VER_1_1)
 <REQUEST>"HTTP/2"               tokVERSION(VER_2)
-<REQUEST>"HTTP/3"               tokVERSION(VER_3)
 <REQUEST>{Request-URI}          tokSTRING(PATH)
 
 <HEADER>"Cache-Control"          tokFIELD(Cache_Control)

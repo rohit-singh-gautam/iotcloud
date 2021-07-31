@@ -8,80 +8,24 @@
 #include <sstream>
 #include <iomanip>
 
+namespace rohit {
+
 const char *http_header::strVERSION[] {
-    "HTTP/1.1",
-    "HTTP/2",
-    "HTTP/3",
+#define HTTP_VERSION_ENTRY(x, y) y,
+    HTTP_VERSION_LIST
+#undef HTTP_VERSION_ENTRY
 };
 
 const char *http_header::strFIELD[] {
-    // General Header
-    "Cache-Control",
-    "Connection",
-    "Date",
-    "Pragma",
-    "Trailer",
-    "Transfer-Encoding",
-    "Upgrade",
-    "Via",
-    "Warning",
-
-    // Request Header
-    "Accept",
-    "Accept-Charset",
-    "Accept-Encoding",
-    "Accept-Language",
-    "Authorization",
-    "Expect",
-    "From",
-    "Host",
-    "If-Match",
-    "If-Modified-Since",
-    "If-None-Match",
-    "If-Range",
-    "If-Unmodified-Since",
-    "Max-Forwards",
-    "Proxy-Authorization",
-    "Range",
-    "Referer",
-    "TE",
-    "User-Agent",
-    "HTTP2-Settings",
-
-    // Response Header
-    "Accept-Ranges",
-    "Age",
-    "ETag",
-    "Location",
-    "Proxy-Authenticate",
-    "Retry-After",
-    "Server",
-    "Vary",
-    "WWW-Authenticate",
-
-    // Entity Header
-    "Allow",
-    "Content-Encoding",
-    "Content-Language",
-    "Content-Length",
-    "Content-Location",
-    "Content-MD5",
-    "Content-Range",
-    "Content-Type",
-    "Expires",
-    "Last-Modified",
-
+#define HTTP_FIELD_ENTRY(x, y) y,
+    HTTP_FIELD_LIST
+#undef HTTP_FIELD_ENTRY
 };
 
 const char *http_header_request::strMETHOD[] {
-    "OPTIONS",
-    "GET",
-    "HEAD",
-    "POST",
-    "PUT",
-    "DELETE",
-    "TRACE",
-    "CONNECT",
+#define HTTP_METHOD_ENTRY(x, y) y,
+    HTTP_METHOD_LIST
+#undef HTTP_METHOD_ENTRY
 };
 
 std::ostream& operator<<(std::ostream& os, const http_header::VERSION requestVersion) {
@@ -155,3 +99,5 @@ void http_response::addMD5() {
 
     fields.insert(std::make_pair<FIELD, std::string>(FIELD::Content_MD5, std::move(md5Stream.str())));
 }
+
+} // namespace rohit

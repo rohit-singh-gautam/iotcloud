@@ -8,71 +8,97 @@
 #include <unordered_map>
 #include <iostream>
 
+namespace rohit {
+
+#define LIST_DEFINITION_END
+
+#define HTTP_VERSION_LIST \
+    HTTP_VERSION_ENTRY(VER_1_1, "HTTP/1.1") \
+    HTTP_VERSION_ENTRY(VER_2, "HTTP/2") \
+    LIST_DEFINITION_END
+
+#define HTTP_FIELD_LIST \
+    /* General Header */ \
+    HTTP_FIELD_ENTRY(Cache_Control, "Cache-Control") \
+    HTTP_FIELD_ENTRY(Connection, "Connection") \
+    HTTP_FIELD_ENTRY(Date, "Date") \
+    HTTP_FIELD_ENTRY(Pragma, "Pragma") \
+    HTTP_FIELD_ENTRY(Trailer, "Trailer") \
+    HTTP_FIELD_ENTRY(Transfer_Encoding, "Transfer-Encoding") \
+    HTTP_FIELD_ENTRY(Upgrade, "Upgrade") \
+    HTTP_FIELD_ENTRY(Via, "Via") \
+    HTTP_FIELD_ENTRY(Warning, "Warning") \
+    \
+    /* Request Header */ \
+    HTTP_FIELD_ENTRY(Accept, "Accept") \
+    HTTP_FIELD_ENTRY(Accept_Charset, "Accept-Charset") \
+    HTTP_FIELD_ENTRY(Accept_Encoding, "Accept-Encoding") \
+    HTTP_FIELD_ENTRY(Accept_Language, "Accept-Language") \
+    HTTP_FIELD_ENTRY(Authorization, "Authorization") \
+    HTTP_FIELD_ENTRY(Expect, "Expect") \
+    HTTP_FIELD_ENTRY(From, "From") \
+    HTTP_FIELD_ENTRY(Host, "Host") \
+    HTTP_FIELD_ENTRY(If_Match, "If-Match") \
+    HTTP_FIELD_ENTRY(If_Modified_Since, "If-Modified-Since") \
+    HTTP_FIELD_ENTRY(If_None_Match, "If-None-Match") \
+    HTTP_FIELD_ENTRY(If_Range, "If-Range") \
+    HTTP_FIELD_ENTRY(If_Unmodified_Since, "If-Unmodified-Since") \
+    HTTP_FIELD_ENTRY(Max_Forwards, "Max-Forwards") \
+    HTTP_FIELD_ENTRY(Proxy_Authorization, "Proxy-Authorization") \
+    HTTP_FIELD_ENTRY(Range, "Range") \
+    HTTP_FIELD_ENTRY(Referer, "Referer") \
+    HTTP_FIELD_ENTRY(TE, "TE") \
+    HTTP_FIELD_ENTRY(User_Agent, "User-Agent") \
+    HTTP_FIELD_ENTRY(HTTP2_Settings, "HTTP2-Settings") \
+    \
+    /* Response Header */ \
+    HTTP_FIELD_ENTRY(Accept_Ranges, "Accept-Ranges") \
+    HTTP_FIELD_ENTRY(Age, "Age") \
+    HTTP_FIELD_ENTRY(ETag, "ETag") \
+    HTTP_FIELD_ENTRY(Location, "Location") \
+    HTTP_FIELD_ENTRY(Proxy_Authenticate, "Proxy-Authenticate") \
+    HTTP_FIELD_ENTRY(Retry_After, "Retry-After") \
+    HTTP_FIELD_ENTRY(Server, "Server") \
+    HTTP_FIELD_ENTRY(Vary, "Vary") \
+    HTTP_FIELD_ENTRY(WWW_Authenticate, "WWW-Authenticate") \
+    \
+    HTTP_FIELD_ENTRY(Allow, "Allow") \
+    HTTP_FIELD_ENTRY(Content_Encoding, "Content-Encoding") \
+    HTTP_FIELD_ENTRY(Content_Language, "Content-Language") \
+    HTTP_FIELD_ENTRY(Content_Length, "Content-Length") \
+    HTTP_FIELD_ENTRY(Content_Location, "Content-Location") \
+    HTTP_FIELD_ENTRY(Content_MD5, "Content-MD5") \
+    HTTP_FIELD_ENTRY(Content_Range, "Content-Range") \
+    HTTP_FIELD_ENTRY(Content_Type, "Content-Type") \
+    HTTP_FIELD_ENTRY(Expires, "Expires") \
+    HTTP_FIELD_ENTRY(Last_Modified, "Last-Modified") \
+    \
+    LIST_DEFINITION_END
+
+#define HTTP_METHOD_LIST \
+    HTTP_METHOD_ENTRY(OPTIONS, "OPTIONS") \
+    HTTP_METHOD_ENTRY(GET, "GET") \
+    HTTP_METHOD_ENTRY(HEAD, "HEAD") \
+    HTTP_METHOD_ENTRY(POST, "POST") \
+    HTTP_METHOD_ENTRY(PUT, "PUT") \
+    HTTP_METHOD_ENTRY(DELETE, "DELETE") \
+    HTTP_METHOD_ENTRY(TRACE, "TRACE") \
+    HTTP_METHOD_ENTRY(CONNECT, "CONNECT") \
+    LIST_DEFINITION_END
+
 class http_header {
 public:
     enum class VERSION {
-        VER_1_1,
-        VER_2,
-        VER_3
+#define HTTP_VERSION_ENTRY(x, y) x,
+    HTTP_VERSION_LIST
+#undef HTTP_VERSION_ENTRY
     };
 
     enum class FIELD {
-        // General Header
-        Cache_Control, // Cache-Control
-        Connection,
-        Date,
-        Pragma,
-        Trailer,
-        Transfer_Encoding, // Transfer-Encoding
-        Upgrade,
-        Via,
-        Warning,
-
-        // Request Header
-        Accept,
-        Accept_Charset, // Accept-Charset
-        Accept_Encoding, // Accept-Encoding
-        Accept_Language, // Accept-Language
-        Authorization,
-        Expect,
-        From,
-        Host,
-        If_Match, // If-Match
-        If_Modified_Since, // If-Modified-Since
-        If_None_Match, // If-None-Match
-        If_Range, // If-Range
-        If_Unmodified_Since, // If-Unmodified-Since
-        Max_Forwards, // Max-Forwards
-        Proxy_Authorization, // Proxy-Authorization
-        Range,
-        Referer,
-        TE,
-        User_Agent, // User-Agent
-        HTTP2_Settings, // HTTP2-Settings
-
-        // Response Header
-        Accept_Ranges, // Accept-Ranges
-        Age,
-        ETag,
-        Location,
-        Proxy_Authenticate, // Proxy-Authenticate
-        Retry_After, // Retry-After
-        Server,
-        Vary,
-        WWW_Authenticate, // WWW-Authenticate
-
-        Allow,
-        Content_Encoding, // Content-Encoding
-        Content_Language, // Content-Language
-        Content_Length, // Content-Length
-        Content_Location, // Content-Location
-        Content_MD5, // Content-MD5
-        Content_Range, // Content-Range
-        Content_Type, // Content-Type
-        Expires,
-        Last_Modified, // Last-Modified
+#define HTTP_FIELD_ENTRY(x, y) x,
+    HTTP_FIELD_LIST
+#undef HTTP_FIELD_ENTRY
     };
-
 
     struct line {
         const FIELD field;
@@ -109,14 +135,9 @@ public:
     using http_header::VERSION;
     using http_header::FIELD;
     enum class METHOD {
-        OPTIONS,
-        GET,
-        HEAD,
-        POST,
-        PUT,
-        DELETE,
-        TRACE,
-        CONNECT
+#define HTTP_METHOD_ENTRY(x, y) x,
+    HTTP_METHOD_LIST
+#undef HTTP_METHOD_ENTRY
     };
 
     METHOD method;
@@ -239,3 +260,5 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& os, const http_response& responseHeader);
+
+} // namespace rohit
