@@ -12,23 +12,23 @@
 namespace rohit {
 
 template <typename T>
-inline constexpr size_t sizeofvaargs(const T& arg) {
+constexpr size_t sizeofvaargs(const T& arg) {
     return sizeof(arg);
 }
 
 template <typename T, typename... ARGS>
-inline constexpr size_t sizeofvaargs(const T& arg, const ARGS&... args) {
+constexpr size_t sizeofvaargs(const T& arg, const ARGS&... args) {
     return sizeofvaargs(arg) + sizeofvaargs(args...);
 }
 
 template <typename T>
-inline constexpr void copyvaradic(uint8_t * const arr, const T& arg) {
+constexpr void copyvaradic(uint8_t * const arr, const T& arg) {
     uint8_t * const arrsrc = (uint8_t * const)(&arg);
     std::copy(arrsrc, arrsrc + sizeof(T), arr);
 }
 
 template <typename T, typename... ARGS>
-inline constexpr void copyvaradic(uint8_t * const arr, const T& arg, const ARGS&... args) {
+constexpr void copyvaradic(uint8_t * const arr, const T& arg, const ARGS&... args) {
     copyvaradic(arr, arg);
     copyvaradic(arr + sizeof(arg), args...);
 }
@@ -59,7 +59,7 @@ enum class formatstring_type_length {
     ll
 };
 
-inline constexpr size_t formatstring_count(const char *arr) {
+constexpr size_t formatstring_count(const char *arr) {
     formatstring_state state = formatstring_state::COPY;
     int count = 0;
 

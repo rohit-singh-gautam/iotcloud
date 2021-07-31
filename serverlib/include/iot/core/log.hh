@@ -223,7 +223,7 @@ template <log_t ID> struct log_description {
     LOGGER_LOG_LIST
 #undef LOGGER_ENTRY
 
-inline constexpr const char * get_log_description(log_t id) {
+constexpr const char * get_log_description(log_t id) {
     switch (id) {
         default: // This will avoid error, such condition will never reach
             assert(true);
@@ -233,7 +233,7 @@ inline constexpr const char * get_log_description(log_t id) {
     }
 }
 
-inline constexpr size_t get_log_length(log_t id) {
+constexpr size_t get_log_length(log_t id) {
     switch (id) {
         default: // This will avoid error, such condition will never reach
             assert(true);
@@ -243,7 +243,7 @@ inline constexpr size_t get_log_length(log_t id) {
     }
 }
 
-inline constexpr const char * get_log_id_string(log_t id) {
+constexpr const char * get_log_id_string(log_t id) {
     switch (id) {
         default: // This will avoid error, such condition will never reach
             assert(true);
@@ -258,12 +258,12 @@ constexpr size_t log_t_count = 0 + LOGGER_LOG_LIST;
 #undef LOGGER_ENTRY
 
 template <log_t ID, typename... ARGS>
-inline constexpr size_t check_formatstring_args() {
+constexpr size_t check_formatstring_args() {
     return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list, ARGS...>();
 }
 
 template <log_t ID, typename... ARGS>
-inline constexpr size_t check_formatstring_args(const ARGS&...) {
+constexpr size_t check_formatstring_args(const ARGS&...) {
     return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list, ARGS...>();
 }
 
@@ -290,7 +290,7 @@ private:
     uint8_t arguments[argsize];
 
 public:
-    inline constexpr logger_logs_entry(const int64_t timestamp, const ARGS&... args)
+    constexpr logger_logs_entry(const int64_t timestamp, const ARGS&... args)
             : logger_logs_entry_common(timestamp, ID) {
         static_assert(totalsize != log_description<ID>::length, "Total size of argument must be less than 256");
         static_assert(log_description<ID>::type_count == sizeof...(ARGS), "Wrong number of parameters");
@@ -302,7 +302,7 @@ public:
 template <log_t ID>
 class logger_logs_entry<ID> : public logger_logs_entry_common {
 public:
-    inline constexpr logger_logs_entry(const int64_t timestamp)
+    constexpr logger_logs_entry(const int64_t timestamp)
             : logger_logs_entry_common(timestamp, ID) { }
 } __attribute__((packed));
 

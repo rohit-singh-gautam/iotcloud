@@ -144,7 +144,7 @@ std::ostream& operator<<(std::ostream& os, const message_base_t &message);
 
 class message_unknown_t : public message_base_t {
 public:
-    inline constexpr message_unknown_t() : message_base_t(message_code_t::UNKNOWN) { }
+    constexpr message_unknown_t() : message_base_t(message_code_t::UNKNOWN) { }
 } __attribute__((packed));
 
 class message_connect256_t : public message_base_t {
@@ -153,12 +153,12 @@ private:
     uint8_t     iv[96/8];
     uint8_t     encrypted_data[0];
 public:
-    inline constexpr message_connect256_t() : message_base_t(message_code_t::CONNECT) { }
+    constexpr message_connect256_t() : message_base_t(message_code_t::CONNECT) { }
 } __attribute__((packed));
 
 class message_keep_alive_t : public message_base_t {
 public:
-    inline constexpr message_keep_alive_t() : message_base_t(message_code_t::KEEP_ALIVE) { }
+    constexpr message_keep_alive_t() : message_base_t(message_code_t::KEEP_ALIVE) { }
 } __attribute__((packed));
 
 class message_success_t : public message_base_t {

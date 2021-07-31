@@ -47,7 +47,7 @@ protected:
 
     inline socket_t() : socket_id(create_socket()) {}
 public:
-    inline constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
+    constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
     inline operator int() const { return socket_id; }
 
     inline err_t close() {

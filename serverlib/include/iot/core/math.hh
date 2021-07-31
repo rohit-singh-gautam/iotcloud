@@ -12,7 +12,7 @@
 
 namespace rohit {
 
-inline constexpr void reverse(char *start, char *end) {
+constexpr void reverse(char *start, char *end) {
     while(start < end) {
         std::swap(*start, *end);
         ++start; --end;
