@@ -80,8 +80,8 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
         }
 
         case state_t::SOCKET_PEER_READ: {
-            size_t read_buffer_size = 1024;
-            uint8_t read_buffer[read_buffer_size];
+            constexpr size_t read_buffer_size = 1024;
+            char read_buffer[read_buffer_size];
             size_t read_buffer_length;
 
             auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
@@ -109,28 +109,31 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             driver.parse(request_string);
             std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
 
-            http_response responseContent(
-                http_header::VERSION::VER_1_1,
-                200_rc, {
+            const http_header_line header_line[] = {
                 {http_header::FIELD::Server, "IOTCLOUD"},
                 {http_header::FIELD::Content_Type, "application/json"},
-                }, 
-                std::string("{result:""success""}\n"));
-            responseContent.addMD5();
-            std::stringstream strResponse;
-            strResponse << responseContent;
-            std::string strResponseHeader = strResponse.str();
+            };
 
-            std::cout << "------Response Start---------\n" << strResponseHeader << "\n------Response End---------\n";
+            char *last_write_buffer = copy_http_response(
+                read_buffer,
+                http_header::VERSION::VER_1_1,
+                200_rc,
+                header_line,
+                "{result:""success""}\n"
+            );
+
+            auto write_size = (size_t)(last_write_buffer - read_buffer);
+
+            std::cout << "------Response Start---------\n" << read_buffer << "\n------Response End---------\n";
 
 
             size_t written_length;
-            err = peer_id.write(strResponseHeader.c_str(), strResponseHeader.length(), written_length);
+            err = peer_id.write(read_buffer, write_size, written_length);
             if (err == err_t::SOCKET_RETRY) {
-                size_t write_buffer_size = strResponseHeader.length();
+                size_t write_buffer_size = write_size;
                 uint8_t *write_buffer = new uint8_t[write_buffer_size];
-                std::copy(strResponseHeader.c_str(), strResponseHeader.c_str() + write_buffer_size, write_buffer);
-                write_queue.push({write_buffer,write_buffer_size});
+                std::copy(read_buffer, read_buffer + write_buffer_size, write_buffer);
+                write_queue.push({write_buffer, write_buffer_size});
                 break;
             }
 

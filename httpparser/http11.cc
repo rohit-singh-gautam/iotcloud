@@ -56,31 +56,17 @@ std::ostream& operator<<(std::ostream& os, const http_header_request& requestHea
               << requestHeader.fields << "\n";
 }
 
-std::ostream& operator<<(std::ostream& os, const http_header_response::CODE responseCODE) {
-    return os << (int)responseCODE << " " << http_header_response::getCodestring(responseCODE);
+std::ostream& operator<<(std::ostream& os, const http_header::CODE responseCODE) {
+    return os << (int)responseCODE << " " << http_header::get_code_string(responseCODE);
+}
+
+std::ostream& operator<<(std::ostream& os, const http_header_response_status& responseHeader) {
+    return os << responseHeader.version << " " << responseHeader.code << "\n";
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_response& responseHeader) {
     return os << responseHeader.version << " " << responseHeader.code << "\n"
               << responseHeader.fields << "\n";
-}
-
-http_header::http_header(
-    http_header::VERSION version,
-    const std::unordered_map<http_header::FIELD, std::string> &fields) : version(version), fields(fields) {}
-
-http_header_response::http_header_response(
-    http_header::VERSION version,
-    http_header_response::CODE code,
-    const std::unordered_map<http_header::FIELD, std::string> &fields) : http_header(version, fields), code(code) {}
-
-http_response::http_response(
-    VERSION version, 
-    CODE code, 
-    const std::unordered_map<FIELD, std::string> &fields,
-    std::string body) : http_header_response(version, code, fields), body(body) {
-
-    this->fields.insert(std::make_pair<FIELD, std::string>(FIELD::Content_Length, std::to_string(body.length())));
 }
 
 std::ostream& operator<<(std::ostream& os, const http_response& responseContent) {

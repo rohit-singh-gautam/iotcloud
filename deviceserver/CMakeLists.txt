@@ -8,11 +8,12 @@ add_executable(DeviceServer
 
 include_directories(DeviceServer PUBLIC
     ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/../serverlib/include
-    ${PROJECT_SOURCE_DIR}/../serverlib/include
-    ${PROJECT_BINARY_DIR}/../httpparser
-    ${PROJECT_SOURCE_DIR}/../httpparser
-    ${PROJECT_SOURCE_DIR}/../thirdparty/SimpleJSON
+    ${CMAKE_BINARY_DIR}/serverlib/include
+    ${CMAKE_SOURCE_DIR}/serverlib/include
+    ${CMAKE_BINARY_DIR}/httpparser
+    ${CMAKE_SOURCE_DIR}/httpparser
+    ${CMAKE_SOURCE_DIR}/thirdparty/SimpleJSON
+    ${CMAKE_SOURCE_DIR}/thirdparty/md5
 )
 
 target_link_libraries(DeviceServer PUBLIC

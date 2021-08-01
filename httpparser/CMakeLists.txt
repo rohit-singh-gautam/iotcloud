@@ -36,6 +36,12 @@ add_library(HTTPParser
 include_directories(HTTPParser PUBLIC
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_BINARY_DIR}
+    ${CMAKE_BINARY_DIR}/serverlib/include
+    ${CMAKE_SOURCE_DIR}/serverlib/include
+    ${CMAKE_SOURCE_DIR}/thirdparty/md5
 )
 
+target_link_libraries(HTTPParser PUBLIC
+    ServerLibrary
+)
 
