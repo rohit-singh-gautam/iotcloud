@@ -110,7 +110,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
 
             const http_header_line header_line[] = {
-                {http_header::FIELD::Server, "IOTCLOUD"},
+                {http_header::FIELD::Server, config::server_name},
                 {http_header::FIELD::Content_Type, "application/json"},
             };
 

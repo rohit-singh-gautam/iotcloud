@@ -4,6 +4,8 @@
 ////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include <iot/core/version.h>
 #include <stdint.h>
 
 namespace rohit {
@@ -20,5 +22,10 @@ constexpr uint64_t attempt_to_write = 20;
 constexpr int64_t attempt_to_write_wait_in_ms = 50;
 constexpr int socket_backlog = 5;
 
-};
-};
+#define macrostr_helper(x) #x
+#define macrostr(x) macrostr_helper(x)
+
+constexpr char server_name[] = "Rohit Web " macrostr(IOT_VERSION_MAJOR) "." macrostr(IOT_VERSION_MINOR);
+
+} // namespace config
+} // namespace rohit
