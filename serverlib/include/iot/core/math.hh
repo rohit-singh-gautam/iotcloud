@@ -50,6 +50,13 @@ constexpr uint8_t char_to_int[] {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 240 - 255
 };
 
+constexpr char to_base64[] {
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+    'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
+};
+
 template <typename T, T radix = 10, number_case number_case = number_case::lower, bool null_terminated = true>
 constexpr size_t to_string(T val, char * const dest) {
     static_assert(std::is_integral_v<T>, "Only integral type allowed");
@@ -84,7 +91,13 @@ constexpr size_t to_string(T val, char * const dest) {
 template <typename T, bool null_terminated = true> 
 constexpr size_t floatToString(char *dest, T val) {
     static_assert(std::is_floating_point_v<T>, "Only floating point type allowed");
-    return sprintf(dest, "%f", val);
+    size_t ret = sprintf(dest, "%f", val);
+
+    if constexpr (null_terminated == true) {
+        ++ret;
+    }
+
+    return ret;
 }
 
 template <typename T, T radix = 10>
@@ -134,6 +147,37 @@ constexpr T to_int(const char *src, size_t *len = nullptr) {
     if (len != nullptr) *len = (size_t)(psrc - src);
 
     return val * sign;
+}
+
+template <typename T, bool null_terminated = true>
+constexpr size_t to_string64_hash() {
+    size_t value = (sizeof(T) * 8 + 5) / 6;
+    if constexpr (null_terminated) {
+        ++value;
+    }
+    return value;
+}
+
+template <typename T, bool null_terminated = true>
+constexpr size_t to_string64_hash(T val, char * const dest) {
+    static_assert(std::is_integral_v<T>, "Only integral type allowed");
+
+    char * dest_ptr = dest;
+    constexpr auto total_bits = sizeof(T) * 8;
+
+    *dest_ptr++ = to_base64[val & 0x3f];
+
+    size_t current_bit = 6;
+    do {
+        *dest_ptr++ = to_base64[(val >> current_bit) & 0x3f];
+        current_bit += 6;
+    } while(current_bit < total_bits);
+
+    if constexpr (null_terminated == true) {
+        *dest_ptr++ = '\0';
+    }
+    
+    return (size_t)(dest_ptr - dest);
 }
 
 } // namespace rohit
