@@ -11,13 +11,6 @@
 namespace rohit {
 namespace crypto {
 
-std::ostream& operator<<(std::ostream& os, const mem &binary) {
-    for(auto value: binary) {
-        os << upper_case_numbers[value/16] << upper_case_numbers[value%16];
-    }
-    return os;
-}
-
 std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key) {
     int curve;
     auto ret = ec_get_curve(key, curve);

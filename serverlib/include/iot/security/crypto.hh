@@ -8,6 +8,7 @@
 #include <iot/core/config.hh>
 #include <iot/core/types.hh>
 #include <iot/core/error.hh>
+#include <iot/core/memory_helper.hh>
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
 
@@ -17,31 +18,6 @@ namespace crypto {
 enum class encryption_id_t : uint16_t {
     aes_256_gsm
 };
-
-struct mem {
-    void    *ptr;
-    size_t  size;
-    constexpr mem(void *ptr = nullptr, size_t size = 0) : ptr(ptr), size(size) {}
-
-    constexpr void *operator=(void *rhs) {
-        if constexpr (config::debug) {
-            if (ptr != nullptr) {
-                throw exception_t(err_t::CRYPTO_MEMORY_BAD_ASSIGNMENT);
-            }
-        }
-        return ptr = rhs;
-    }
-    constexpr bool operator==(void *rhs) const { return ptr == rhs; }
-    constexpr operator void *() const { return ptr; }
-    constexpr operator uint8_t *() const { return (uint8_t *)ptr; }
-
-    constexpr uint8_t *begin() { return (uint8_t *)ptr; }
-    constexpr uint8_t *end() { return (uint8_t *)ptr + size; }
-    constexpr const uint8_t *begin() const { return (uint8_t *)ptr; }
-    constexpr const uint8_t *end() const { return (uint8_t *)ptr + size; }
-};
-
-std::ostream& operator<<(std::ostream& os, const mem &binary);
 
 struct openssl_mem : public mem {
     inline ~openssl_mem() {
@@ -80,12 +56,6 @@ struct openssl_ec_key_mem {
 };
 
 std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key);
-
-struct malloc_mem : public mem {
-    inline ~malloc_mem() { 
-        if (ptr != nullptr) free(ptr);
-    }
-};
 
 struct key_t {
     encryption_id_t id;

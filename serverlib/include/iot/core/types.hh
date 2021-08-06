@@ -57,6 +57,8 @@ public:
     constexpr ipv6_port_t(const ipv6_port_t &rhs) : value(rhs.value) {}
     constexpr operator uint16_t() const { return changeEndian(value); }
     constexpr uint16_t get_network_port() const { return value; }
+
+    constexpr bool operator==(const ipv6_port_t &rhs) {return value == rhs.value; }
 }  __attribute__((packed));
 
 class ipv6_socket_addr_t {

@@ -7,6 +7,7 @@
 
 #include <http11driver.hh>
 #include <iot/net/serverevent.hh>
+#include <iotfilemapping.hh>
 #include <iot/message.hh>
 #include <string>
 #include <cstring>
@@ -14,6 +15,26 @@
 #include <iostream>
 
 namespace rohit {
+
+struct iothttpevent_config {
+    const ipv6_port_t port;
+    const std::string web_folder;
+    const std::string default_file;
+    inline iothttpevent_config(const ipv6_port_t port, const std::string &web_folder, const std::string &default_file)
+        : port(port), web_folder(web_folder), default_file(default_file) { }
+
+    inline iothttpevent_config(const uint16_t port, const std::string &web_folder, const std::string &default_file)
+        : port(port), web_folder(web_folder), default_file(default_file) { }
+
+    inline iothttpevent_config(const int port, const std::string &web_folder, const std::string &default_file)
+                : port(port), web_folder(web_folder), default_file(default_file) {
+        assert(port > 65535);
+    }
+
+    bool operator==(const iothttpevent_config &rhs) {
+        return port == port && web_folder == web_folder && default_file == default_file;
+    }
+};
 
 template <bool use_ssl>
 class iothttpevent : public serverpeerevent<use_ssl> {
@@ -105,24 +126,78 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             std::string request_string((char *)read_buffer, read_buffer_length);
             std::cout << "------Request Start---------\n" << request_string << "\n------Request End---------\n";
 
+
             http11driver driver;
             driver.parse(request_string);
             std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
 
-            const http_header_line header_line[] = {
-                {http_header::FIELD::Server, config::server_name},
-                {http_header::FIELD::Content_Type, "application/json"},
-            };
+            size_t write_size = 0;
+            if (driver.header.method == rohit::http_header_request::METHOD::GET) {
+                auto port = peer_id.get_local_ipv6_addr().port;
+                rohit::http::file_map_param map_param(port, driver.header.path);
 
-            char *last_write_buffer = copy_http_response(
-                read_buffer,
-                http_header::VERSION::VER_1_1,
-                200_rc,
-                header_line,
-                "{result:""success""}\n"
-            );
+                auto result = rohit::http::webfilemap.cache.find(map_param);
+                if (result == rohit::http::webfilemap.cache.end()) {
+                    const http_header_line header_line[] = {
+                        {http_header::FIELD::Server, config::server_name},
+                        {http_header::FIELD::Content_Type, "text/html"},
+                    };
+                    const char filenotfound[] =
+                        "<!DOCTYPE HTML>"
+                        "<html><head>"
+                        "<title>404 Not Found</title>"
+                        "</head><body>"
+                        "<h1>Not Found</h1>"
+                        "<p>The requested URL was not found on this server.</p>"
+                        "</body></html>\n";
 
-            auto write_size = (size_t)(last_write_buffer - read_buffer);
+                    char *last_write_buffer = copy_http_response(
+                        read_buffer,
+                        http_header::VERSION::VER_1_1,
+                        404_rc,
+                        header_line,
+                        filenotfound
+                    );
+
+                    write_size = (size_t)(last_write_buffer - read_buffer);
+
+                } else {
+                    auto file_details = result->second;
+                    const http_header_line header_line[] = {
+                        {http_header::FIELD::Server, config::server_name},
+                        {http_header::FIELD::Content_Type, "text/html"},
+                        {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
+                    };
+
+                    char *last_write_buffer = copy_http_response(
+                        read_buffer,
+                        http_header::VERSION::VER_1_1,
+                        404_rc,
+                        header_line,
+                        file_details->text,
+                        file_details->text_size
+                    );
+
+                    write_size = (size_t)(last_write_buffer - read_buffer);
+                }
+                
+            }
+            else {
+                const http_header_line header_line[] = {
+                    {http_header::FIELD::Server, config::server_name},
+                    {http_header::FIELD::Content_Type, "application/json"},
+                };
+
+                char *last_write_buffer = copy_http_response(
+                    read_buffer,
+                    http_header::VERSION::VER_1_1,
+                    200_rc,
+                    header_line,
+                    "{result:""success""}\n"
+                );
+
+                write_size = (size_t)(last_write_buffer - read_buffer);
+            }
 
             std::cout << "------Response Start---------\n" << read_buffer << "\n------Response End---------\n";
 

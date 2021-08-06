@@ -20,6 +20,7 @@ add_library(ServerLibrary
     lib/init.cc
     lib/message.cc
     lib/log.cc
+    lib/memory_helper.cc
 )
 
 configure_file(include/iot/core/version.h.in include/iot/core/version.h)

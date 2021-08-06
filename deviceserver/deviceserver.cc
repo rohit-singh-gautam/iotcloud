@@ -5,6 +5,7 @@
 
 #include <iotserverevent.hh>
 #include <iothttpevent.hh>
+#include <iotfilemapping.hh>
 #include <iot/init.hh>
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>
@@ -116,10 +117,18 @@ void load_and_execute_config(const std::string configfile) {
             srvevts_ssl.push_back(srvevt_ssl);
         } else if (TYPE == "http") {
             std::cout << "Creating a HTTP server at port " << port << std::endl;
-            auto srvhttpevt =
-                new httpevent_type(*evtdist, port);
+            auto srvhttpevt = new httpevent_type(*evtdist, port);
             srvhttpevt->init();
             srvhttpevts.push_back(srvhttpevt);
+
+            auto webfolder = server["Folder"].ToString();
+            rohit::http::webfilemap.add_folder(port, webfolder);
+
+            auto indexfile = server["Default"].ToString();
+            rohit::http::file_map_param map_param_source(port, "/" + indexfile);
+            rohit::http::file_map_param map_param_dest(port, "/");
+            
+            rohit::http::webfilemap.additional_mapping(map_param_source, map_param_dest);
         } else if (TYPE == "https") {
             const auto cert_file = server["CertFile"].ToString();
             const auto prikey_file_temp = server["PrikeyFile"].ToString();
@@ -132,8 +141,16 @@ void load_and_execute_config(const std::string configfile) {
                 cert_file.c_str(),
                 prikey_file.c_str());
             srvhttpevt_ssl->init();
-
             srvhttpevts_ssl.push_back(srvhttpevt_ssl);
+
+            auto webfolder = server["Folder"].ToString();
+            rohit::http::webfilemap.add_folder(port, webfolder);
+
+            auto indexfile = server["Default"].ToString();
+            rohit::http::file_map_param map_param_source(port, "/" + indexfile);
+            rohit::http::file_map_param map_param_dest(port, "/");
+            
+            rohit::http::webfilemap.additional_mapping(map_param_source, map_param_dest);
         } else{
             std::cout << "Unknown server type " << TYPE << ", skipping creation of this server" << std::endl;
             continue;

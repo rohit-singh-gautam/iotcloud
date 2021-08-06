@@ -27,6 +27,7 @@ namespace rohit {
     ERROR_T_ENTRY(CLOSE_FAILURE, "Unable to close a socket") \
     ERROR_T_ENTRY(RECEIVE_FAILURE, "Unable to read from a socket") \
     ERROR_T_ENTRY(SEND_FAILURE, "Unable to write to a socket") \
+    ERROR_T_ENTRY(BAD_FILE_DESCRIPTOR, "Bad file descriptor") \
     \
     ERROR_T_ENTRY(PTHREAD_JOIN_FAILURE, "Unable to join to a thread") \
     ERROR_T_ENTRY(PTHREAD_JOIN_DEADLOCK_FAILURE, "pthread_join created a deadlock") \
@@ -100,6 +101,7 @@ namespace rohit {
     ERROR_T_ENTRY(CRYPTO_KEY_ENCODE_FAIL, "Failed to encode key to binary") \
     ERROR_T_ENTRY(CRYPTO_CURVE_NOT_FOUND, "Failed to find curve from key") \
     \
+    ERROR_T_ENTRY(HTTP_FILEMAP_NOT_FOUND, "Failed to find filemap") \
     ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
     LIST_DEFINITION_END
 

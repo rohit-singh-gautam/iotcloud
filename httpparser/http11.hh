@@ -401,13 +401,14 @@ constexpr char *copy_http_header_response(
     return write_buffer;
 }
 
-template <size_t N, size_t M>
+template <size_t N>
 constexpr char *copy_http_response(
             char *const buffer,
             const http_header::VERSION version,
             const http_header::CODE response_code,
             const http_header_line (&lines)[N],
-            const char (&body)[M]) {
+            const char *body,
+            const size_t M)  {
     char *write_buffer = buffer;
 
     // Adding response header
@@ -441,6 +442,23 @@ constexpr char *copy_http_response(
     write_buffer = std::copy(body, body + M - 1, write_buffer);
     
     return write_buffer;
+}
+
+template <size_t N, size_t M>
+constexpr char *copy_http_response(
+            char *const buffer,
+            const http_header::VERSION version,
+            const http_header::CODE response_code,
+            const http_header_line (&lines)[N],
+            const char (&body)[M]) {
+    return copy_http_response(
+        buffer,
+        version,
+        response_code,
+        lines,
+        body,
+        M
+    );
 }
 
 
