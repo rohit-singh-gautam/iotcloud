@@ -25,9 +25,9 @@ filemap::filemap() : cache() {
     content_type_map.insert(std::make_pair("png", "image/png"));
     content_type_map.insert(std::make_pair("tiff", "image/tiff"));
     content_type_map.insert(std::make_pair("tif", "image/tiff"));
+    content_type_map.insert(std::make_pair("ico", "image/x-icon"));
     content_type_map.insert(std::make_pair("ttf", "font/ttf"));
     content_type_map.insert(std::make_pair("bin", "application/octet-stream"));
-
 }
 
 // Get etags from FD
@@ -79,7 +79,7 @@ void filemap::add_file(const ipv6_port_t port, const std::string &webfolder, con
     uint64_t etag = get_etags(fd);
     close(fd);
 
-    char *etag_buffer = new char[to_string64_hash<uint64_t, false>()];
+    char *etag_buffer = new char[to_string64_hash<uint64_t>()];
     to_string64_hash(etag, etag_buffer);
 
     char *content_type_buffer = new char[content_type_str.length() + 1];

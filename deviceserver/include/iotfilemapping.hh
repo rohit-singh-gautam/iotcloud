@@ -46,7 +46,7 @@ struct file_info {
     const char *type; //Content-Type
     const size_t type_size;
     const char *etags;
-    static constexpr size_t etags_size = to_string64_hash<uint64_t, false>();
+    static constexpr size_t etags_size = to_string64_hash<uint64_t>();
 
     constexpr file_info(
                 const char *text,

@@ -23,6 +23,7 @@ constexpr int64_t attempt_to_write_wait_in_ms = 50;
 constexpr int socket_read_buffer_size = 25 * 1024 * 1024; // Read buffer setting it to 25MB
 constexpr int socket_write_buffer_size = 25 * 1024 * 1024; // weite buffer setting it to 25MB
 constexpr int socket_backlog = 5;
+constexpr uint64_t max_date_string_size = 92;
 
 #define macrostr_helper(x) #x
 #define macrostr(x) macrostr_helper(x)

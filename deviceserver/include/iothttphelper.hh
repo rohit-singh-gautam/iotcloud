@@ -9,6 +9,10 @@
 
 namespace rohit {
 
-char *http_add_404_Not_Found(char *const buffer, const ipv6_socket_addr_t &local_address);
+char *http_add_404_Not_Found(
+            char *const buffer,
+            const ipv6_socket_addr_t &local_address,
+            const char *date_str,
+            const size_t date_str_size);
 
 } // namespace rohit

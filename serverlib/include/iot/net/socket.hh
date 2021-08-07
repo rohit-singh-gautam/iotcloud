@@ -275,6 +275,7 @@ public:
         // TODO: send in part
         int ret = SSL_write(ssl, buf, send_len);
         if (ret <= 0) {
+            actual_sent = 0;
             auto ssl_error = SSL_get_error(ssl, ret);
             return error_c::ssl_error_ret(ssl_error);
         }

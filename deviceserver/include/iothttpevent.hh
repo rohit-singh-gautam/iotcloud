@@ -126,12 +126,17 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             }
 
             std::string request_string((char *)read_buffer, read_buffer_length);
-            std::cout << "------Request Start---------\n" << request_string << "\n------Request End---------\n";
-
+            std::cout << "------Request Start---------\n" << std::string(read_buffer, read_buffer_length)  << "\n------Request End---------\n";
 
             http11driver driver;
             driver.parse(request_string);
             std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
+
+            // Date is used by all hence it is created here
+            std::time_t now_time = std::time(0);   // get time now
+            std::tm* now_tm = std::gmtime(&now_time);
+            char date_str[config::max_date_string_size];
+            size_t date_str_size = strftime(date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
 
             auto local_address = peer_id.get_local_ipv6_addr();
             size_t write_size = 0;
@@ -141,35 +146,54 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
 
                 auto result = rohit::http::webfilemap.cache.find(map_param);
                 if (result == rohit::http::webfilemap.cache.end()) {
-                    auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address);
+                    auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
                     write_size = (size_t)(last_write_buffer - read_buffer);
                 } else {
                     auto file_details = result->second;
-                    const http_header_line header_line[] = {
-                        {http_header::FIELD::Server, config::web_server_name},
-                        {http_header::FIELD::Content_Type, file_details->type, file_details->type_size},
-                        {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
-                    };
 
-                    char *last_write_buffer = copy_http_response(
-                        read_buffer,
-                        http_header::VERSION::VER_1_1,
-                        200_rc,
-                        header_line,
-                        file_details->text,
-                        file_details->text_size
-                    );
+                    if (driver.header.match_etag(file_details->etags, file_details->etags_size)) {
+                        const http_header_line header_line[] = {
+                            {http_header::FIELD::Date, date_str, date_str_size},
+                            {http_header::FIELD::Server, config::web_server_name},
+                            {http_header::FIELD::ETag, file_details->etags, file_details->etags_size},
+                        };
+                        char *last_write_buffer = copy_http_header_response(
+                            read_buffer,
+                            http_header::VERSION::VER_1_1,
+                            304_rc,
+                            header_line
+                        );
 
-                    write_size = (size_t)(last_write_buffer - read_buffer);
+                        *last_write_buffer++ = '\n';
+
+                        write_size = (size_t)(last_write_buffer - read_buffer);
+                        std::cout << "------Response Start---------\n" << std::string(read_buffer, write_size) << "\n------Response End---------\n";
+                    } else {
+                        const http_header_line header_line[] = {
+                            {http_header::FIELD::Date, date_str, date_str_size},
+                            {http_header::FIELD::Server, config::web_server_name},
+                            {http_header::FIELD::Cache_Control, "private, max-age=2592000"},
+                            {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
+                            {http_header::FIELD::Content_Type, file_details->type, file_details->type_size},
+                        };
+
+                        char *last_write_buffer = copy_http_response(
+                            read_buffer,
+                            http_header::VERSION::VER_1_1,
+                            200_rc,
+                            header_line,
+                            file_details->text,
+                            file_details->text_size
+                        );
+
+                        write_size = (size_t)(last_write_buffer - read_buffer);
+                    }
                 }
-                
             }
             else {
-                auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address);
+                auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
                 write_size = (size_t)(last_write_buffer - read_buffer);
             }
-
-            std::cout << "------Response Start---------\n" << read_buffer << "\n------Response End---------\n";
 
             size_t written_length;
             err = peer_id.write(read_buffer, write_size, written_length);
@@ -179,18 +203,20 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                 std::copy(read_buffer + written_length, read_buffer + write_size, write_buffer);
                 write_queue.push({write_buffer, 0, write_buffer_size});
                 err = err_t::SUCCESS;
+                client_state = state_t::SOCKET_PEER_WRITE;
+            } else {
+                client_state = state_t::SOCKET_PEER_EVENT;
             }
 
             if (isFailure(err)) {
                 ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
             }
-
-            client_state = state_t::SOCKET_PEER_EVENT;
             break;
         }
 
         case state_t::SOCKET_PEER_WRITE: {
             err_t err = err_t::SUCCESS;
+            client_state = state_t::SOCKET_PEER_EVENT;
             while (!write_queue.empty()) {
                 auto &write_buffer = write_queue.front();
 
@@ -206,6 +232,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                     assert(written_length <= write_size);
                     write_buffer.written += written_length;
                     err = err_t::SUCCESS;
+                    client_state = state_t::SOCKET_PEER_WRITE;
                     break;
                 }
 
@@ -213,8 +240,6 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                     ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
                 }
             }
-
-            client_state = state_t::SOCKET_PEER_EVENT;
             break;
         }
 
