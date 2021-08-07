@@ -24,8 +24,9 @@ constexpr int socket_backlog = 5;
 
 #define macrostr_helper(x) #x
 #define macrostr(x) macrostr_helper(x)
+#define WEB_SERVER_NAME "Rohit Web " macrostr(IOT_VERSION_MAJOR) "." macrostr(IOT_VERSION_MINOR)
 
-constexpr char server_name[] = "Rohit Web " macrostr(IOT_VERSION_MAJOR) "." macrostr(IOT_VERSION_MINOR);
+constexpr char web_server_name[] = WEB_SERVER_NAME;
 
 } // namespace config
 } // namespace rohit

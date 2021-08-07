@@ -22,7 +22,7 @@ void test_aes_256_gsm() {
     rohit::guid_t random_guid(random_value);
 
     constexpr char message[] = "This is a test.";
-    rohit::crypto::mem data = {(void *)message, sizeof(message)};
+    rohit::mem data = {(void *)message, sizeof(message)};
 
     rohit::crypto::openssl_mem encrypted_data;
     rohit::err_t ret = encrypt(key, random_guid, data, encrypted_data);
@@ -150,7 +150,7 @@ void test_ec_aes_256_gsm() {
     rohit::guid_t random_guid(random_value);
 
     constexpr char message[] = "This is a EC_KEY test.";
-    rohit::crypto::mem data = {(void *)message, sizeof(message)};
+    rohit::mem data = {(void *)message, sizeof(message)};
 
     rohit::crypto::openssl_mem encrypted_data;
     ret = encrypt(client_symmetric_key, random_guid, data, encrypted_data);

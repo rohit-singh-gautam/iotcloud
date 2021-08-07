@@ -5,6 +5,7 @@ project(DeviceServer)
 add_executable(DeviceServer
     deviceserver.cc
     lib/iotfilemapping.cc
+    lib/iothttphelper.cc
 )
 
 include_directories(DeviceServer PUBLIC
