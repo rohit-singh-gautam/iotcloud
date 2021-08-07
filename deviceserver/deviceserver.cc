@@ -196,6 +196,76 @@ void segv_app() {
     rohit::segv_log_flush();
 }
 
+int get_receive_buffer_size(const int fd) {
+    int receive_size;
+    unsigned int receive_size_size = sizeof(receive_size);
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void *)&receive_size, &receive_size_size) == -1) {
+        throw rohit::exception_t(rohit::err_t::SOCKET_GET_READ_BUFFER_FAILED);
+    }
+    return receive_size;
+}
+
+void set_receive_buffer_size(const int fd, const size_t buffer_size) {
+    int send_size = buffer_size;
+    unsigned int send_size_size = sizeof(send_size);
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (void *)&send_size, send_size_size) == -1) {
+        throw rohit::exception_t(rohit::err_t::SOCKET_SET_READ_BUFFER_FAILED);
+    }
+}
+
+int get_send_buffer_size(const int fd) {
+    int receive_size;
+    unsigned int receive_size_size = sizeof(receive_size);
+    if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void *)&receive_size, &receive_size_size) == -1) {
+        throw rohit::exception_t(rohit::err_t::SOCKET_GET_WRITE_BUFFER_FAILED);
+    }
+    return receive_size;
+}
+
+void set_send_buffer_size(const int fd, const size_t buffer_size) {
+    int send_size = buffer_size;
+    unsigned int send_size_size = sizeof(send_size);
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (void *)&send_size, send_size_size) == -1) {
+        throw rohit::exception_t(rohit::err_t::SOCKET_SET_WRITE_BUFFER_FAILED);
+    }
+}
+
+rohit::err_t check_socket_limits() {
+    int temp_fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+
+    auto original_receive_size = get_receive_buffer_size(temp_fd);
+    if (original_receive_size < rohit::config::socket_read_buffer_size) {
+        std::cout << "Socket read buffer is "  << original_receive_size << " it must be set to " << rohit::config::socket_read_buffer_size << std::endl;
+        std::cout << "---- Attempting to set socket read limits" << std::endl;
+
+        set_receive_buffer_size(temp_fd, rohit::config::socket_read_buffer_size);
+        auto new_receive_size = get_receive_buffer_size(temp_fd);
+        std::cout << "Socket read buffer set to " << new_receive_size << std::endl;
+        if (new_receive_size < rohit::config::socket_read_buffer_size) {
+            std::cout << "Unable to set receive memory buffer existing" << std::endl;
+            std::cout << "Set setting using `sudo sysctl net.core.rmem_max=" << rohit::config::socket_read_buffer_size <<"`" << std::endl;
+            return rohit::err_t::SOCKET_SET_READ_BUFFER_FAILED;
+        }
+    }
+
+    auto original_send_size = get_send_buffer_size(temp_fd);
+    if (original_send_size < rohit::config::socket_write_buffer_size) {
+        std::cout << "Socket write buffer is "  << original_send_size << " it must be set to " << rohit::config::socket_write_buffer_size << std::endl;
+        std::cout << "---- Attempting to set socket write limits" << std::endl;
+
+        set_send_buffer_size(temp_fd, rohit::config::socket_write_buffer_size);
+        auto new_send_size = get_send_buffer_size(temp_fd);
+        std::cout << "Socket write buffer set to " << new_send_size << std::endl;
+        if (new_send_size < rohit::config::socket_write_buffer_size) {
+            std::cout << "Unable to set write memory buffer existing" << std::endl;
+            std::cout << "Set setting using `sudo sysctl net.core.wmem_max=" << rohit::config::socket_write_buffer_size <<"`" << std::endl;
+            return rohit::err_t::SOCKET_SET_WRITE_BUFFER_FAILED;
+        }
+    }
+
+    return rohit::err_t::SUCCESS;
+}
+
 void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
     destroy_app();
 
@@ -228,6 +298,10 @@ void set_sigaction() {
 
 int main(int argc, char *argv[]) try {
     if (!parse_and_display(argc, argv)) return EXIT_SUCCESS;
+
+    if (isFailure(check_socket_limits())) {
+        return EXIT_FAILURE;
+    }
 
     set_sigaction();
 

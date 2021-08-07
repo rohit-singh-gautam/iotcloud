@@ -20,6 +20,8 @@ constexpr int64_t event_dist_deadlock_in_nanos = 10000LL * 1000000LL;
 constexpr uint64_t event_cleanup_time_in_ns = 2ULL * 1000ULL * 1000000ULL; // 2 second
 constexpr uint64_t attempt_to_write = 20;
 constexpr int64_t attempt_to_write_wait_in_ms = 50;
+constexpr int socket_read_buffer_size = 25 * 1024 * 1024; // Read buffer setting it to 25MB
+constexpr int socket_write_buffer_size = 25 * 1024 * 1024; // weite buffer setting it to 25MB
 constexpr int socket_backlog = 5;
 
 #define macrostr_helper(x) #x

@@ -59,6 +59,10 @@ namespace rohit {
     ERROR_T_ENTRY(SOCKET_CONNECT_TIMEOUT, "Unable to connect as it timeout") \
     ERROR_T_ENTRY(SOCKET_WRITE_ZERO, "Socket write written zero byte") \
     ERROR_T_ENTRY(SOCKET_RETRY, "Socket retry last operation") \
+    ERROR_T_ENTRY(SOCKET_GET_READ_BUFFER_FAILED, "Socket read buffer get failed") \
+    ERROR_T_ENTRY(SOCKET_GET_WRITE_BUFFER_FAILED, "Socket write buffer get failed") \
+    ERROR_T_ENTRY(SOCKET_SET_READ_BUFFER_FAILED, "Socket read buffer set failed") \
+    ERROR_T_ENTRY(SOCKET_SET_WRITE_BUFFER_FAILED, "Socket write buffer set failed") \
     \
     ERROR_T_ENTRY(SOCKET_SSL_CONTEXT_FAILED, "Creation on SSL context failed") \
     ERROR_T_ENTRY(SOCKET_SSL_CERTIFICATE_FAILED, "Failed to load SSL certificate") \
