@@ -3,6 +3,7 @@
 // Private file do not read, copy, share or distribute    //
 ////////////////////////////////////////////////////////////
 
+#include <iot/core/log.hh>
 #include <iot/core/error.hh>
 #include <iotfilemapping.hh>
 #include <dirent.h>
@@ -11,6 +12,23 @@
 namespace rohit::http {
 
 filemap webfilemap;
+
+filemap::filemap() : cache() {
+    content_type_map.insert(std::make_pair("txt", "text/plain"));
+    content_type_map.insert(std::make_pair("html", "text/html"));
+    content_type_map.insert(std::make_pair("htm", "text/html"));
+    content_type_map.insert(std::make_pair("js", "text/javascript"));
+    content_type_map.insert(std::make_pair("json", "application/json"));
+    content_type_map.insert(std::make_pair("jpeg", "image/jpeg"));
+    content_type_map.insert(std::make_pair("jpg", "image/jpeg"));
+    content_type_map.insert(std::make_pair("gif", "image/gif"));
+    content_type_map.insert(std::make_pair("png", "image/png"));
+    content_type_map.insert(std::make_pair("tiff", "image/tiff"));
+    content_type_map.insert(std::make_pair("tif", "image/tiff"));
+    content_type_map.insert(std::make_pair("ttf", "font/ttf"));
+    content_type_map.insert(std::make_pair("bin", "application/octet-stream"));
+
+}
 
 // Get etags from FD
 // Etags 
@@ -27,6 +45,21 @@ inline uint64_t get_etags(int fd) {
 }
 
 void filemap::add_file(const ipv6_port_t port, const std::string &webfolder, const std::string &relativepath) {
+    size_t period_pos = relativepath.rfind('.');
+    if (period_pos == std::string::npos) {
+        glog.log<log_t::WEB_SERVER_NO_EXTENSION>();
+        return;
+    }
+    const std::string extension = relativepath.substr(period_pos + 1);
+
+    const auto content_type_iter = content_type_map.find(extension);
+    if (content_type_iter == content_type_map.end()) {
+        glog.log<log_t::WEB_SERVER_UNSUPPORTED_EXTENSION>();
+        return;
+    }
+
+    const auto &content_type_str = content_type_iter->second;
+
     file_map_param mapparam = {port, relativepath};
     auto filepath = webfolder + relativepath;
 
@@ -49,7 +82,14 @@ void filemap::add_file(const ipv6_port_t port, const std::string &webfolder, con
     char *etag_buffer = new char[to_string64_hash<uint64_t, false>()];
     to_string64_hash(etag, etag_buffer);
 
-    std::shared_ptr<file_info> file_details = std::make_shared<file_info>(buffer, size, etag_buffer);
+    char *content_type_buffer = new char[content_type_str.length() + 1];
+    content_type_buffer[content_type_str.length()] = '\0'; // null termination
+    std::copy(content_type_str.begin(), content_type_str.end(), content_type_buffer);
+
+    std::shared_ptr<file_info> file_details = std::make_shared<file_info>(
+        buffer, size,
+        content_type_buffer, content_type_str.length() + 1,
+        etag_buffer);
 
     cache.insert(std::make_pair(mapparam, std::shared_ptr<file_info>(file_details)));
 }

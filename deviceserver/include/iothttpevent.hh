@@ -103,7 +103,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
         }
 
         case state_t::SOCKET_PEER_READ: {
-            constexpr size_t read_buffer_size = 1024;
+            constexpr size_t read_buffer_size = 1024*1024*5; // 4 MB Stack
             char read_buffer[read_buffer_size];
             size_t read_buffer_length;
 
@@ -143,6 +143,24 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                 if (result == rohit::http::webfilemap.cache.end()) {
                     auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address);
                     write_size = (size_t)(last_write_buffer - read_buffer);
+                } else {
+                    auto file_details = result->second;
+                    const http_header_line header_line[] = {
+                        {http_header::FIELD::Server, config::web_server_name},
+                        {http_header::FIELD::Content_Type, file_details->type, file_details->type_size},
+                        {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
+                    };
+
+                    char *last_write_buffer = copy_http_response(
+                        read_buffer,
+                        http_header::VERSION::VER_1_1,
+                        200_rc,
+                        header_line,
+                        file_details->text,
+                        file_details->text_size
+                    );
+
+                    write_size = (size_t)(last_write_buffer - read_buffer);
                 }
                 
             }
@@ -153,15 +171,14 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
 
             std::cout << "------Response Start---------\n" << read_buffer << "\n------Response End---------\n";
 
-
             size_t written_length;
             err = peer_id.write(read_buffer, write_size, written_length);
             if (err == err_t::SOCKET_RETRY) {
-                size_t write_buffer_size = write_size;
+                size_t write_buffer_size = write_size - written_length;
                 uint8_t *write_buffer = new uint8_t[write_buffer_size];
-                std::copy(read_buffer, read_buffer + write_buffer_size, write_buffer);
-                write_queue.push({write_buffer, write_buffer_size});
-                break;
+                std::copy(read_buffer + written_length, read_buffer + write_size, write_buffer);
+                write_queue.push({write_buffer, 0, write_buffer_size});
+                err = err_t::SUCCESS;
             }
 
             if (isFailure(err)) {
@@ -175,23 +192,29 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
         case state_t::SOCKET_PEER_WRITE: {
             err_t err = err_t::SUCCESS;
             while (!write_queue.empty()) {
-
-                auto write_buffer = write_queue.front();
+                auto &write_buffer = write_queue.front();
 
                 size_t written_length;
-                err = peer_id.write(write_buffer.buffer, write_buffer.size, written_length);
-                if (err == err_t::SOCKET_RETRY) {
+                size_t write_size = write_buffer.size - write_buffer.written;
+                err = peer_id.write(write_buffer.buffer + write_buffer.written, write_size, written_length);
+                if (err == err_t::SUCCESS) {
+                    assert(written_length == write_size);
+                    write_queue.pop();
+                    delete[] write_buffer.buffer;
+                    break;
+                } else if (err == err_t::SOCKET_RETRY) {
+                    assert(written_length <= write_size);
+                    write_buffer.written += written_length;
+                    err = err_t::SUCCESS;
                     break;
                 }
-                write_queue.pop();
-                delete[] write_buffer.buffer;
 
                 if (isFailure(err)) {
                     ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
                 }
             }
 
-            if (err != err_t::SOCKET_RETRY) client_state = state_t::SOCKET_PEER_EVENT;
+            client_state = state_t::SOCKET_PEER_EVENT;
             break;
         }
 

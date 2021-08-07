@@ -95,6 +95,7 @@ class serverpeerevent : public event_executor, public pthread_lock_c<use_lock> {
 protected:
     struct write_entry {
         uint8_t *buffer;
+        size_t written;
         size_t size;
     };
 

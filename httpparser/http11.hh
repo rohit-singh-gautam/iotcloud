@@ -416,7 +416,7 @@ constexpr char *copy_http_response(
 
     // Adding length
     char content_length[10];
-    size_t content_length_size = to_string(M - 1, content_length);
+    size_t content_length_size = to_string(M, content_length);
     
     const http_header_line length_line(http_header::FIELD::Content_Length, content_length, content_length_size);
     write_buffer = copy_http_header_response(write_buffer, length_line);
@@ -439,7 +439,7 @@ constexpr char *copy_http_response(
     *write_buffer++ = '\n';
 
     // Adding body
-    write_buffer = std::copy(body, body + M - 1, write_buffer);
+    write_buffer = std::copy(body, body + M, write_buffer);
     
     return write_buffer;
 }

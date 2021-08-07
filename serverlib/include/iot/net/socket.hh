@@ -103,8 +103,13 @@ public:
     inline err_t write(const void *buf, const size_t send_len, size_t &actual_sent) const {
         // TODO: send in part
         int ret = ::write(socket_id, buf, send_len);
-        if (ret == -1) return err_t::SEND_FAILURE;
+        if (ret == -1) {
+            return err_t::SEND_FAILURE;
+        }
         actual_sent = ret;
+        if (actual_sent < send_len) {
+            return err_t::SOCKET_RETRY;
+        }
         return err_t::SUCCESS;
     }
 

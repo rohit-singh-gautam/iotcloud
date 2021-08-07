@@ -43,14 +43,22 @@ namespace rohit::http {
 struct file_info {
     const char *text;
     const size_t text_size;
+    const char *type; //Content-Type
+    const size_t type_size;
     const char *etags;
     static constexpr size_t etags_size = to_string64_hash<uint64_t, false>();
 
-    constexpr file_info(const char *text, const size_t text_size, const char *etags)
-        : text(text), text_size(text_size), etags(etags) { }
+    constexpr file_info(
+                const char *text,
+                const size_t text_size,
+                const char *type,
+                const size_t type_size,
+                const char *etags)
+        : text(text), text_size(text_size), type(type), type_size(type_size), etags(etags) { }
 
     ~file_info() {
         delete[] text;
+        delete[] type;
         delete[] etags;
     }
 };
@@ -61,8 +69,9 @@ class filemap {
 public:
 
     std::unordered_map<file_map_param, std::shared_ptr<file_info>> cache;
+    std::unordered_map<std::string, std::string> content_type_map; // Extension, file
 
-    filemap() : cache() { }
+    filemap();
 
     err_t add_folder(const ipv6_port_t port, const std::string &webfolder, const std::string &folder = "/");
 
