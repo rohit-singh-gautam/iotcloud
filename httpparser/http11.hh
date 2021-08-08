@@ -247,6 +247,7 @@ public:
     std::string path;
 
     std::unordered_map<FIELD, std::string> fields;
+    std::unordered_map<std::string, std::string> custom_fields;
 
     http_header_request() {}
 

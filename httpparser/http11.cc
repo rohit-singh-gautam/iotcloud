@@ -47,13 +47,24 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_map<http_header:
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const std::pair<std::string, std::string>& httpFieldPair) {
+    return os << httpFieldPair.first << ": " << httpFieldPair.second;
+}
+
+std::ostream& operator<<(std::ostream& os, const std::unordered_map<std::string, std::string>& httpFields) {
+    for(auto httpFieldPair: httpFields) {
+        os << httpFieldPair << "\n";
+    }
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const http_header_request::METHOD requestMethod) {
     return os << http_header_request::strMETHOD[(int)requestMethod];
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_request& requestHeader) {
     return os << requestHeader.method << " " << requestHeader.path << " " << requestHeader.version << "\n"
-              << requestHeader.fields << "\n";
+              << requestHeader.fields << requestHeader.custom_fields << "\n";
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header::CODE responseCODE) {

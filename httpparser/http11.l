@@ -19,6 +19,7 @@ using token = rohit::parser::token;
 #define tokMETHOD(value) { yylval->emplace<rohit::http_header_request::METHOD>(rohit::http_header_request::METHOD::value); return token::METHOD; }
 #define tokVERSION(value) { BEGIN(HEADER); yylval->emplace<rohit::http_header::VERSION>(rohit::http_header::VERSION::value); return token::VERSION; }
 #define tokFIELD(value) { yylval->emplace<rohit::http_header::FIELD>(rohit::http_header::FIELD::value); return token::FIELD; }
+#define tokFIELDCUSTOM(tok) { yylval->emplace<std::string>(yytext); return token::tok; }
 #define tokFIELDVALUE(tok) { yylval->emplace<std::string>(skipFirstAndSpace(yytext)); return token::tok; }
 #define tokFIELDCOLON(tok) { return token::tok; }
 
@@ -69,6 +70,8 @@ relativeURI         ({net_path}|{abs_path}|{rel_path})("?"{query})?
 Request-URI         "*"|{absoluteURI}|{relativeURI}|{authority}             
 field_value         [^\r\n]+
 space               [ \t]+
+separators          {space}|"("|")"|"<"|">"|"@"|","|";"|":"|"\"|<">|"/"|"["|"]"|"?"|"="|"{"|"}"
+field_name          [^\:\r\n]+
 
 
 %%
@@ -142,6 +145,8 @@ space               [ \t]+
 <HEADER>"Content-Type"           tokFIELD(Content_Type)
 <HEADER>"Expires"                tokFIELD(Expires)
 <HEADER>"Last-Modified"          tokFIELD(Last_Modified)
+
+<HEADER>{field_name}             tokFIELDCUSTOM(FIELD_CUSTOM)
 
 <HEADER>":"{space}{field_value}  tokFIELDVALUE(FIELD_VALUE)
 

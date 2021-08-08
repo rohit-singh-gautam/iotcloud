@@ -39,6 +39,7 @@
 %token <http_header_request::METHOD>    METHOD
 %token <http_header::VERSION>   VERSION
 %token <http_header::FIELD>     FIELD
+%token <std::string>            FIELD_CUSTOM
 %token <std::string>            FIELD_VALUE
 %token                          CONNECTION
 %token                          UPGRADE
@@ -71,8 +72,15 @@ fields:
 ;
 
 field:
+    standard_field | custom_field
+;
+
+standard_field:
     FIELD FIELD_VALUE NEWLINE     { driver.header.fields.insert(std::make_pair($1, $2)); }
 ;
+
+custom_field:
+    FIELD_CUSTOM FIELD_VALUE NEWLINE { driver.header.custom_fields.insert(std::make_pair($1, $2)); }
 
 %%
 
