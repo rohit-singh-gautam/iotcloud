@@ -4,6 +4,7 @@
 <title>Connected Device Manager</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <style>
 * {
     box-sizing: border-box;
@@ -27,6 +28,33 @@ body {
 .header h1 {
     font-size: 40px;
 }
+
+.navbartop {
+  width: 100%;
+  background-color: #555;
+  overflow: auto;
+}
+
+.navbartop a {
+  float: right;
+  padding: 6px;
+  color: white;
+  text-decoration: none;
+  font-size: 17px;
+}
+
+.navbartop a.left {
+    float: left;
+}
+
+.navbartop a:hover {
+  background-color: #000;
+}
+
+.navbartop.active {
+  background-color: #04AA6D;
+}
+
 
 /* Style the top navigation bar */
 .navbar {
@@ -111,6 +139,14 @@ body {
 </style>
 </head>
 <body>
+<div class="navbartop">
+    <a class="active left" href="#"><i class="fa fa-fw fa-home"></i> Home</a> 
+    <a href="#"><i class="fa fa-fw fa-envelope"></i> Contact</a> 
+    <a href="#"><i class="fa fa-fw fa-user"></i> Login</a>
+    <a href="#"><i class="fa fa-fw fa-user-plus"></i> Sign-up</a>
+    <a href="#"><i class="fa fa-fw fa-search"></i> Search</a> 
+</div>
+
 
 <h1>Rohit IOT Cloud Manager</h1>
 <p>IOT Cloud manager</p>
