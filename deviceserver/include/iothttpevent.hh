@@ -103,7 +103,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
         }
 
         case state_t::SOCKET_PEER_READ: {
-            constexpr size_t read_buffer_size = 1024*1024*5; // 4 MB Stack
+            constexpr size_t read_buffer_size = 1024*1024*5; // 5MB Stack
             char read_buffer[read_buffer_size];
             size_t read_buffer_length;
 
@@ -195,13 +195,13 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                 write_size = (size_t)(last_write_buffer - read_buffer);
             }
 
+            uint8_t *write_buffer = new uint8_t[write_size];
+            std::copy(read_buffer, read_buffer + write_size, write_buffer);
+
             size_t written_length;
-            err = peer_id.write(read_buffer, write_size, written_length);
+            err = peer_id.write(write_buffer, write_size, written_length);
             if (err == err_t::SOCKET_RETRY) {
-                size_t write_buffer_size = write_size - written_length;
-                uint8_t *write_buffer = new uint8_t[write_buffer_size];
-                std::copy(read_buffer + written_length, read_buffer + write_size, write_buffer);
-                write_queue.push({write_buffer, 0, write_buffer_size});
+                write_queue.push({write_buffer, 0, write_size});
                 err = err_t::SUCCESS;
                 client_state = state_t::SOCKET_PEER_WRITE;
             } else {
@@ -209,7 +209,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             }
 
             if (isFailure(err)) {
-                ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+                ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
             }
             break;
         }
@@ -227,17 +227,17 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                     assert(written_length == write_size);
                     write_queue.pop();
                     delete[] write_buffer.buffer;
-                    break;
                 } else if (err == err_t::SOCKET_RETRY) {
                     assert(written_length <= write_size);
                     write_buffer.written += written_length;
                     err = err_t::SUCCESS;
                     client_state = state_t::SOCKET_PEER_WRITE;
                     break;
-                }
-
-                if (isFailure(err)) {
-                    ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+                } else if (isFailure(err)) {
+                    ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
+                    // Removing from write queue
+                    write_queue.pop();
+                    delete[] write_buffer.buffer;
                 }
             }
             break;

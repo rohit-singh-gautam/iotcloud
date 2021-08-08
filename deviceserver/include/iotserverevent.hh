@@ -128,7 +128,7 @@ void iotserverevent<use_ssl>::execute(thread_context &ctx, const uint32_t event)
             delete[] write_buffer;
 
             if (isFailure(err)) {
-                ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+                ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
             }
 
             client_state = state_t::SOCKET_PEER_EVENT;
@@ -149,7 +149,7 @@ void iotserverevent<use_ssl>::execute(thread_context &ctx, const uint32_t event)
                 delete[] write_buffer.buffer;
 
                 if (isFailure(err)) {
-                    ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(errno);
+                    ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
                 }
             }
 

@@ -280,6 +280,7 @@ public:
             return error_c::ssl_error_ret(ssl_error);
         }
         actual_sent = ret;
+        assert(actual_sent == send_len);
         return err_t::SUCCESS;
     }
 

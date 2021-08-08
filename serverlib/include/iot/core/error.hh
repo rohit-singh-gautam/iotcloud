@@ -74,6 +74,7 @@ namespace rohit {
     ERROR_T_ENTRY(SOCKET_SSL_SYSCALL_ERROR, "SSL syscall error, probably connection is closed or wrong parameter") \
     ERROR_T_ENTRY(SOCKET_SSL_ZERO_RETURN, "SSL zero bytes returned no data") \
     ERROR_T_ENTRY(SOCKET_SSL_ERROR, "SSL error, Openssl call failed") \
+    ERROR_T_ENTRY(SOCKET_SSL_SANITY_ERROR, "SSL error, parameter changes requires exactly same parameter") \
     \
     ERROR_T_ENTRY(SOCKOPT_FAILURE, "Unable to set socket option") \
     ERROR_T_ENTRY(SOCKOPT_BAD_ID, "Unable to set socket option, bad socket ID") \
@@ -248,6 +249,7 @@ public:
             case SSL_ERROR_WANT_X509_LOOKUP: return err_t::SOCKET_RETRY;
             case SSL_ERROR_SYSCALL: return err_t::SOCKET_SSL_SYSCALL_ERROR;
             case SSL_ERROR_ZERO_RETURN: return err_t::SOCKET_SSL_ZERO_RETURN;
+            case SSL_ERROR_SSL: return err_t::SOCKET_SSL_SANITY_ERROR;
             default: return err_t::SOCKET_SSL_ERROR;
         }
     }
