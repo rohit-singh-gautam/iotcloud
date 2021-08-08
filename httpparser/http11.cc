@@ -86,4 +86,32 @@ void http_response::addMD5() {
     fields.insert(std::make_pair<FIELD, std::string>(FIELD::Content_MD5, std::move(md5Stream.str())));
 }
 
+
+bool http_header_request::match_etag(const char *etag, size_t etag_size) {
+    if (etag[etag_size - 1] == '\0') --etag_size;
+    const auto itr = fields.find(FIELD::If_None_Match);
+    if (itr == fields.end()) return false;
+
+    bool ignore = false;
+    size_t index = 0;
+
+    for(const auto ch: itr->second) {
+        if (ch == ' ' || ch == ',' || ch == '"') {
+            if (index == etag_size && !ignore) return true;
+            ignore = false;
+            index = 0;
+            continue;
+        }
+        if (ignore) continue;
+        if (index == etag_size) {
+            ignore = true;
+            continue;
+        }
+        if (ch != etag[index++]) ignore = true;
+    }
+    if (index == etag_size && !ignore) return true;
+
+    return false;
+}
+
 } // namespace rohit

@@ -250,6 +250,8 @@ public:
 
     http_header_request() {}
 
+    bool match_etag(const char *etag, size_t etag_size);
+
 private:
     static const char *strMETHOD[];
 
