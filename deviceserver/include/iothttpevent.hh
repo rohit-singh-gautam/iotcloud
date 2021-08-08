@@ -201,7 +201,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             size_t written_length;
             err = peer_id.write(write_buffer, write_size, written_length);
             if (err == err_t::SOCKET_RETRY) {
-                write_queue.push({write_buffer, 0, write_size});
+                write_queue.push({write_buffer, written_length, write_size});
                 err = err_t::SUCCESS;
                 client_state = state_t::SOCKET_PEER_WRITE;
             } else {
