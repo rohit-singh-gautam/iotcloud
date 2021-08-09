@@ -8,6 +8,7 @@
 #include <iotfilemapping.hh>
 #include <iot/init.hh>
 #include <iot/core/configparser.hh>
+#include <iot/watcher/filewatcherevent.hh>
 #include <iot/core/version.h>
 #include <signal.h>
 #include <json.hpp>
@@ -53,6 +54,8 @@ std::vector<serverevent_type *> srvevts;
 std::vector<serverevent_ssl_type *> srvevts_ssl;
 std::vector<httpevent_type *> srvhttpevts;
 std::vector<httpevent_ssl_type *> srvhttpevts_ssl;
+
+rohit::filewatcherevent *ptr_filewatcher;
 
 const std::string load_config_string(const char *const configfile) {
     int fd = open(configfile, O_RDONLY);
@@ -123,6 +126,7 @@ void load_and_execute_config(const std::string configfile) {
 
             auto webfolder = server["Folder"].ToString();
             rohit::http::webfilemap.add_folder(port, webfolder);
+            ptr_filewatcher->add_folder(webfolder);
 
             auto indexfile = server["Default"].ToString();
             rohit::http::file_map_param map_param_source(port, "/" + indexfile);
@@ -145,6 +149,7 @@ void load_and_execute_config(const std::string configfile) {
 
             auto webfolder = server["Folder"].ToString();
             rohit::http::webfilemap.add_folder(port, webfolder);
+            ptr_filewatcher->add_folder(webfolder);
 
             auto indexfile = server["Default"].ToString();
             rohit::http::file_map_param map_param_source(port, "/" + indexfile);
@@ -316,6 +321,9 @@ int main(int argc, char *argv[]) try {
     std::cout << "Creating event distributor" << std::endl;
     evtdist = new rohit::event_distributor(thread_count);
     evtdist->init();
+
+    ptr_filewatcher = new rohit::filewatcherevent(*evtdist);
+    ptr_filewatcher->init();
 
     const auto str_config_folder = std::string(config_folder);
     const auto configfile = str_config_folder + "/iot.json";

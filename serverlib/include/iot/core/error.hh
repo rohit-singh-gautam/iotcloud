@@ -89,6 +89,10 @@ namespace rohit {
     ERROR_T_ENTRY(EVENT_DIST_CREATE_FAILED, "Event distributor creation failed") \
     ERROR_T_ENTRY(EVENT_CREATE_FAILED, "Event creation failed") \
     ERROR_T_ENTRY(EVENT_REMOVE_FAILED, "Event remove failed") \
+    ERROR_T_ENTRY(EVENT_SERVER_HELPER_CREATE_FAILED, "Event server helper create failed") \
+    \
+    ERROR_T_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, "FILEWATCHER failed to add folder for watch") \
+    ERROR_T_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, "FILEWATCHER event create failed") \
     \
     ERROR_T_ENTRY(SSL_CONNECT_FAILED, "Failed to create SSL session") \
     ERROR_T_ENTRY(SSL_SESSION_NULL, "SSL session in NULL") \

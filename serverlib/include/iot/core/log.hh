@@ -64,6 +64,7 @@ namespace rohit {
     LOGGER_MODULE_ENTRY(EVENT_EXECUTOR) \
     LOGGER_MODULE_ENTRY(EVENT_SERVER) \
     LOGGER_MODULE_ENTRY(IOT_EVENT_SERVER) \
+    LOGGER_MODULE_ENTRY(IOT_HTTPSERVER) \
     LOGGER_MODULE_ENTRY(TEST) \
     LOGGER_MODULE_ENTRY(MAX_MODULE) \
     LOGGER_MODULE_ENTRY(UNKNOWN) \
@@ -106,6 +107,9 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_DIST_TERMINATING, INFO, EVENT_DISTRIBUTOR, "Event distributor TERMINATING") \
     LOGGER_ENTRY(EVENT_DIST_EVENT_RECEIVED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor event %vv receive") \
     LOGGER_ENTRY(EVENT_DIST_DEADLOCK_DETECTED, ALERT, EVENT_DISTRIBUTOR, "Event distributor deadlock detected in thread %llu, state %vs") \
+    LOGGER_ENTRY(EVENT_DIST_PAUSED_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor pausing thread %llu") \
+    LOGGER_ENTRY(EVENT_DIST_RESUMED_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor resumed thread %llu") \
+    LOGGER_ENTRY(EVENT_DIST_PAUSED_THREAD_FAILED, ERROR, EVENT_DISTRIBUTOR, "Event distributor failed to pause") \
     \
     LOGGER_ENTRY(EVENT_CREATE_FAILED, ERROR, EVENT_EXECUTOR, "Event creation failed with error %ve") \
     LOGGER_ENTRY(EVENT_CREATE_SUCCESS, DEBUG, EVENT_EXECUTOR, "Event creation succeeded") \
@@ -119,12 +123,22 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_SERVER_SSL_ACCEPT_FAILED, ERROR, EVENT_SERVER, "SSL Event server failed to accept connection with error %ve") \
     LOGGER_ENTRY(EVENT_SERVER_PEER_CREATED, VERBOSE, EVENT_SERVER, "Event server new peer requested from remote %vN") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_PEER_CREATED, VERBOSE, EVENT_SERVER, "SSL Event server new peer requested from remote %vN") \
+    LOGGER_ENTRY(EVENT_SERVER_HELPER_CREATE_FAILED, ERROR, EVENT_SERVER, "Event server helper create failed") \
+    LOGGER_ENTRY(EVENT_SERVER_HELPER_ONLY_READ_SUPPORTED, INFO, EVENT_SERVER, "Event server helper only supports read event") \
+    LOGGER_ENTRY(EVENT_SERVER_HELPER_WRITE_FAILED, WARNING, EVENT_SERVER, "Event server event write failed with error %ve") \
+    LOGGER_ENTRY(EVENT_SERVER_HELPER_READ_FAILED, WARNING, EVENT_SERVER, "Event server event read failed with error %ve") \
+    LOGGER_ENTRY(EVENT_SERVER_HELPER_UNKNOWN, WARNING, EVENT_SERVER, "Event server unknown message") \
     \
     LOGGER_ENTRY(IOT_EVENT_SERVER_COMMAND_RECEIVED, VERBOSE, IOT_EVENT_SERVER, "IOT Event Server received message %vN") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %vE") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed fd %i") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_WRITE_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer write failed with error %vE") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_NULL_SOCKET, ERROR, IOT_EVENT_SERVER, "IOT Event Server command received with null socket") \
+    \
+    LOGGER_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, ERROR, IOT_HTTPSERVER, "FILEWATCHER event create failed") \
+    LOGGER_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, WARNING, IOT_HTTPSERVER, "FILEWATCHER failed to add folder for watch with error %ve") \
+    LOGGER_ENTRY(FILEWATCHER_ONLY_READ_SUPPORTED, INFO, IOT_HTTPSERVER, "FILEWATCHER only supports read event") \
+    LOGGER_ENTRY(FILEWATCHER_EVENT_READ_FAILED, INFO, IOT_HTTPSERVER, "FILEWATCHER event read failed with error %ve") \
     \
     LOGGER_ENTRY(SYSTEM_ERROR, ERROR, SYSTEM, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \

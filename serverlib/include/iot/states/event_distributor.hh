@@ -67,6 +67,8 @@ struct event_thread_entry {
     }
 };
 
+class helperevent_executor;
+
 class event_distributor {
 public:
     static constexpr int max_event_size = 1000000;
@@ -112,8 +114,11 @@ private:
         thread_entry_map.insert(std::make_pair(pthread, thread_entry));
     }
 
+    helperevent_executor *helperevent;
+
 public:
     event_distributor(const int thread_count = 0, const int max_event_size = event_distributor::max_event_size);
+    ~event_distributor();
 
     void init();
 
@@ -147,11 +152,14 @@ public:
         }
     }
 
-    inline size_t get_thread_count() const { return thread_count; }
+    constexpr size_t get_thread_count() const { return thread_count; }
 
     void wait();
 
     void terminate();
+
+    bool pause(thread_context &ctx);
+    bool resume(thread_context &ctx);
     
 }; // class event_distributor
 

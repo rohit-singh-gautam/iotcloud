@@ -4,6 +4,7 @@
 ////////////////////////////////////////////////////////////
 
 #include <iot/states/event_distributor.hh>
+#include <iot/watcher/helperevent.hh>
 #include <iot/core/log.hh>
 #include <sys/epoll.h>
 #include <limits>
@@ -32,6 +33,10 @@ event_distributor::event_distributor(const int thread_count, const int max_event
     pthread_mutex_init(&eventdist_lock, nullptr);
 }
 
+event_distributor::~event_distributor() {
+    delete helperevent;
+}
+
 void event_distributor::init() {
     pthread_t cleanup_thread;
     auto cleanup_ret = pthread_create(&cleanup_thread, NULL, &event_distributor::cleanup, this);
@@ -56,6 +61,9 @@ void event_distributor::init() {
         glog.log<log_t::EVENT_DIST_CREATE_NO_THREAD>();
         throw exception_t(err_t::EVENT_DIST_CREATE_FAILED);
     }
+
+    helperevent = new helperevent_executor(*this);
+    helperevent->init();
 }
 
 void *event_distributor::loop(void *pvoid_evtdist) {
@@ -164,7 +172,6 @@ private:
 public:
     terminate_executor(event_distributor &evtdist, int terminatefd)
         : evtdist(evtdist), terminatefd(terminatefd) {
-        evtdist.add(terminatefd, EPOLLIN, *this);
     }
 
 private:
@@ -177,13 +184,10 @@ void event_distributor::terminate() {
     glog.log<log_t::EVENT_DIST_TERMINATING>();
     is_terminate = true;
 
-    epoll_event epoll_data;
-    epoll_data.events = EPOLLIN | EPOLLET;
-    epoll_data.data.ptr = nullptr;
-
     for(int thread_index = 0; thread_index < thread_count; ++thread_index) {
         auto tempfd = eventfd(1, EFD_SEMAPHORE);
         terminate_executor termateexecutor(*this, tempfd);
+        add(tempfd, EPOLLIN, termateexecutor);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         close(tempfd);
     }
@@ -192,6 +196,14 @@ void event_distributor::terminate() {
     if (ret != 0) {
         glog.log<log_t::EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED>(ret);
     }
+}
+
+bool event_distributor::pause(thread_context &ctx) {
+    return helperevent->pause_all_thread(ctx);
+}
+
+bool event_distributor::resume(thread_context &ctx) {
+    return helperevent->resume_all_thread(ctx);
 }
 
 } // namespace rohit
