@@ -24,7 +24,7 @@ struct file_info {
     const char *etags;
     static constexpr size_t etags_size = to_string64_hash<uint64_t>();
 
-    constexpr file_info(
+    inline file_info(
                 const char *text,
                 const size_t text_size,
                 const char *type,
@@ -32,7 +32,7 @@ struct file_info {
                 const char *etags)
         : text(text), text_size(text_size), type(type), type_size(type_size), etags(etags) { }
 
-    ~file_info() {
+    inline ~file_info() {
         delete[] text;
         delete[] type;
         delete[] etags;
@@ -40,26 +40,30 @@ struct file_info {
 };
 
 class filemap {
+private:
+    std::unordered_map<std::string, std::string> folder_mappings;
+    std::unordered_map<std::string, std::vector<std::string>> folder_reverse_mappings;
+    std::unordered_map<std::string, std::string> content_type_map; // Extension, file
+    const std::string &webfolder;
+
     // This is designed to be permanent
     // It is expected to restart server once file is changed
-    err_t add_folder(const std::string &webfolder, const std::string &folder);
-
+    err_t add_folder(const std::string &folder);
+    
 public:
-
     std::unordered_map<std::string, std::shared_ptr<file_info>> cache;
-    std::unordered_map<std::string, std::string> content_type_map; // Extension, file
-    std::unordered_map<std::string, std::string> folder_mappings;
 
-    filemap() : cache(), content_type_map(), folder_mappings() {}
+    filemap(const std::string &webfolder)
+        : folder_mappings(), folder_reverse_mappings(), content_type_map(), webfolder(webfolder), cache() {}
 
-    inline err_t add_folder(const std::string &webfolder) {
-        return add_folder(webfolder, "/");
-    }
+    void update_folder();
 
-    // Mapping will be done only if destination is present
-    err_t additional_mapping(const std::string &source, const std::string &dest);
+    void insert_folder_mapping(const std::string &source, const std::string &destination);
+    void update_folder_mapping();
 
-    void add_file(const std::string &webfolder, const std::string &filepath);
+    void insert_content_type(const std::string &extension, const std::string &content_type);
+
+    void add_file(const std::string &filepath);
 };
 
 class webmaps {
@@ -76,7 +80,7 @@ public:
         }
     }
 
-    err_t add_folder(const ipv6_port_t port, const std::string &webfolder);
+    void add_folder(const ipv6_port_t port, const std::string &webfolder);
     err_t update_folder();
 
     err_t add_folder_mapping(

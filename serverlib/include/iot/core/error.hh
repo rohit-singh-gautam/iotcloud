@@ -29,6 +29,8 @@ namespace rohit {
     ERROR_T_ENTRY(SEND_FAILURE, "Unable to write to a socket") \
     ERROR_T_ENTRY(BAD_FILE_DESCRIPTOR, "Bad file descriptor") \
     \
+    ERROR_T_ENTRY(MAPPING_NOT_FOUND, "General mapping error") \
+    \
     ERROR_T_ENTRY(PTHREAD_JOIN_FAILURE, "Unable to join to a thread") \
     ERROR_T_ENTRY(PTHREAD_JOIN_DEADLOCK_FAILURE, "pthread_join created a deadlock") \
     ERROR_T_ENTRY(PTHREAD_JOIN_NOT_JOINABLE_FAILURE, "Either thread is not joinable probably other thread is trying to join") \

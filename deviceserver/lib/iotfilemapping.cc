@@ -27,7 +27,7 @@ inline uint64_t get_etags(int fd) {
     return nanos;
 }
 
-void filemap::add_file(const std::string &webfolder, const std::string &relativepath) {
+void filemap::add_file(const std::string &relativepath) {
     size_t period_pos = relativepath.rfind('.');
     if (period_pos == std::string::npos) {
         glog.log<log_t::WEB_SERVER_NO_EXTENSION>();
@@ -76,7 +76,7 @@ void filemap::add_file(const std::string &webfolder, const std::string &relative
     cache.insert(std::make_pair(relativepath, std::shared_ptr<file_info>(file_details)));
 }
 
-err_t filemap::add_folder(const std::string &webfolder, const std::string &folder) {
+err_t filemap::add_folder(const std::string &folder) {
     const auto constfolder = webfolder + folder;
     DIR * dir = opendir(constfolder.c_str());
 
@@ -97,11 +97,11 @@ err_t filemap::add_folder(const std::string &webfolder, const std::string &folde
         switch(child->d_type) {
         case DT_DIR: {
             // ignoring child error
-            add_folder(webfolder, folder + std::string(child->d_name) + "/");
+            add_folder(folder + std::string(child->d_name) + "/");
             break;
         }
         case DT_REG: {
-            add_file(webfolder, folder + std::string(child->d_name));
+            add_file(folder + std::string(child->d_name));
             break;
         }
         
@@ -120,22 +120,44 @@ err_t filemap::add_folder(const std::string &webfolder, const std::string &folde
     return err_t::SUCCESS;
 }
 
-err_t filemap::additional_mapping(const std::string &source, const std::string &dest) {
-    auto value = cache.find(dest);
-    if (value == cache.end()) {
-        return err_t::HTTP_FILEMAP_NOT_FOUND;
-    }
-    cache.insert(std::make_pair(source, value->second));
-    return err_t::SUCCESS;
+void filemap::update_folder() {
+    add_folder("/");
+    update_folder_mapping();
 }
 
-err_t webmaps::add_folder(const ipv6_port_t port, const std::string &webfolder) {
+void filemap::insert_folder_mapping(const std::string &source, const std::string &destination) {
+    folder_mappings.insert(std::make_pair(source, destination));
+    
+    auto dest_itr = folder_reverse_mappings.find(destination);
+    if (dest_itr == folder_reverse_mappings.end()) {
+        std::vector<std::string> source_list;
+        source_list.push_back(source);
+        folder_reverse_mappings.insert(std::make_pair(destination, source_list));
+    } else {
+        dest_itr->second.push_back(source);
+    }
+}
+
+void filemap::update_folder_mapping() {
+    for(auto &map_pair: folder_mappings) {
+        const std::string &source = map_pair.first;
+        const std::string &dest = map_pair.second;
+        auto value = cache.find(dest);
+        if (value != cache.end()) {
+            cache.insert(std::make_pair(source, value->second));
+        }
+    }
+}
+
+void filemap::insert_content_type(const std::string &extension, const std::string &content_type) {
+    content_type_map.insert(std::make_pair(extension, content_type));
+}
+
+void webmaps::add_folder(const ipv6_port_t port, const std::string &webfolder) {
     filemap *maps;
     auto folder_itr = webfoldermaps.find(webfolder);
     if (folder_itr == webfoldermaps.end()) {
-        maps = new filemap();
-        auto ret = maps->add_folder(webfolder);
-        if (isFailure(ret)) return ret;
+        maps = new filemap(webfolder);
         webfoldermaps.insert(std::make_pair(webfolder, maps));
     } else {
         maps = folder_itr->second;
@@ -147,17 +169,12 @@ err_t webmaps::add_folder(const ipv6_port_t port, const std::string &webfolder) 
     } else {
         webportmaps[port] = maps;
     }
-
-    return err_t::SUCCESS;
 }
 
 err_t webmaps::update_folder() {
     for(auto &folder_pair: webfoldermaps) {
-        folder_pair.second->add_folder(folder_pair.first);
-        for(auto &map_pair: folder_pair.second->folder_mappings) {
-            folder_pair.second->additional_mapping(map_pair.first, map_pair.second);
-        }
-        
+        folder_pair.second->update_folder();
+        folder_pair.second->update_folder_mapping();
     }
     return err_t::SUCCESS;
 }
@@ -168,7 +185,7 @@ err_t webmaps::add_folder_mapping(
                 std::string destination) {
     if (webfolder == "*") {
         for(auto &folder_pair: webfoldermaps) {
-            folder_pair.second->folder_mappings.insert(std::make_pair(source, destination));
+            folder_pair.second->insert_folder_mapping(source, destination);
         }
     } else {
         auto folder_itr = webfoldermaps.find(webfolder);
@@ -176,7 +193,7 @@ err_t webmaps::add_folder_mapping(
             return err_t::HTTP_FILEMAP_NOT_FOUND;
         }
 
-        folder_itr->second->folder_mappings.insert(std::make_pair(source, destination));
+        folder_itr->second->insert_folder_mapping(source, destination);
     }
 
     return err_t::SUCCESS;
@@ -188,14 +205,14 @@ err_t webmaps::add_content_type_mapping(
             const std::string &content_type) {
     if (webfolder == "*") {
         for(auto &folder_pair: webfoldermaps) {
-            folder_pair.second->content_type_map.insert(std::make_pair(extension, content_type));
+            folder_pair.second->insert_content_type(extension, content_type);
         }
     } else {
         auto folder_itr = webfoldermaps.find(webfolder);
         if (folder_itr == webfoldermaps.end()) {
             return err_t::HTTP_FILEMAP_NOT_FOUND;
         }
-        folder_itr->second->content_type_map.insert(std::make_pair(extension, content_type));
+        folder_itr->second->insert_content_type(extension, content_type);
     }
     return err_t::SUCCESS;
 }
