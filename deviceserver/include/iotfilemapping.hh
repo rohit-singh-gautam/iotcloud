@@ -15,30 +15,6 @@
 #include <unordered_map>
 
 namespace rohit::http {
-struct file_map_param {
-    const ipv6_port_t port;
-    const std::string file; // Name with path
-    file_map_param(const ipv6_port_t port, const std::string &file) : port(port), file(file) {}
-
-    bool operator==(const file_map_param &rhs) const {
-        return rhs.port == port && rhs.file == file;
-    }
-};
-} // namespace rohit::http
-
-namespace std {
-template<>
-struct hash<rohit::http::file_map_param>
-{
-    size_t
-    operator()(const rohit::http::file_map_param &val) const noexcept
-    {
-        return std::_Hash_impl::__hash_combine(val.port, std::hash<std::string>{}(val.file));
-    }
-};
-} // namespace std
-
-namespace rohit::http {
 
 struct file_info {
     const char *text;
@@ -66,21 +42,63 @@ struct file_info {
 class filemap {
     // This is designed to be permanent
     // It is expected to restart server once file is changed
+    err_t add_folder(const std::string &webfolder, const std::string &folder);
+
 public:
 
-    std::unordered_map<file_map_param, std::shared_ptr<file_info>> cache;
+    std::unordered_map<std::string, std::shared_ptr<file_info>> cache;
     std::unordered_map<std::string, std::string> content_type_map; // Extension, file
+    std::unordered_map<std::string, std::string> folder_mappings;
 
-    filemap();
+    filemap() : cache(), content_type_map(), folder_mappings() {}
 
-    err_t add_folder(const ipv6_port_t port, const std::string &webfolder, const std::string &folder = "/");
+    inline err_t add_folder(const std::string &webfolder) {
+        return add_folder(webfolder, "/");
+    }
 
     // Mapping will be done only if destination is present
-    err_t additional_mapping(const file_map_param &source, const file_map_param &dest);
+    err_t additional_mapping(const std::string &source, const std::string &dest);
 
-    void add_file(const ipv6_port_t port, const std::string &webfolder, const std::string &filepath);
+    void add_file(const std::string &webfolder, const std::string &filepath);
 };
 
-extern filemap webfilemap;
+class webmaps {
+    // This is many:1 mapping
+    std::unordered_map<ipv6_port_t, filemap *> webportmaps;
+
+    // This is 1:1 mapping
+    std::unordered_map<std::string, filemap *> webfoldermaps;
+public:
+    webmaps() : webportmaps(), webfoldermaps()  {}
+    ~webmaps() {
+        for(auto &webfoldermap: webfoldermaps) {
+            delete webfoldermap.second;
+        }
+    }
+
+    err_t add_folder(const ipv6_port_t port, const std::string &webfolder);
+    err_t update_folder();
+
+    err_t add_folder_mapping(
+                const std::string &webfolder,
+                std::string source,
+                std::string destination);
+
+    err_t add_content_type_mapping(
+                const std::string &webfolder,
+                const std::string &extension,
+                const std::string &content_type);
+
+    filemap * getfilemap(ipv6_port_t port) {
+        auto file_mapping = webportmaps.find(port);
+        if (file_mapping == webportmaps.end()) {
+            throw exception_t(err_t::HTTP_FILEMAP_NOT_FOUND);
+        }
+
+        return file_mapping->second;
+    }
+};
+
+extern webmaps webfilemap;
 
 } // namespace rohit::http

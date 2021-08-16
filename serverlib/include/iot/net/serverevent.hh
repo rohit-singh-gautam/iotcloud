@@ -23,7 +23,9 @@ private:
     const int maxconnection;
 
 public:
-    serverevent(event_distributor &evtdist, const int port, const int maxconnection = 10000);
+    serverevent(event_distributor &evtdist,
+                const int port,
+                const int maxconnection = 10000);
 
     serverevent(event_distributor &evtdist,
                 const int port,
@@ -78,15 +80,15 @@ inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
 
 template <typename peerevent, bool use_ssl, bool use_lock>
 inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
-    event_distributor &evtdist,
-    const int port,
-    const char *const cert_file,
-    const char *const prikey_file,
-    const int maxconnection)
-        :   evtdist(evtdist),
-            socket_id(port, cert_file, prikey_file),
-            port(port),
-            maxconnection(maxconnection) {
+        event_distributor &evtdist,
+        const int port,
+        const char *const cert_file,
+        const char *const prikey_file,
+        const int maxconnection)
+            :   evtdist(evtdist),
+                socket_id(port, cert_file, prikey_file),
+                port(port),
+                maxconnection(maxconnection) {
     static_assert(use_ssl, "cert_file and prikey_file parameters require only for SSL");
 }
 

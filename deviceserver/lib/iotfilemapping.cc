@@ -11,24 +11,7 @@
 
 namespace rohit::http {
 
-filemap webfilemap;
-
-filemap::filemap() : cache() {
-    content_type_map.insert(std::make_pair("txt", "text/plain"));
-    content_type_map.insert(std::make_pair("html", "text/html"));
-    content_type_map.insert(std::make_pair("htm", "text/html"));
-    content_type_map.insert(std::make_pair("js", "text/javascript"));
-    content_type_map.insert(std::make_pair("json", "application/json"));
-    content_type_map.insert(std::make_pair("jpeg", "image/jpeg"));
-    content_type_map.insert(std::make_pair("jpg", "image/jpeg"));
-    content_type_map.insert(std::make_pair("gif", "image/gif"));
-    content_type_map.insert(std::make_pair("png", "image/png"));
-    content_type_map.insert(std::make_pair("tiff", "image/tiff"));
-    content_type_map.insert(std::make_pair("tif", "image/tiff"));
-    content_type_map.insert(std::make_pair("ico", "image/x-icon"));
-    content_type_map.insert(std::make_pair("ttf", "font/ttf"));
-    content_type_map.insert(std::make_pair("bin", "application/octet-stream"));
-}
+webmaps webfilemap;
 
 // Get etags from FD
 // Etags 
@@ -44,7 +27,7 @@ inline uint64_t get_etags(int fd) {
     return nanos;
 }
 
-void filemap::add_file(const ipv6_port_t port, const std::string &webfolder, const std::string &relativepath) {
+void filemap::add_file(const std::string &webfolder, const std::string &relativepath) {
     size_t period_pos = relativepath.rfind('.');
     if (period_pos == std::string::npos) {
         glog.log<log_t::WEB_SERVER_NO_EXTENSION>();
@@ -60,7 +43,6 @@ void filemap::add_file(const ipv6_port_t port, const std::string &webfolder, con
 
     const auto &content_type_str = content_type_iter->second;
 
-    file_map_param mapparam = {port, relativepath};
     auto filepath = webfolder + relativepath;
 
     int fd = open(filepath.c_str(), O_RDONLY);
@@ -91,10 +73,10 @@ void filemap::add_file(const ipv6_port_t port, const std::string &webfolder, con
         content_type_buffer, content_type_str.length() + 1,
         etag_buffer);
 
-    cache.insert(std::make_pair(mapparam, std::shared_ptr<file_info>(file_details)));
+    cache.insert(std::make_pair(relativepath, std::shared_ptr<file_info>(file_details)));
 }
 
-err_t filemap::add_folder(const ipv6_port_t port, const std::string &webfolder, const std::string &folder) {
+err_t filemap::add_folder(const std::string &webfolder, const std::string &folder) {
     const auto constfolder = webfolder + folder;
     DIR * dir = opendir(constfolder.c_str());
 
@@ -115,11 +97,11 @@ err_t filemap::add_folder(const ipv6_port_t port, const std::string &webfolder, 
         switch(child->d_type) {
         case DT_DIR: {
             // ignoring child error
-            add_folder(port, webfolder, folder + std::string(child->d_name) + "/");
+            add_folder(webfolder, folder + std::string(child->d_name) + "/");
             break;
         }
         case DT_REG: {
-            add_file(port, webfolder, folder + std::string(child->d_name));
+            add_file(webfolder, folder + std::string(child->d_name));
             break;
         }
         
@@ -138,14 +120,84 @@ err_t filemap::add_folder(const ipv6_port_t port, const std::string &webfolder, 
     return err_t::SUCCESS;
 }
 
-err_t filemap::additional_mapping(const file_map_param &source, const file_map_param &dest) {
-    auto value = cache.find(source);
+err_t filemap::additional_mapping(const std::string &source, const std::string &dest) {
+    auto value = cache.find(dest);
     if (value == cache.end()) {
         return err_t::HTTP_FILEMAP_NOT_FOUND;
     }
-    cache.insert(std::make_pair(dest, value->second));
+    cache.insert(std::make_pair(source, value->second));
     return err_t::SUCCESS;
 }
 
+err_t webmaps::add_folder(const ipv6_port_t port, const std::string &webfolder) {
+    filemap *maps;
+    auto folder_itr = webfoldermaps.find(webfolder);
+    if (folder_itr == webfoldermaps.end()) {
+        maps = new filemap();
+        auto ret = maps->add_folder(webfolder);
+        if (isFailure(ret)) return ret;
+        webfoldermaps.insert(std::make_pair(webfolder, maps));
+    } else {
+        maps = folder_itr->second;
+    }
+
+    auto port_itr = webportmaps.find(port);
+    if (port_itr == webportmaps.end()) {
+        webportmaps.insert(std::make_pair(port, maps));
+    } else {
+        webportmaps[port] = maps;
+    }
+
+    return err_t::SUCCESS;
+}
+
+err_t webmaps::update_folder() {
+    for(auto &folder_pair: webfoldermaps) {
+        folder_pair.second->add_folder(folder_pair.first);
+        for(auto &map_pair: folder_pair.second->folder_mappings) {
+            folder_pair.second->additional_mapping(map_pair.first, map_pair.second);
+        }
+        
+    }
+    return err_t::SUCCESS;
+}
+
+err_t webmaps::add_folder_mapping(
+                const std::string &webfolder,
+                std::string source,
+                std::string destination) {
+    if (webfolder == "*") {
+        for(auto &folder_pair: webfoldermaps) {
+            folder_pair.second->folder_mappings.insert(std::make_pair(source, destination));
+        }
+    } else {
+        auto folder_itr = webfoldermaps.find(webfolder);
+        if (folder_itr == webfoldermaps.end()) {
+            return err_t::HTTP_FILEMAP_NOT_FOUND;
+        }
+
+        folder_itr->second->folder_mappings.insert(std::make_pair(source, destination));
+    }
+
+    return err_t::SUCCESS;
+}
+
+err_t webmaps::add_content_type_mapping(
+            const std::string &webfolder,
+            const std::string &extension,
+            const std::string &content_type) {
+    if (webfolder == "*") {
+        for(auto &folder_pair: webfoldermaps) {
+            folder_pair.second->content_type_map.insert(std::make_pair(extension, content_type));
+        }
+    } else {
+        auto folder_itr = webfoldermaps.find(webfolder);
+        if (folder_itr == webfoldermaps.end()) {
+            return err_t::HTTP_FILEMAP_NOT_FOUND;
+        }
+        folder_itr->second->content_type_map.insert(std::make_pair(extension, content_type));
+    }
+    return err_t::SUCCESS;
+}
 
 } // namespace rohit::http

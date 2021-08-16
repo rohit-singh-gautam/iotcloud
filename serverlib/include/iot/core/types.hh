@@ -53,12 +53,16 @@ class ipv6_port_t {
 private:
     uint16_t value;
 public:
+    constexpr ipv6_port_t() : value(0) {}
     constexpr ipv6_port_t(const uint16_t value) : value(changeEndian(value)) {}
     constexpr ipv6_port_t(const ipv6_port_t &rhs) : value(rhs.value) {}
     constexpr operator uint16_t() const { return changeEndian(value); }
     constexpr uint16_t get_network_port() const { return value; }
 
-    constexpr bool operator==(const ipv6_port_t &rhs) {return value == rhs.value; }
+    constexpr bool operator==(const ipv6_port_t &rhs) { return value == rhs.value; }
+
+    constexpr ipv6_port_t operator=(const ipv6_port_t &rhs) { this->value = rhs.value; return *this; }
+
 }  __attribute__((packed));
 
 class ipv6_socket_addr_t {
@@ -247,3 +251,16 @@ constexpr unsigned long long int operator "" _pb (const unsigned long long int v
 }
 
 } // namespace rohit 
+
+namespace std {
+template<>
+struct hash<rohit::ipv6_port_t>
+{
+    size_t
+    operator()(const rohit::ipv6_port_t &val) const noexcept
+    {
+        auto ret = hash<uint16_t> {} (val);
+        return ret;
+    }
+};
+} // namespace std

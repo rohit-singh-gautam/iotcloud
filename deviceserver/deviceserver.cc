@@ -120,25 +120,21 @@ void load_and_execute_config(const std::string configfile) {
             srvevts_ssl.push_back(srvevt_ssl);
         } else if (TYPE == "http") {
             std::cout << "Creating a HTTP server at port " << port << std::endl;
+            auto webfolder = server["Folder"].ToString();
+            rohit::http::webfilemap.add_folder(port, webfolder);
             auto srvhttpevt = new httpevent_type(*evtdist, port);
             srvhttpevt->init();
             srvhttpevts.push_back(srvhttpevt);
 
-            auto webfolder = server["Folder"].ToString();
-            rohit::http::webfilemap.add_folder(port, webfolder);
             ptr_filewatcher->add_folder(webfolder);
-
-            auto indexfile = server["Default"].ToString();
-            rohit::http::file_map_param map_param_source(port, "/" + indexfile);
-            rohit::http::file_map_param map_param_dest(port, "/");
-            
-            rohit::http::webfilemap.additional_mapping(map_param_source, map_param_dest);
         } else if (TYPE == "https") {
             const auto cert_file = server["CertFile"].ToString();
             const auto prikey_file_temp = server["PrikeyFile"].ToString();
             const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
 
             std::cout << "Creating a HTTPS server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
+            auto webfolder = server["Folder"].ToString();
+            rohit::http::webfilemap.add_folder(port, webfolder);
             auto srvhttpevt_ssl = new httpevent_ssl_type(
                 *evtdist,
                 port,
@@ -147,20 +143,41 @@ void load_and_execute_config(const std::string configfile) {
             srvhttpevt_ssl->init();
             srvhttpevts_ssl.push_back(srvhttpevt_ssl);
 
-            auto webfolder = server["Folder"].ToString();
-            rohit::http::webfilemap.add_folder(port, webfolder);
             ptr_filewatcher->add_folder(webfolder);
-
-            auto indexfile = server["Default"].ToString();
-            rohit::http::file_map_param map_param_source(port, "/" + indexfile);
-            rohit::http::file_map_param map_param_dest(port, "/");
-            
-            rohit::http::webfilemap.additional_mapping(map_param_source, map_param_dest);
         } else{
             std::cout << "Unknown server type " << TYPE << ", skipping creation of this server" << std::endl;
             continue;
         }
     }
+
+    auto mappings = config["Mappings"];
+    for(auto mapping: mappings.ArrayRange()) {
+        auto type = mapping["Type"].ToString();
+        auto maps = mapping["Maps"];
+        if (type == "folder") {
+            auto folder_list = mapping["Folders"];
+            for(auto folder_json: folder_list.ArrayRange()) {
+                auto folder = folder_json.ToString();
+                for(auto map: maps.ArrayRange()) {
+                    auto keystr = map["Key"].ToString();
+                    auto valuestr = map["Value"].ToString();
+                    rohit::http::webfilemap.add_folder_mapping(folder, keystr, valuestr);
+                }
+            }
+        } else if (type == "extension") {
+            auto folder_list = mapping["Folders"];
+            for(auto folder_json: folder_list.ArrayRange()) {
+                auto folder = folder_json.ToString();
+                for(auto map: maps.ArrayRange()) {
+                    auto keystr = map["Key"].ToString();
+                    auto valuestr = map["Value"].ToString();
+                    rohit::http::webfilemap.add_content_type_mapping(folder, keystr, valuestr);
+                }
+            }
+        }
+    }
+
+    rohit::http::webfilemap.update_folder();
 }
 
 void destroy_app() {

@@ -142,10 +142,10 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             size_t write_size = 0;
             if (driver.header.method == rohit::http_header_request::METHOD::GET) {
                 auto port = local_address.port;
-                rohit::http::file_map_param map_param(port, driver.header.path);
 
-                auto result = rohit::http::webfilemap.cache.find(map_param);
-                if (result == rohit::http::webfilemap.cache.end()) {
+                rohit::http::filemap *filemap_obj = rohit::http::webfilemap.getfilemap(port);
+                auto result = filemap_obj->cache.find(driver.header.path);
+                if (result == filemap_obj->cache.end()) {
                     auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
                     write_size = (size_t)(last_write_buffer - read_buffer);
                 } else {
