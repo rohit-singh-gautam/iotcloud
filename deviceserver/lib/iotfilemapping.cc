@@ -125,6 +125,10 @@ void filemap::update_folder() {
     update_folder_mapping();
 }
 
+void filemap::flush_cache() {
+    cache.clear();
+}
+
 void filemap::insert_folder_mapping(const std::string &source, const std::string &destination) {
     folder_mappings.insert(std::make_pair(source, destination));
     
@@ -171,11 +175,37 @@ void webmaps::add_folder(const ipv6_port_t port, const std::string &webfolder) {
     }
 }
 
-err_t webmaps::update_folder() {
+void webmaps::update_folder() {
     for(auto &folder_pair: webfoldermaps) {
         folder_pair.second->update_folder();
         folder_pair.second->update_folder_mapping();
     }
+}
+
+err_t webmaps::update_folder(const std::string &webfolder) {
+    auto filemap_itr = webfoldermaps.find(webfolder);
+    if (filemap_itr == webfoldermaps.end()) {
+        return err_t::HTTP_FILEMAP_NOT_FOUND;
+    }
+
+    auto pfilemap = filemap_itr->second;
+
+    pfilemap->update_folder();
+
+    return err_t::SUCCESS;
+}
+
+
+err_t webmaps::flush_cache(const std::string &webfolder) {
+    auto filemap_itr = webfoldermaps.find(webfolder);
+    if (filemap_itr == webfoldermaps.end()) {
+        return err_t::HTTP_FILEMAP_NOT_FOUND;
+    }
+
+    auto pfilemap = filemap_itr->second;
+
+    pfilemap->flush_cache();
+
     return err_t::SUCCESS;
 }
 

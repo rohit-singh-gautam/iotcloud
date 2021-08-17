@@ -12,6 +12,7 @@
 
 namespace rohit {
 
+template <typename eventreceiver>
 class filewatcherevent : public event_executor {
 private:
     event_distributor &evtdist;
@@ -36,6 +37,18 @@ public:
 
     inline ~filewatcherevent() {
         close(inotifyfd);
+    }
+
+    // This function is called for each event
+    void receive_event(const std::string &watchfolder, uint32_t eventmask, const char *const name, uint32_t name_len) {
+        static_cast<eventreceiver *>(this)->receive_event(watchfolder, eventmask, name, name_len);
+    }
+
+    // This function is called for finalizing event
+    // Ideal for situation where full cleanup
+    // Is done for each event
+    void receive_event_finalize(const std::string &watchfolder) {
+        static_cast<eventreceiver *>(this)->receive_event_finalize(watchfolder);
     }
 
     inline err_t add_folder(const std::string folder) {
@@ -70,6 +83,8 @@ private:
 
         // Waiting so that all events are collected
         std::this_thread::sleep_for(std::chrono::nanoseconds(config::filewatcher_wait_in_ns));
+
+        std::vector<std::string> watchfolder_list;
         
         char buf[4096]
                __attribute__ ((aligned(__alignof__(struct inotify_event))));
@@ -95,25 +110,31 @@ private:
 
                 /* Print event type. */
 
-                if (event->mask & IN_CREATE)
-                    printf("IN_CREATE: ");
-                if (event->mask & IN_DELETE)
-                    printf("IN_DELETE: ");
-                if (event->mask & IN_CLOSE_WRITE)
-                    printf("IN_CLOSE_WRITE: ");
-                if (event->mask & IN_CLOSE_NOWRITE)
-                    printf("IN_CLOSE_NOWRITE: ");
-                if (event->mask & IN_MOVED_FROM)
-                    printf("IN_MOVED_FROM: ");
-                if (event->mask & IN_MOVED_TO)
-                    printf("IN_MOVED_TO: ");
+                auto &watchfolder = foldermap[event->wd];
+                watchfolder_list.push_back(watchfolder);
 
-                /* Print the name of the watched directory. */
-                std::cout << foldermap[event->wd] << "/";
+                if constexpr (config::debug) {
+                    if (event->mask & IN_CREATE)
+                        printf("IN_CREATE: ");
+                    if (event->mask & IN_DELETE)
+                        printf("IN_DELETE: ");
+                    if (event->mask & IN_CLOSE_WRITE)
+                        printf("IN_CLOSE_WRITE: ");
+                    if (event->mask & IN_CLOSE_NOWRITE)
+                        printf("IN_CLOSE_NOWRITE: ");
+                    if (event->mask & IN_MOVED_FROM)
+                        printf("IN_MOVED_FROM: ");
+                    if (event->mask & IN_MOVED_TO)
+                        printf("IN_MOVED_TO: ");
+                    
+                    /* Print the name of the watched directory. */
+                    std::cout << watchfolder << "/";
+                                    /* Print the name of the file. */
+                    if (event->len)
+                        std::cout << event->name;
+                }
 
-                /* Print the name of the file. */
-                if (event->len)
-                    std::cout << event->name;
+                receive_event(watchfolder, event->mask, event->name, event->len);
 
                 /* Print type of filesystem object. */
                 if (event->mask & IN_ISDIR)
@@ -122,6 +143,10 @@ private:
                     printf(" [file]\n");
             } // for
         } // while
+
+        for(auto watchfolder: watchfolder_list) {
+            receive_event_finalize(watchfolder);
+        }
 
         evtdist.resume(ctx);
     } // execute

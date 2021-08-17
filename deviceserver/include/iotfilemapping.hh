@@ -44,12 +44,8 @@ private:
     std::unordered_map<std::string, std::string> folder_mappings;
     std::unordered_map<std::string, std::vector<std::string>> folder_reverse_mappings;
     std::unordered_map<std::string, std::string> content_type_map; // Extension, file
-    const std::string &webfolder;
+    const std::string webfolder;
 
-    // This is designed to be permanent
-    // It is expected to restart server once file is changed
-    err_t add_folder(const std::string &folder);
-    
 public:
     std::unordered_map<std::string, std::shared_ptr<file_info>> cache;
 
@@ -57,6 +53,7 @@ public:
         : folder_mappings(), folder_reverse_mappings(), content_type_map(), webfolder(webfolder), cache() {}
 
     void update_folder();
+    void flush_cache();
 
     void insert_folder_mapping(const std::string &source, const std::string &destination);
     void update_folder_mapping();
@@ -64,6 +61,12 @@ public:
     void insert_content_type(const std::string &extension, const std::string &content_type);
 
     void add_file(const std::string &filepath);
+    err_t add_folder(const std::string &folder);
+
+    void modify_file(const std::string &filepath);
+
+    void remove_file(const std::string &filepath);
+    void remove_folder(const std::string &folder);
 };
 
 class webmaps {
@@ -81,7 +84,9 @@ public:
     }
 
     void add_folder(const ipv6_port_t port, const std::string &webfolder);
-    err_t update_folder();
+    void update_folder();
+    err_t update_folder(const std::string &webfolder);
+    err_t flush_cache(const std::string &webfolder);
 
     err_t add_folder_mapping(
                 const std::string &webfolder,

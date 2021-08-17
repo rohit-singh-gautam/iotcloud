@@ -6,9 +6,9 @@
 #include <iotserverevent.hh>
 #include <iothttpevent.hh>
 #include <iotfilemapping.hh>
+#include <httpfilewatcher.hh>
 #include <iot/init.hh>
 #include <iot/core/configparser.hh>
-#include <iot/watcher/filewatcherevent.hh>
 #include <iot/core/version.h>
 #include <signal.h>
 #include <json.hpp>
@@ -55,7 +55,7 @@ std::vector<serverevent_ssl_type *> srvevts_ssl;
 std::vector<httpevent_type *> srvhttpevts;
 std::vector<httpevent_ssl_type *> srvhttpevts_ssl;
 
-rohit::filewatcherevent *ptr_filewatcher;
+rohit::http::httpfilewatcher *ptr_filewatcher;
 
 const std::string load_config_string(const char *const configfile) {
     int fd = open(configfile, O_RDONLY);
@@ -339,7 +339,7 @@ int main(int argc, char *argv[]) try {
     evtdist = new rohit::event_distributor(thread_count);
     evtdist->init();
 
-    ptr_filewatcher = new rohit::filewatcherevent(*evtdist);
+    ptr_filewatcher = new rohit::http::httpfilewatcher(*evtdist);
     ptr_filewatcher->init();
 
     const auto str_config_folder = std::string(config_folder);
