@@ -85,14 +85,8 @@ public:
         --pause_count;
         pthread_mutex_unlock(&pause_mutex);
         ctx.log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
-        int count = 0;
-        // In 100 milliseconds all thread must come up
-        while(pause_count && count < 10) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-        }
 
-        assert(pause_count == 0);
-        return pause_count == 0;
+        return true;
     }
 
 private:
