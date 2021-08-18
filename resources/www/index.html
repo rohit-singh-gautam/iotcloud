@@ -181,117 +181,72 @@ body {
   display: table;
 }
 
-input[type=text], input[type=password] {
-  width: 100%;
-  padding: 12px 20px;
-  margin: 8px 0;
-  display: inline-block;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-}
-
-.cancelbtn {
-  width: auto;
-  padding: 10px 18px;
-  background-color: #f44336;
-}
-
-.imgcontainer {
-  text-align: center;
-  margin: 24px 0 12px 0;
-  position: relative;
-}
-
-img.avatar {
-  width: 40%;
-}
-
-span.psw {
-  float: right;
-  padding-top: 16px;
-}
-
-.modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 1; /* Sit on top */
-  left: 0;
+.form-popup {
+  display: none;
+  position: fixed;
   top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  overflow: auto; /* Enable scroll if needed */
-  background-color: rgb(0,0,0); /* Fallback color */
-  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-  padding-top: 60px;
+  right: 15px;
+  border: 3px solid #f1f1f1;
+  z-index: 9;
 }
 
-
-.modal-content {
-  background-color: #fefefe;
-  margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
-  border: 1px solid #888;
-  width: 80%; /* Could be more or less, depending on screen size */
+.loginform-container {
+  max-width: 300px;
+  padding: 10px;
+  background-color: white;
 }
 
-button.login {
+/* Full-width input fields */
+.loginform-container input[type=text], .loginform-container input[type=password] {
+  width: 100%;
+  background: #f1f1f1;
+}
+
+/* When the inputs get focus, do something */
+.loginform-container input[type=text]:focus, .loginform-container input[type=password]:focus {
+  background-color: #ddd;
+}
+
+/* Set a style for the submit/login button */
+.loginform-container .btn {
   background-color: #04AA6D;
   color: white;
-  padding: 14px 20px;
-  margin: 8px 0;
+  padding: 16px 20px;
   border: none;
   cursor: pointer;
   width: 100%;
-}
-
-button.login:hover {
+  margin-bottom:10px;
   opacity: 0.8;
 }
 
-.logincontainer {
-  padding: 16px;
+/* Add a red background color to the cancel button */
+.loginform-container .cancel {
+  background-color: red;
 }
 
-.close {
-  position: absolute;
-  right: 25px;
-  top: 0;
-  color: #000;
-  font-size: 35px;
-  font-weight: bold;
+/* Add some hover effects to buttons */
+.loginform-container .btn:hover {
+  opacity: 1;
 }
 
-.close:hover,
-.close:focus {
-  color: red;
-  cursor: pointer;
+.input-container {
+  display: -ms-flexbox; /* IE10 */
+  display: flex;
+  width: 100%;
+  margin-bottom: 15px;
 }
 
-
-/* Add Zoom Animation */
-.animate {
-  -webkit-animation: animatezoom 0.6s;
-  animation: animatezoom 0.6s
+.input-container .icon {
+  padding: 10px;
+  background-color: #555;
+  min-width: 50px;
+  text-align: center;
 }
 
-@-webkit-keyframes animatezoom {
-  from {-webkit-transform: scale(0)} 
-  to {-webkit-transform: scale(1)}
-}
-  
-@keyframes animatezoom {
-  from {transform: scale(0)} 
-  to {transform: scale(1)}
-}
-
-/* Change styles for span and cancel button on extra small screens */
-@media screen and (max-width: 300px) {
-  span.psw {
-     display: block;
-     float: none;
-  }
-  .cancelbtn {
-     width: 100%;
-  }
+.input-container .input-field {
+  width: 100%;
+  padding: 10px;
+  outline: none;
 }
 
 </style>
@@ -311,16 +266,24 @@ button.login:hover {
       elmnt.style.backgroundColor = "#ddd";
       elmnt.style.color = "black";
     }
+
+    function openForm(formname) {
+      document.getElementById(formname).style.display = "block";
+    }
+
+    function closeForm(formname) {
+      document.getElementById(formname).style.display = "none";
+    }
 </script>
 </head>
 <body>
 <div class="navbartop">
     <a href="#" class="orgname active left" href="#">Rohit IOT Cloud</a>
     <a href="#"><i class="fa fa-fw fa-envelope"></i> Contact</a> 
-    <a href="#" onclick="document.getElementById('id01').style.display='block'"><i class="fa fa-fw fa-user"></i> Login</a>
-    <a href="#"><i class="fa fa-fw fa-user-plus"></i> Sign-up</a>
+    <a href="#" onclick="openForm('loginform')"><i class="fa fa-fw fa-user"></i> Login</a>
+    <a href="#" onclick="openForm('signupform')"><i class="fa fa-fw fa-user-plus"></i> Sign-up</a>
     <a href="#"><i class="fa fa-fw fa-search"></i> Search</a> 
-    <a href="#" class="center" onclick="document.getElementById('defaultOpen').click();"><i class="fa fa-fw fa-home"></i>IOT Cloud manager</a>
+    <a href="#" class="center" onclick="document.getElementById('defaultOpen').click();"><i class="fa fa-fw fa-home"></i> IOT Cloud manager</a>
 </div>
 
 <div class="navbar">
@@ -397,47 +360,61 @@ button.login:hover {
     </div>
 </div>
 
-<div id="id01" class="modal">
-  
-  <form class="modal-content animate" action="/action_page.php" method="post">
-    <div class="imgcontainer">
-      <span onclick="document.getElementById('id01').style.display='none'" class="close" title="Close Modal">&times;</span>
-      <img src="images/login_avatar.png" alt="Avatar" class="avatar">
+<div class="form-popup" id="loginform">
+  <form action="/action_page.php" class="loginform-container">
+    <h1><i class="fa fa-fw fa-user icon"></i> Login</h1>
+
+    <div class="input-container">
+      <i class="fa fa-envelope icon"></i>
+      <input class="input-field" type="text" placeholder="Enter Email" name="email">
     </div>
 
-    <div class="logincontainer">
-      <label for="uname"><b>Username</b></label>
-      <input type="text" placeholder="Enter Username" name="uname" required>
-
-      <label for="psw"><b>Password</b></label>
-      <input type="password" placeholder="Enter Password" name="psw" required>
-        
-      <button class="login" type="submit">Login</button>
-      <label>
-        <input type="checkbox" checked="checked" name="remember"> Remember me
-      </label>
+    <div class="input-container">
+      <i class="fa fa-key icon"></i>
+      <input class="input-field" type="password" placeholder="Enter Password" name="psw">
     </div>
 
-    <div class="logincontainer" style="background-color:#f1f1f1">
-      <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>
-      <span class="psw">Forgot <a href="#">password?</a></span>
-    </div>
+    <button type="submit" class="btn">Login</button>
+    <button type="button" class="btn cancel" onclick="closeForm('loginform')">Close</button>
   </form>
 </div>
 
+<div class="form-popup" id="signupform">
+  <form action="/action_page.php" class="loginform-container">
+    <h2><i class="fa fa-fw fa-user-plus icon"></i> Sign-up</h2>
+
+    <div class="input-container">
+      <i class="fa fa-user icon"></i>
+      <input class="input-field" type="text" placeholder="First Name" name="firstname">
+    </div>
+
+    <div class="input-container">
+      <i class="fa fa-user icon"></i>
+      <input class="input-field" type="text" placeholder="Last Name" name="lastname">
+    </div>
+
+    <div class="input-container">
+      <i class="fa fa-phone icon"></i>
+      <input class="input-field" type="text" placeholder="Phone Number" name="phone">
+    </div>
+  
+    <div class="input-container">
+      <i class="fa fa-envelope icon"></i>
+      <input class="input-field" type="text" placeholder="Email" name="email">
+    </div>
+    
+    <div class="input-container">
+      <i class="fa fa-key icon"></i>
+      <input class="input-field" type="password" placeholder="Password" name="psw">
+    </div>
+  
+    <button type="submit" class="btn">Sign-up</button>
+    <button type="button" class="btn cancel" onclick="closeForm('signupform')">Close</button>
+  </form>
+</div>
 
 <script>
     document.getElementById("defaultOpen").click();
-
-    // Get the modal
-    var modal = document.getElementById('id01');
-
-    // When the user clicks anywhere outside of the modal, close it
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
-        }
-    }
 </script>
 </body>
 </html>
