@@ -9,6 +9,8 @@
 #include <sys/inotify.h>
 #include <unordered_set>
 #include <unordered_map>
+#include <dirent.h>
+#include <unistd.h>
 
 namespace rohit {
 
@@ -40,8 +42,8 @@ public:
     }
 
     // This function is called for each event
-    void receive_event(const std::string &watchfolder, uint32_t eventmask, const char *const name, uint32_t name_len) {
-        static_cast<eventreceiver *>(this)->receive_event(watchfolder, eventmask, name, name_len);
+    void receive_event(const std::string &filename, uint32_t eventmask) {
+        static_cast<eventreceiver *>(this)->receive_event(filename, eventmask);
     }
 
     // This function is called for finalizing event
@@ -56,6 +58,14 @@ public:
             return err_t::SUCCESS;
         }
 
+        DIR * dir = opendir(folder.c_str());
+
+        if (!dir) {
+            // Returning failure for non directory
+            // TODO: return specific error
+            return err_t::GENERAL_FAILURE;
+        }
+
         int watch_fd = inotify_add_watch(
                     inotifyfd, folder.c_str(),
                     IN_CREATE | IN_DELETE | IN_CLOSE_WRITE | IN_MOVED_FROM | IN_MOVED_TO );
@@ -67,6 +77,33 @@ public:
 
         folderlist.insert(folder);
         foldermap.insert(std::make_pair(watch_fd, folder));
+
+        while(1) {
+            dirent *child = readdir(dir);
+            if (!child) break;
+
+            if ( !strcmp(child->d_name, ".") || !strcmp(child->d_name, "..") ) {
+                // Ignore current and parent directory
+                continue;
+            }
+            
+            switch(child->d_type) {
+            case DT_DIR: {
+                add_folder(folder + "/" + std::string(child->d_name));
+                break;
+            }
+            
+            default:
+                // Other file types we will ignore
+                break;
+            }
+        }
+
+
+        if (closedir(dir)) {
+            // TODO: return errno specific error
+            return err_t::GENERAL_FAILURE;
+        }
 
         return err_t::SUCCESS;
     }
@@ -90,6 +127,8 @@ private:
                __attribute__ ((aligned(__alignof__(struct inotify_event))));
         const struct inotify_event *event;
         ssize_t len;
+
+        std::vector<int> remove_folders;
 
         while(true) {
             len = read(inotifyfd, buf, sizeof(buf));
@@ -129,23 +168,42 @@ private:
                     
                     /* Print the name of the watched directory. */
                     std::cout << watchfolder << "/";
-                                    /* Print the name of the file. */
+                    /* Print the name of the file. */
                     if (event->len)
                         std::cout << event->name;
+
+                    /* Print type of filesystem object. */
+                    if (event->mask & IN_ISDIR)
+                        printf(" [directory]\n");
+                    else
+                        printf(" [file]\n");
                 }
 
-                receive_event(watchfolder, event->mask, event->name, event->len);
+                std::string childfolder = watchfolder + "/";
+                if (event->name) childfolder += event->name;
+                if (event->mask & IN_ISDIR) {
+                    if (event->mask & (IN_CREATE | IN_MOVED_TO))
+                        add_folder(watchfolder + "/" + event->name);
+                    else if(event->mask & (IN_DELETE | IN_MOVED_FROM)) {
+                        for(auto folder: foldermap) {
+                            if (folder.second.starts_with(childfolder)) {
+                                remove_folders.push_back(folder.first);
+                            }
+                        }
+                    }
 
-                /* Print type of filesystem object. */
-                if (event->mask & IN_ISDIR)
-                    printf(" [directory]\n");
-                else
-                    printf(" [file]\n");
+                } else
+                    receive_event(childfolder , event->mask);
             } // for
         } // while
 
         for(auto watchfolder: watchfolder_list) {
             receive_event_finalize(watchfolder);
+        }
+
+        for(auto folder: remove_folders) {
+            inotify_rm_watch(inotifyfd, folder);
+            foldermap.erase(folder);
         }
 
         evtdist.resume(ctx);

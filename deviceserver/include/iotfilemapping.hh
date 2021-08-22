@@ -85,6 +85,7 @@ public:
 
     void add_folder(const ipv6_port_t port, const std::string &webfolder);
     void update_folder();
+    void flush_cache();
     err_t update_folder(const std::string &webfolder);
     err_t flush_cache(const std::string &webfolder);
 

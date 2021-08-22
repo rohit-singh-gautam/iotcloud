@@ -182,6 +182,12 @@ void webmaps::update_folder() {
     }
 }
 
+void webmaps::flush_cache() {
+    for(auto &folder_pair: webfoldermaps) {
+        folder_pair.second->flush_cache();
+    }
+}
+
 err_t webmaps::update_folder(const std::string &webfolder) {
     auto filemap_itr = webfoldermaps.find(webfolder);
     if (filemap_itr == webfoldermaps.end()) {
@@ -191,6 +197,7 @@ err_t webmaps::update_folder(const std::string &webfolder) {
     auto pfilemap = filemap_itr->second;
 
     pfilemap->update_folder();
+    pfilemap->update_folder_mapping();
 
     return err_t::SUCCESS;
 }
