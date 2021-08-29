@@ -17,24 +17,26 @@
 namespace rohit::http {
 
 struct file_info {
-    const char *text;
-    const size_t text_size;
-    const char *type; //Content-Type
-    const size_t type_size;
+    mem_new<const char> content;
+    mem_new<const char> content_type; //Content-Type
     const char *etags;
     static constexpr size_t etags_size = to_string64_hash<uint64_t>();
 
     inline file_info(
-                const char *text,
-                const size_t text_size,
-                const char *type,
-                const size_t type_size,
+                mem_new<const char> content,
+                mem_new<const char> content_type,
                 const char *etags)
-        : text(text), text_size(text_size), type(type), type_size(type_size), etags(etags) { }
+        : content(content), content_type(content_type), etags(etags) { }
+
+    inline file_info(
+                const char *content,
+                size_t content_size,
+                const char *content_type,
+                size_t content_type_size,
+                const char *etags)
+        : content(content, content_size), content_type(content_type, content_type_size), etags(etags) { }
 
     inline ~file_info() {
-        delete[] text;
-        delete[] type;
         delete[] etags;
     }
 };

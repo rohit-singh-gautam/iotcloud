@@ -72,8 +72,7 @@ void filemap::add_file(const std::string &relativepath) {
         buffer, size,
         content_type_buffer, content_type_str.length() + 1,
         etag_buffer);
-
-    cache.insert(std::make_pair(relativepath, std::shared_ptr<file_info>(file_details)));
+    cache.insert(std::make_pair(relativepath, file_details));
 }
 
 err_t filemap::add_folder(const std::string &folder) {

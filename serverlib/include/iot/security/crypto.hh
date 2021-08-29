@@ -18,8 +18,7 @@ namespace crypto {
 enum class encryption_id_t : uint16_t {
     aes_256_gsm
 };
-
-struct openssl_mem : public mem {
+struct openssl_mem : public mem<void> {
     inline ~openssl_mem() {
         OPENSSL_free(ptr);
     }
@@ -28,7 +27,16 @@ struct openssl_mem : public mem {
         ptr = nullptr;
         size = 0;
     }
-    constexpr void *operator=(void *rhs) { return ptr = rhs; }
+
+    template <typename inT>
+    constexpr void *operator=(inT *rhs) {
+        if constexpr (config::debug) {
+            if (ptr != nullptr) {
+                throw exception_t(err_t::CRYPTO_MEMORY_BAD_ASSIGNMENT);
+            }
+        }
+        return ptr = (void *)rhs;
+    }
 };
 
 struct openssl_ec_key_mem {
@@ -90,26 +98,26 @@ struct encrypted_data_aes_256_gsm_t {
 // Parameters:
 // data [in]: Plain binary data
 // encrypted_data [out]: Encrypted data, memory allocated by openssl
-err_t encrypt(const key_t &key, const guid_t &random, const mem &data, openssl_mem &encrypted_data);
+err_t encrypt(const key_t &key, const guid_t &random, const mem<void> &data, openssl_mem &encrypted_data);
 
 // Parameters:
 // data [in]: Encrypted data
 // decrypted_data [out]: Decrypted data, memory allocated
-err_t decrypt(const key_t &key, const mem &encrypted_data, openssl_mem &decrypted_data);
+err_t decrypt(const key_t &key, const mem<void> &encrypted_data, openssl_mem &decrypted_data);
 
 // Allocation of key must be done to contain id
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
     const int curve,
-    const mem &private_ec_key,
-    const mem &peer_public_ec_key,
+    const mem<void> &private_ec_key,
+    const mem<void> &peer_public_ec_key,
     key_t &key);
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
     const int curve,
     const openssl_ec_key_mem &ec_private_key, // This is optimization
-    const mem &peer_public_ec_key,
+    const mem<void> &peer_public_ec_key,
     key_t &key);
 
 err_t get_symmetric_key_from_ec(

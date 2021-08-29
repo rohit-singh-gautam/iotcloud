@@ -174,7 +174,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                             {http_header::FIELD::Server, config::web_server_name},
                             {http_header::FIELD::Cache_Control, "private, max-age=2592000"},
                             {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
-                            {http_header::FIELD::Content_Type, file_details->type, file_details->type_size},
+                            {http_header::FIELD::Content_Type, file_details->content_type.ptr, file_details->content_type.size},
                         };
 
                         char *last_write_buffer = copy_http_response(
@@ -182,8 +182,8 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                             http_header::VERSION::VER_1_1,
                             200_rc,
                             header_line,
-                            file_details->text,
-                            file_details->text_size
+                            file_details->content.ptr,
+                            file_details->content.size
                         );
 
                         write_size = (size_t)(last_write_buffer - read_buffer);
