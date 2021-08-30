@@ -91,8 +91,9 @@ field_name          [^\:\r\n]+
 <REQUEST>"DELETE"               tokMETHOD(DELETE)
 <REQUEST>"TRACE"                tokMETHOD(TRACE)
 <REQUEST>"CONNECT"              tokMETHOD(CONNECT)
+<REQUEST>"PRI"                  tokMETHOD(PRI)
 <REQUEST>"HTTP/1.1"             tokVERSION(VER_1_1)
-<REQUEST>"HTTP/2"               tokVERSION(VER_2)
+<REQUEST>"HTTP/2.0"               tokVERSION(VER_2)
 <REQUEST>{Request-URI}          tokSTRING(PATH)
 
 <HEADER>"Cache-Control"          tokFIELD(Cache_Control)

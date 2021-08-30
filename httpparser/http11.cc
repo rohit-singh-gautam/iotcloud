@@ -10,30 +10,28 @@
 
 namespace rohit {
 
-const char *http_header::strVERSION[] {
-#define HTTP_VERSION_ENTRY(x, y) y,
+std::ostream& operator<<(std::ostream& os, const http_header::VERSION httpVersion) {
+    switch(httpVersion) {
+#define HTTP_VERSION_ENTRY(x, y) case http_header::VERSION::x: os << y; break;
     HTTP_VERSION_LIST
 #undef HTTP_VERSION_ENTRY
-};
-
-const char *http_header::strFIELD[] {
-#define HTTP_FIELD_ENTRY(x, y) y,
-    HTTP_FIELD_LIST
-#undef HTTP_FIELD_ENTRY
-};
-
-const char *http_header_request::strMETHOD[] {
-#define HTTP_METHOD_ENTRY(x, y) y,
-    HTTP_METHOD_LIST
-#undef HTTP_METHOD_ENTRY
-};
-
-std::ostream& operator<<(std::ostream& os, const http_header::VERSION requestVersion) {
-    return os << http_header::strVERSION[(int)requestVersion];
+    default:
+        os << "Unknown version " << (int)httpVersion;
+        break;
+    }
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header::FIELD requestField) {
-    return os << http_header::strFIELD[(int)requestField];
+    switch(requestField) {
+#define HTTP_FIELD_ENTRY(x, y) case http_header::FIELD::x: os << y; break;
+    HTTP_FIELD_LIST
+#undef HTTP_FIELD_ENTRY
+    default:
+        os << "Unknown field";
+        break;
+    }
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const std::pair<http_header::FIELD, std::string>& httpFieldPair) {
@@ -59,7 +57,15 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_map<std::string,
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_request::METHOD requestMethod) {
-    return os << http_header_request::strMETHOD[(int)requestMethod];
+    switch(requestMethod) {
+#define HTTP_METHOD_ENTRY(x) case http_header_request::METHOD::x: os << #x; break;
+    HTTP_METHOD_LIST
+#undef HTTP_METHOD_ENTRY
+    default:
+        os << "Unknown Method";
+        break;
+    }
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_request& requestHeader) {

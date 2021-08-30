@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 
+#include <iot/core/error.hh>
 #include <http11parser.hh>
 #include <http11scanner.hh>
 #include <http11.hh>
@@ -18,12 +19,12 @@ class http11driver {
 public:
     ~http11driver();
 
-    void parse(std::string &text);
+    err_t parse(std::string &text);
 
     http_header_request header;
 
 private:
-    void parse_internal(std::istream &iss);
+    err_t parse_internal(std::istream &iss);
 
     rohit::parser *parser  = nullptr;
     rohit::http11scanner *scanner = nullptr;

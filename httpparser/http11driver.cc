@@ -4,6 +4,7 @@
 ////////////////////////////////////////////////////////////
 
 #include <http11driver.hh>
+#include <iot/core/config.hh>
 #include <sstream>
 
 rohit::http11driver::~http11driver()
@@ -14,12 +15,12 @@ rohit::http11driver::~http11driver()
    parser = nullptr;
 }
 
-void rohit::http11driver::parse(std::string &text) {
+rohit::err_t rohit::http11driver::parse(std::string &text) {
     std::stringstream textstream(text);
-    parse_internal(textstream);
+    return parse_internal(textstream);
 }
 
-void rohit::http11driver::parse_internal(std::istream &textstream) {
+rohit::err_t rohit::http11driver::parse_internal(std::istream &textstream) {
     delete(scanner);
     try
     {
@@ -27,9 +28,11 @@ void rohit::http11driver::parse_internal(std::istream &textstream) {
     }
     catch( std::bad_alloc &exception )
     {
-        std::cerr << "Failed to allocate scanner: (" <<
-            exception.what() << ")\n";
-        exit( EXIT_FAILURE );
+        if (rohit::config::debug) {
+            std::cerr << "Failed to allocate scanner: (" <<
+                exception.what() << ")\n";
+        }
+        throw rohit::exception_t(rohit::err_t::HTTP11_PARSER_MEMORY_FAILURE);
     }
 
     delete(parser); 
@@ -48,8 +51,8 @@ void rohit::http11driver::parse_internal(std::istream &textstream) {
     const int accept( 0 );
     if( parser->parse() != accept )
     {
-        std::cerr << "Parse failed!!\n";
+        rohit::err_t::HTTP11_PARSER_FAILURE;
     }
-    return;
+    return rohit::err_t::SUCCESS;
 }
 

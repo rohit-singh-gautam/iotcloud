@@ -60,7 +60,7 @@ start:
 ;
 
 request_header:
-    request_line fields NEWLINE
+    request_line fields NEWLINE | request_line NEWLINE
 ;
 
 request_line:

@@ -202,14 +202,15 @@ namespace rohit {
     LIST_DEFINITION_END
 
 #define HTTP_METHOD_LIST \
-    HTTP_METHOD_ENTRY(OPTIONS, "OPTIONS") \
-    HTTP_METHOD_ENTRY(GET, "GET") \
-    HTTP_METHOD_ENTRY(HEAD, "HEAD") \
-    HTTP_METHOD_ENTRY(POST, "POST") \
-    HTTP_METHOD_ENTRY(PUT, "PUT") \
-    HTTP_METHOD_ENTRY(DELETE, "DELETE") \
-    HTTP_METHOD_ENTRY(TRACE, "TRACE") \
-    HTTP_METHOD_ENTRY(CONNECT, "CONNECT") \
+    HTTP_METHOD_ENTRY(OPTIONS) \
+    HTTP_METHOD_ENTRY(GET) \
+    HTTP_METHOD_ENTRY(HEAD) \
+    HTTP_METHOD_ENTRY(POST) \
+    HTTP_METHOD_ENTRY(PUT) \
+    HTTP_METHOD_ENTRY(DELETE) \
+    HTTP_METHOD_ENTRY(TRACE) \
+    HTTP_METHOD_ENTRY(CONNECT) \
+    HTTP_METHOD_ENTRY(PRI) \
     LIST_DEFINITION_END
 
 #define HTTP_CODE_LIST \
@@ -338,7 +339,7 @@ public:
 
     static constexpr const char *get_code_string(CODE code);
     static constexpr size_t get_code_string_size(CODE code);
-};
+}; // class http_header
 
 std::ostream& operator<<(std::ostream& os, const http_header::VERSION httpVersion);
 std::ostream& operator<<(std::ostream& os, const http_header::FIELD httpField);
@@ -361,7 +362,7 @@ public:
     using http_header::VERSION;
     using http_header::FIELD;
     enum class METHOD {
-#define HTTP_METHOD_ENTRY(x, y) x,
+#define HTTP_METHOD_ENTRY(x) x,
     HTTP_METHOD_LIST
 #undef HTTP_METHOD_ENTRY
     };

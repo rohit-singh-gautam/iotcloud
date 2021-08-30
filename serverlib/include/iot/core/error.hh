@@ -113,6 +113,9 @@ namespace rohit {
     ERROR_T_ENTRY(CRYPTO_CURVE_NOT_FOUND, "Failed to find curve from key") \
     \
     ERROR_T_ENTRY(HTTP_FILEMAP_NOT_FOUND, "Failed to find filemap") \
+    ERROR_T_ENTRY(HTTP11_PARSER_MEMORY_FAILURE, "HTTP 1.1 parser failed to allocate memory") \
+    ERROR_T_ENTRY(HTTP11_PARSER_FAILURE, "HTTP 1.1 parser failed to parse bad string") \
+    \
     ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
     LIST_DEFINITION_END
 

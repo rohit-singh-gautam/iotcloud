@@ -129,7 +129,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             std::cout << "------Request Start---------\n" << std::string(read_buffer, read_buffer_length)  << "\n------Request End---------\n";
 
             http11driver driver;
-            driver.parse(request_string);
+            auto parserret = driver.parse(request_string);
             std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
 
             // Date is used by all hence it is created here
@@ -140,7 +140,19 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
 
             auto local_address = peer_id.get_local_ipv6_addr();
             size_t write_size = 0;
-            if (driver.header.method == rohit::http_header_request::METHOD::GET) {
+            if (parserret != err_t::SUCCESS) {
+                auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
+                write_size = (size_t)(last_write_buffer - read_buffer);
+            } if (driver.header.method == rohit::http_header_request::METHOD::PRI) {
+                if (driver.header.version == http_header::VERSION::VER_2) {
+                    // TODO: Added HTTP2 reply
+                    auto last_write_buffer = http_add_505_HTTP_Version_Not_Supported(read_buffer, local_address, date_str, date_str_size);
+                    write_size = (size_t)(last_write_buffer - read_buffer);
+                } else {
+                    auto last_write_buffer = http_add_505_HTTP_Version_Not_Supported(read_buffer, local_address, date_str, date_str_size);
+                    write_size = (size_t)(last_write_buffer - read_buffer);
+                }
+            } else if (driver.header.method == rohit::http_header_request::METHOD::GET) {
                 auto port = local_address.port;
 
                 rohit::http::filemap *filemap_obj = rohit::http::webfilemap.getfilemap(port);
@@ -191,7 +203,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                 }
             }
             else {
-                auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
+                auto last_write_buffer = http_add_405_Method_Not_Allowed(read_buffer, local_address, date_str, date_str_size);
                 write_size = (size_t)(last_write_buffer - read_buffer);
             }
 
