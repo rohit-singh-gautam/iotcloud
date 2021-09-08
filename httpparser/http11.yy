@@ -80,7 +80,7 @@ standard_field:
 ;
 
 custom_field:
-    FIELD_CUSTOM FIELD_VALUE NEWLINE { driver.header.custom_fields.insert(std::make_pair($1, $2)); }
+    FIELD_CUSTOM FIELD_VALUE NEWLINE { /* Ignoring */ }
 
 %%
 

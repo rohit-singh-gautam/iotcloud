@@ -70,7 +70,7 @@ std::ostream& operator<<(std::ostream& os, const http_header_request::METHOD req
 
 std::ostream& operator<<(std::ostream& os, const http_header_request& requestHeader) {
     return os << requestHeader.method << " " << requestHeader.path << " " << requestHeader.version << "\n"
-              << requestHeader.fields << requestHeader.custom_fields << "\n";
+              << requestHeader.fields << "\n";
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header::CODE responseCODE) {
