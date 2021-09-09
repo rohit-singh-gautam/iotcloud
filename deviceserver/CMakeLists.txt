@@ -12,7 +12,7 @@ include_directories(DeviceServer PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${CMAKE_BINARY_DIR}/serverlib/include
     ${CMAKE_SOURCE_DIR}/serverlib/include
-    ${CMAKE_BINARY_DIR}/httpparser
+    ${CMAKE_BINARY_DIR}/httpparser/include
     ${CMAKE_SOURCE_DIR}/httpparser/include
     ${CMAKE_SOURCE_DIR}/thirdparty/SimpleJSON
     ${CMAKE_SOURCE_DIR}/thirdparty/md5
