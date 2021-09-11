@@ -64,7 +64,11 @@ request_header:
 ;
 
 request_line:
-    METHOD SPACE PATH SPACE VERSION NEWLINE { driver.header.method = $1; driver.header.path = std::move($3); driver.header.version = $5; }
+    METHOD SPACE PATH SPACE VERSION NEWLINE { 
+        driver.header.method = $1;
+        driver.header.fields.insert(std::make_pair(http_header::FIELD::Path, $3));
+        driver.header.version = $5;
+    }
 ;
 
 fields:

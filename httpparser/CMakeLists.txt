@@ -20,8 +20,9 @@ ADD_FLEX_BISON_DEPENDENCY(HTTPParserFlex HTTPParserBison)
 add_library(HTTPParser
     ${BISON_HTTPParserBison_OUTPUTS}
     ${FLEX_HTTPParserFlex_OUTPUTS}
-    http11driver.cc
-    http11.cc
+    lib/http11driver.cc
+    lib/http11.cc
+    lib/hpack.cc
 )
 
 ADD_CUSTOM_COMMAND(TARGET HTTPParser

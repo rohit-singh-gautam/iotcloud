@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const http_header_request::METHOD req
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_request& requestHeader) {
-    return os << requestHeader.method << " " << requestHeader.path << " " << requestHeader.version << "\n"
+    return os << requestHeader.method << " " << requestHeader.version << "\n"
               << requestHeader.fields << "\n";
 }
 
@@ -130,5 +130,17 @@ bool http_header_request::match_etag(const char *etag, size_t etag_size) {
 
     return false;
 }
+
+const std::unordered_map<std::string, http_header::FIELD> http_header::field_map = {
+#define HTTP_FIELD_ENTRY(x, y) {y, http_header::FIELD::x},
+    HTTP_FIELD_LIST
+#undef HTTP_FIELD_ENTRY
+};
+
+const std::unordered_map<std::string, http_header_request::METHOD> http_header_request::method_map = {
+#define HTTP_METHOD_ENTRY(x) {#x, http_header_request::METHOD::x},
+    HTTP_METHOD_LIST
+#undef HTTP_METHOD_ENTRY
+};
 
 } // namespace rohit

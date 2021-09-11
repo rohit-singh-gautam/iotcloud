@@ -116,6 +116,8 @@ namespace rohit {
     ERROR_T_ENTRY(HTTP11_PARSER_MEMORY_FAILURE, "HTTP 1.1 parser failed to allocate memory") \
     ERROR_T_ENTRY(HTTP11_PARSER_FAILURE, "HTTP 1.1 parser failed to parse bad string") \
     \
+    ERROR_T_ENTRY(HTTP2_PARSER_PROTOCOL_ERROR, "HTTP 2 protocol error") \
+    \
     ERROR_T_ENTRY(MAX_FAILURE, "Max failure nothing beyond this") \
     LIST_DEFINITION_END
 

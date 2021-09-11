@@ -21,6 +21,12 @@ namespace rohit {
     LIST_DEFINITION_END
 
 #define HTTP_FIELD_LIST \
+    /* HTTP2 Pseudo Header */ \
+    HTTP_FIELD_ENTRY(Authority, "Authority") \
+    HTTP_FIELD_ENTRY(Method, "Method") \
+    HTTP_FIELD_ENTRY(Path, "Path") \
+    HTTP_FIELD_ENTRY(Scheme, "Scheme") \
+    HTTP_FIELD_ENTRY(Status, "Status") \
     /* General Header */ \
     HTTP_FIELD_ENTRY(Cache_Control, "Cache-Control") \
     HTTP_FIELD_ENTRY(Connection, "Connection") \
@@ -199,9 +205,59 @@ namespace rohit {
     HTTP_FIELD_ENTRY(Want_Digest, "Want-Digest") \
     HTTP_FIELD_ENTRY(X_Content_Type_Options, "X-Content-Type-Options") \
     HTTP_FIELD_ENTRY(X_Frame_Options, "X-Frame-Options") \
+    /* Provisional Header */ \
+    HTTP_FIELD_ENTRY(Access_Control, "Access-Control") \
+    HTTP_FIELD_ENTRY(Access_Control_Allow_Credentials, "Access-Control-Allow-Credentials") \
+    HTTP_FIELD_ENTRY(Access_Control_Allow_Headers, "Access-Control-Allow-Headers") \
+    HTTP_FIELD_ENTRY(Access_Control_Allow_Methods, "Access-Control-Allow-Methods") \
+    HTTP_FIELD_ENTRY(Access_Control_Allow_Origin, "Access-Control-Allow-Origin") \
+    HTTP_FIELD_ENTRY(Access_Control_Max_Age, "Access-Control-Max-Age") \
+    HTTP_FIELD_ENTRY(Access_Control_Request_Method, "Access-Control-Request-Method") \
+    HTTP_FIELD_ENTRY(Access_Control_Request_Headers, "Access-Control-Request-Headers") \
+    HTTP_FIELD_ENTRY(AMP_Cache_Transform, "AMP-Cache-Transform") \
+    HTTP_FIELD_ENTRY(Compliance, "Compliance") \
+    HTTP_FIELD_ENTRY(Content_Transfer_Encoding, "Content-Transfer-Encoding") \
+    HTTP_FIELD_ENTRY(Cost, "Cost") \
+    HTTP_FIELD_ENTRY(EDIINT_Features, "EDIINT-Features") \
+    HTTP_FIELD_ENTRY(Isolation, "Isolation") \
+    HTTP_FIELD_ENTRY(Message_ID, "Message-ID") \
+    HTTP_FIELD_ENTRY(Method_Check, "Method-Check") \
+    HTTP_FIELD_ENTRY(Method_Check_Expires, "Method-Check-Expires") \
+    HTTP_FIELD_ENTRY(Non_Compliance, "Non-Compliance") \
+    HTTP_FIELD_ENTRY(Optional, "Optional") \
+    HTTP_FIELD_ENTRY(OSLC_Core_Version, "OSLC-Core-Version") \
+    HTTP_FIELD_ENTRY(Referer_Root, "Referer-Root") \
+    HTTP_FIELD_ENTRY(Repeatability_Client_ID, "Repeatability-Client-ID") \
+    HTTP_FIELD_ENTRY(Repeatability_First_Sent, "Repeatability-First-Sent") \
+    HTTP_FIELD_ENTRY(Repeatability_Request_ID, "Repeatability-Request-ID") \
+    HTTP_FIELD_ENTRY(Repeatability_Result, "Repeatability-Result") \
+    HTTP_FIELD_ENTRY(Resolution_Hint, "Resolution-Hint") \
+    HTTP_FIELD_ENTRY(Resolver_Location, "Resolver-Location") \
+    HTTP_FIELD_ENTRY(SubOK, "SubOK") \
+    HTTP_FIELD_ENTRY(Subst, "Subst") \
+    HTTP_FIELD_ENTRY(Timing_Allow_Origin, "Timing-Allow-Origin") \
+    HTTP_FIELD_ENTRY(Title, "Title") \
+    HTTP_FIELD_ENTRY(Traceparent, "Traceparent") \
+    HTTP_FIELD_ENTRY(Tracestate, "Tracestate") \
+    HTTP_FIELD_ENTRY(UA_Color, "UA-Color") \
+    HTTP_FIELD_ENTRY(UA_Media, "UA-Media") \
+    HTTP_FIELD_ENTRY(UA_Pixels, "UA-Pixels") \
+    HTTP_FIELD_ENTRY(UA_Resolution, "UA-Resolution") \
+    HTTP_FIELD_ENTRY(UA_Windowpixels, "UA-Windowpixels") \
+    HTTP_FIELD_ENTRY(Version, "Version") \
+    HTTP_FIELD_ENTRY(X_Device_Accept, "X-Device-Accept") \
+    HTTP_FIELD_ENTRY(X_Device_Accept_Charset, "X-Device-Accept-Charset") \
+    HTTP_FIELD_ENTRY(X_Device_Accept_Encoding, "X-Device-Accept-Encoding") \
+    HTTP_FIELD_ENTRY(X_Device_Accept_Language, "X-Device-Accept-Language") \
+    HTTP_FIELD_ENTRY(X_Device_User_Agent, "X-Device-User-Agent") \
+    /* Others */ \
+    HTTP_FIELD_ENTRY(Refresh, "Refresh") \
+    /* Do not use */ \
+    HTTP_FIELD_ENTRY(IGNORE_THIS, "IGNORE THIS") \
     LIST_DEFINITION_END
 
 #define HTTP_METHOD_LIST \
+    HTTP_METHOD_ENTRY(IGNORE_THIS) \
     HTTP_METHOD_ENTRY(OPTIONS) \
     HTTP_METHOD_ENTRY(GET) \
     HTTP_METHOD_ENTRY(HEAD) \
@@ -287,9 +343,11 @@ public:
 #undef HTTP_CODE_ENTRY
     };
 
+    static const std::unordered_map<std::string, FIELD> field_map;
+
     VERSION version;
 
-    http_header() {};
+    constexpr http_header() {}
     constexpr http_header(VERSION version) : version(version) { }
 
 private:
@@ -351,7 +409,7 @@ struct http_header_line {
     const char *value;
     const size_t size;
     template <size_t N>
-    constexpr http_header_line(const http_header::FIELD field, const char value[N]) : field(field), value(value), size(N) {}
+    constexpr http_header_line(const http_header::FIELD field, const char (&value)[N]) : field(field), value(value), size(N) {}
     inline http_header_line(const http_header::FIELD field, const char *value) : field(field), value(value), size(strlen(value) + 1) {}
     constexpr http_header_line(const http_header::FIELD field, const char *value, size_t size)
         : field(field), value(value), size(size) {}
@@ -361,20 +419,31 @@ class http_header_request : public http_header {
 public:
     using http_header::VERSION;
     using http_header::FIELD;
+
     enum class METHOD {
 #define HTTP_METHOD_ENTRY(x) x,
     HTTP_METHOD_LIST
 #undef HTTP_METHOD_ENTRY
     };
 
+    static const std::unordered_map<std::string, METHOD> method_map;
+
     METHOD method;
-    std::string path;
 
     std::unordered_map<FIELD, std::string> fields;
 
-    http_header_request() {}
+    inline http_header_request() {}
 
     bool match_etag(const char *etag, size_t etag_size);
+
+    std::string get_path() {
+        auto field_itr = fields.find(FIELD::Path);
+        if (field_itr != fields.end()) {
+            return field_itr->second;
+        } else {
+            return "";
+        }
+    }
 
 private:
     static const char *strMETHOD[];
