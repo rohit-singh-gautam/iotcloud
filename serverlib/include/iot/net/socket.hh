@@ -48,6 +48,8 @@ protected:
     inline socket_t() : socket_id(create_socket()) {}
 public:
     constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
+    constexpr socket_t(socket_t &&sock) : socket_id(sock.socket_id) { socket_id = 0; }
+
     inline operator int() const { return socket_id; }
 
     inline err_t close() {
@@ -180,6 +182,7 @@ protected:
 
 public:
     inline socket_ssl_t(const int socket_id, SSL *ssl) : socket_t(socket_id), ssl(ssl) { }
+    inline socket_ssl_t(socket_ssl_t &&sock) : socket_t(std::move(sock)), ssl(sock.ssl) { ssl = nullptr; }
 
     inline err_t accept() {
         if (ssl == nullptr) {

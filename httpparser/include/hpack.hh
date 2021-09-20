@@ -7,33 +7,42 @@
 #include <http11.hh>
 #include <string>
 #include <vector>
+#include <iot/core/config.hh>
+#include <iot/core/error.hh>
+
+namespace std {
+template<>
+struct hash<std::pair<rohit::http_header::FIELD, std::string>>
+{
+    size_t
+    operator()(const std::pair<rohit::http_header::FIELD, std::string> &val) const noexcept
+    {
+        return std::_Hash_impl::__hash_combine(val.first, std::hash<std::string>{}(val.second));
+    }
+};
+} // namespace std
 
 namespace rohit::http::v2 {
 
-class dynamic_table_t {
-    size_t max_size;
-
+class map_table_t {
+private:
     std::vector<std::pair<http_header::FIELD, std::string>> entries;
+    std::unordered_map<std::pair<http_header::FIELD, std::string>, size_t> entry_value_map;
+
+    // Field string -> index, count
+    // Count will be used for dynamic to cleanup
+    std::unordered_map<http_header::FIELD, std::pair<size_t, size_t>> entry_map;
 
 public:
-    dynamic_table_t(size_t max_size = 12) : max_size(max_size), entries(max_size) {}
-
-    inline void update_size(size_t new_size) {
-        max_size = new_size;
-        if (new_size < entries.size()) {
-            entries.resize(new_size);
+    inline map_table_t() : entries(), entry_value_map(), entry_map() {}
+    inline map_table_t(const std::initializer_list<std::pair<http_header::FIELD, std::string>> &list)
+                : entries(), entry_value_map(), entry_map() {
+        for(auto &entry: list) {
+            push_back(entry);
         }
     }
 
-    inline void insert(std::pair<http_header::FIELD, std::string> &entry) {
-        if (entries.size() >= max_size) {
-            // rfc7541 - 4.4.  Entry Eviction When Adding New Entries
-            entries.clear();
-        }
-        entries.push_back(entry);
-    }
-
-    inline std::pair<http_header::FIELD, std::string> operator[](size_t index) {
+    inline std::pair<http_header::FIELD, std::string> operator[](const size_t index) const {
         if (index >= entries.size()) {
             return {http_header::FIELD::IGNORE_THIS, ""};
         } else {
@@ -41,77 +50,179 @@ public:
         }
     }
 
+    inline size_t operator[](const std::pair<http_header::FIELD, std::string> &header_line) const {
+        auto entry_itr = entry_value_map.find(header_line);
+        if (entry_itr == entry_value_map.end()) {
+            return -1;
+        }
+        return entry_itr->second;
+    }
+
+    inline size_t operator[](const http_header::FIELD &field) const {
+        auto entry_itr = entry_map.find(field);
+        if (entry_itr == entry_map.end()) {
+            return -1;
+        }
+        return entry_itr->second.first;
+    }
+
+    inline void push_back(const std::pair<http_header::FIELD, std::string> &entry) {
+        entries.push_back(entry);
+        const size_t index = entries.size() - 1;
+        if (entry.second != "") {
+            entry_value_map.insert(std::make_pair(entry, index));
+        }
+        auto entry_itr = entry_map.find(entry.first);
+        if (entry_itr == entry_map.end()) {
+            entry_map.insert(std::make_pair(entry.first, std::make_pair(index, 1)));
+        } else {
+            entry_itr->second.second++;
+        }
+    }
+
+    inline void pop_back() {
+        const auto entry = entries.back();
+        entries.pop_back();
+        
+        if (entry.second != "") {
+            entry_value_map.erase(entry);
+        }
+
+        if constexpr (config::debug) {
+            auto entry_itr = entry_map.find(entry.first);
+            if (entry_itr != entry_map.end()) {
+                if (entry_itr->second.second == 1) {
+                    entry_map.erase(entry.first);
+                } else {
+                    entry_itr->second.second--;
+                }
+            } else {
+                throw exception_t(err_t::HTTP2_HPACK_TABLE_ERROR);
+            }
+        } else {
+            auto entry_itr = entry_map.find(entry.first);
+            if (entry_itr->second.second == 1) {
+                entry_map.erase(entry.first);
+            } else {
+                entry_itr->second.second--;
+            }
+        }
+    }
+
+    inline bool contains(const std::pair<http_header::FIELD, std::string> &entry) const {
+        return entry_value_map.contains(entry);
+    }
+
+    inline bool contains(const http_header::FIELD &entry) const {
+        return entry_map.contains(entry);
+    }
+
+    inline void clear() {
+        entries.clear();
+        entry_value_map.clear();
+        entry_map.clear();
+    }
+
+    inline size_t size() const {
+        return entries.size();
+    }
+
 };
 
-const std::pair<http_header::FIELD, std::string> static_table[] = {
-    {http_header::FIELD::IGNORE_THIS, ""}, // 0 is not used
-    {http_header::FIELD::Authority,""},
-    {http_header::FIELD::Method, "GET"},
-    {http_header::FIELD::Method, "POST"},
-    {http_header::FIELD::Path, "/"},
-    {http_header::FIELD::Path, "/index.html"},
-    {http_header::FIELD::Scheme,  "http"},
-    {http_header::FIELD::Scheme, "https"},
-    {http_header::FIELD::Status, "200"},
-    {http_header::FIELD::Status, "204"},
-    {http_header::FIELD::Status, "206"}, // 10
-    {http_header::FIELD::Status, "304"},
-    {http_header::FIELD::Status, "400"},
-    {http_header::FIELD::Status, "404"},
-    {http_header::FIELD::Status, "500"},
-    {http_header::FIELD::Accept_Charset, ""},
-    {http_header::FIELD::Accept_Encoding, "gzip, deflate"},
-    {http_header::FIELD::Accept_Language, ""},
-    {http_header::FIELD::Accept_Ranges, ""},
-    {http_header::FIELD::Accept, ""},
-    {http_header::FIELD::Access_Control_Allow_Origin, ""}, // 20
-    {http_header::FIELD::Age, ""},
-    {http_header::FIELD::Allow, ""},
-    {http_header::FIELD::Authorization, ""},
-    {http_header::FIELD::Cache_Control, ""},
-    {http_header::FIELD::Content_Disposition, ""},
-    {http_header::FIELD::Content_Encoding, ""},
-    {http_header::FIELD::Content_Language, ""},
-    {http_header::FIELD::Content_Length, ""},
-    {http_header::FIELD::Content_Location, ""},
-    {http_header::FIELD::Content_Range, ""}, // 30
-    {http_header::FIELD::Content_Type, ""},
-    {http_header::FIELD::Cookie, ""},
-    {http_header::FIELD::Date, ""},
-    {http_header::FIELD::ETag, ""},
-    {http_header::FIELD::Expect, ""},
-    {http_header::FIELD::Expires, ""},
-    {http_header::FIELD::From, ""},
-    {http_header::FIELD::Host, ""},
-    {http_header::FIELD::If_Match, ""},
-    {http_header::FIELD::If_Modified_Since, ""}, // 40
-    {http_header::FIELD::If_None_Match, ""},
-    {http_header::FIELD::If_Range, ""},
-    {http_header::FIELD::If_Unmodified_Since, ""},
-    {http_header::FIELD::Last_Modified, ""},
-    {http_header::FIELD::Link, ""},
-    {http_header::FIELD::Location, ""},
-    {http_header::FIELD::Max_Forwards, ""},
-    {http_header::FIELD::Proxy_Authenticate, ""},
-    {http_header::FIELD::Proxy_Authorization, ""},
-    {http_header::FIELD::Range, ""}, // 50
-    {http_header::FIELD::Referer, ""},
-    {http_header::FIELD::Refresh, ""},
-    {http_header::FIELD::Retry_After, ""},
-    {http_header::FIELD::Server, ""},
-    {http_header::FIELD::Set_Cookie, ""},
-    {http_header::FIELD::Strict_Transport_Security, ""},
-    {http_header::FIELD::Transfer_Encoding, ""},
-    {http_header::FIELD::User_Agent, ""},
-    {http_header::FIELD::Vary, ""},
-    {http_header::FIELD::Via, ""}, // 60
-    {http_header::FIELD::WWW_Authenticate, ""},
+class dynamic_table_t : public map_table_t {
+private:
+    size_t max_size;
+
+public:
+    dynamic_table_t(size_t max_size = 12) : map_table_t(), max_size(max_size) {}
+
+    inline void update_size(size_t new_size) {
+        max_size = new_size;
+        while (new_size < size()) {
+            pop_back();
+        }
+    }
+
+    inline void insert(const std::pair<http_header::FIELD, std::string> &entry) {
+        if (size() >= max_size) {
+            // rfc7541 - 4.4.  Entry Eviction When Adding New Entries
+            clear();
+        }
+        push_back(entry);
+    }
 };
 
-template <typename T, size_t N>
-constexpr size_t count_static_array(const T (&)[N]) { return N; }
+#define HTTP2_STATIC_TABLE_LIST \
+    HTTP2_STATIC_TABLE_ENTRY( 0, http_header::FIELD::IGNORE_THIS, "") /* 0 is not used */ \
+    HTTP2_STATIC_TABLE_ENTRY( 1, http_header::FIELD::Authority, "") \
+    HTTP2_STATIC_TABLE_ENTRY( 2, http_header::FIELD::Method, "GET") \
+    HTTP2_STATIC_TABLE_ENTRY( 3, http_header::FIELD::Method, "POST") \
+    HTTP2_STATIC_TABLE_ENTRY( 4, http_header::FIELD::Path, "/") \
+    HTTP2_STATIC_TABLE_ENTRY( 5, http_header::FIELD::Path, "/index.html") \
+    HTTP2_STATIC_TABLE_ENTRY( 6, http_header::FIELD::Scheme,  "http") \
+    HTTP2_STATIC_TABLE_ENTRY( 7, http_header::FIELD::Scheme, "https") \
+    HTTP2_STATIC_TABLE_ENTRY( 8, http_header::FIELD::Status, "200") \
+    HTTP2_STATIC_TABLE_ENTRY( 9, http_header::FIELD::Status, "204") \
+    HTTP2_STATIC_TABLE_ENTRY(10, http_header::FIELD::Status, "206") /* 10 */ \
+    HTTP2_STATIC_TABLE_ENTRY(11, http_header::FIELD::Status, "304") \
+    HTTP2_STATIC_TABLE_ENTRY(12, http_header::FIELD::Status, "400") \
+    HTTP2_STATIC_TABLE_ENTRY(13, http_header::FIELD::Status, "404") \
+    HTTP2_STATIC_TABLE_ENTRY(14, http_header::FIELD::Status, "500") \
+    HTTP2_STATIC_TABLE_ENTRY(15, http_header::FIELD::Accept_Charset, "") \
+    HTTP2_STATIC_TABLE_ENTRY(16, http_header::FIELD::Accept_Encoding, "gzip, deflate") \
+    HTTP2_STATIC_TABLE_ENTRY(17, http_header::FIELD::Accept_Language, "") \
+    HTTP2_STATIC_TABLE_ENTRY(18, http_header::FIELD::Accept_Ranges, "") \
+    HTTP2_STATIC_TABLE_ENTRY(19, http_header::FIELD::Accept, "") \
+    HTTP2_STATIC_TABLE_ENTRY(20, http_header::FIELD::Access_Control_Allow_Origin, "") /* 20 */ \
+    HTTP2_STATIC_TABLE_ENTRY(21, http_header::FIELD::Age, "") \
+    HTTP2_STATIC_TABLE_ENTRY(22, http_header::FIELD::Allow, "") \
+    HTTP2_STATIC_TABLE_ENTRY(23, http_header::FIELD::Authorization, "") \
+    HTTP2_STATIC_TABLE_ENTRY(24, http_header::FIELD::Cache_Control, "") \
+    HTTP2_STATIC_TABLE_ENTRY(25, http_header::FIELD::Content_Disposition, "") \
+    HTTP2_STATIC_TABLE_ENTRY(26, http_header::FIELD::Content_Encoding, "") \
+    HTTP2_STATIC_TABLE_ENTRY(27, http_header::FIELD::Content_Language, "") \
+    HTTP2_STATIC_TABLE_ENTRY(28, http_header::FIELD::Content_Length, "") \
+    HTTP2_STATIC_TABLE_ENTRY(29, http_header::FIELD::Content_Location, "") \
+    HTTP2_STATIC_TABLE_ENTRY(30, http_header::FIELD::Content_Range, "") /* 30 */ \
+    HTTP2_STATIC_TABLE_ENTRY(31, http_header::FIELD::Content_Type, "") \
+    HTTP2_STATIC_TABLE_ENTRY(32, http_header::FIELD::Cookie, "") \
+    HTTP2_STATIC_TABLE_ENTRY(33, http_header::FIELD::Date, "") \
+    HTTP2_STATIC_TABLE_ENTRY(34, http_header::FIELD::ETag, "") \
+    HTTP2_STATIC_TABLE_ENTRY(35, http_header::FIELD::Expect, "") \
+    HTTP2_STATIC_TABLE_ENTRY(36, http_header::FIELD::Expires, "") \
+    HTTP2_STATIC_TABLE_ENTRY(37, http_header::FIELD::From, "") \
+    HTTP2_STATIC_TABLE_ENTRY(38, http_header::FIELD::Host, "") \
+    HTTP2_STATIC_TABLE_ENTRY(39, http_header::FIELD::If_Match, "") \
+    HTTP2_STATIC_TABLE_ENTRY(40, http_header::FIELD::If_Modified_Since, "") /* 40 */ \
+    HTTP2_STATIC_TABLE_ENTRY(41, http_header::FIELD::If_None_Match, "") \
+    HTTP2_STATIC_TABLE_ENTRY(42, http_header::FIELD::If_Range, "") \
+    HTTP2_STATIC_TABLE_ENTRY(43, http_header::FIELD::If_Unmodified_Since, "") \
+    HTTP2_STATIC_TABLE_ENTRY(44, http_header::FIELD::Last_Modified, "") \
+    HTTP2_STATIC_TABLE_ENTRY(45, http_header::FIELD::Link, "") \
+    HTTP2_STATIC_TABLE_ENTRY(46, http_header::FIELD::Location, "") \
+    HTTP2_STATIC_TABLE_ENTRY(47, http_header::FIELD::Max_Forwards, "") \
+    HTTP2_STATIC_TABLE_ENTRY(48, http_header::FIELD::Proxy_Authenticate, "") \
+    HTTP2_STATIC_TABLE_ENTRY(49, http_header::FIELD::Proxy_Authorization, "") \
+    HTTP2_STATIC_TABLE_ENTRY(50, http_header::FIELD::Range, "") /* 50 */ \
+    HTTP2_STATIC_TABLE_ENTRY(51, http_header::FIELD::Referer, "") \
+    HTTP2_STATIC_TABLE_ENTRY(52, http_header::FIELD::Refresh, "") \
+    HTTP2_STATIC_TABLE_ENTRY(53, http_header::FIELD::Retry_After, "") \
+    HTTP2_STATIC_TABLE_ENTRY(54, http_header::FIELD::Server, "") \
+    HTTP2_STATIC_TABLE_ENTRY(55, http_header::FIELD::Set_Cookie, "") \
+    HTTP2_STATIC_TABLE_ENTRY(56, http_header::FIELD::Strict_Transport_Security, "") \
+    HTTP2_STATIC_TABLE_ENTRY(57, http_header::FIELD::Transfer_Encoding, "") \
+    HTTP2_STATIC_TABLE_ENTRY(58, http_header::FIELD::User_Agent, "") \
+    HTTP2_STATIC_TABLE_ENTRY(59, http_header::FIELD::Vary, "") \
+    HTTP2_STATIC_TABLE_ENTRY(60, http_header::FIELD::Via, "") /* 60 */ \
+    HTTP2_STATIC_TABLE_ENTRY(61, http_header::FIELD::WWW_Authenticate, "") \
+    LIST_DEFINITION_END
 
-constexpr size_t static_table_len = count_static_array(static_table);
+class static_table_t : public map_table_t {
+public:
+    using map_table_t::map_table_t;
+};
+
+extern const static_table_t static_table;
 
 class node {
     int16_t symbol;
@@ -138,6 +249,44 @@ struct huffman_entry {
 
     constexpr huffman_entry(const uint32_t code, const uint32_t code_len) : code(code), code_len(code_len) { }
 };
+
+template <uint32_t N>
+constexpr uint32_t decode_integer(const uint8_t *&pstart, const uint8_t *pend) {
+    constexpr uint32_t mask = (1 << N) - 1;
+    uint32_t value = *pstart++ & mask;
+    if (value < mask) {
+        return value;
+    }
+    value = mask;
+    while(pstart < pend) {
+        if ((*pstart & 0x80) != 0) {
+            value = *pstart++ & 0x7f;
+        } else {
+            value = *pstart++;
+            break;
+        }
+    }
+    return value;
+}
+
+// Assuming buffer has sufficient data, hence no check
+template <uint32_t N>
+constexpr uint8_t * encode_integer(uint8_t *pstart, const uint8_t head, uint32_t value) {
+    constexpr uint32_t mask = (1 << N) - 1;
+    if (value < mask) {
+        *pstart++ = head + (uint8_t)value;
+    } else {
+        *pstart++ = head + mask;
+        value -= mask;
+        while(value >= 128) {
+            *pstart++ = 0x80 & (value % 128);
+            value >>= 7;
+        }
+        *pstart++ = value;
+    }
+    return pstart;
+}
+
 
 constexpr const huffman_entry static_huffman[] = {
     {    0x1ff8, 13}, {  0x7fffd8, 23}, { 0xfffffe2, 28}, { 0xfffffe3, 28}, { 0xfffffe4, 28}, { 0xfffffe5, 28}, { 0xfffffe5, 28}, { 0xfffffe7, 28}, //000-007
@@ -194,6 +343,30 @@ inline std::string get_header_string(const uint8_t *&pstart) {
         pstart += len;
         return value;
     }
+}
+
+inline size_t huffman_string_size(const std::string &value) {
+    size_t size = 8;
+    for(auto &ch: value) {
+        size += static_huffman[ch].code_len;
+    }
+    return size / 8;
+}
+
+uint8_t *add_huffman_string(uint8_t *pstart, const std::string &value);
+
+inline uint8_t *add_header_string(uint8_t *pstart, const std::string &value) {
+    size_t size = huffman_string_size(value);
+    if (size < value.size()) {
+        // Encoded string is smaller hence we are encoded
+        pstart = encode_integer<7>(pstart, (uint8_t)0x80, (uint32_t)size);
+        pstart = add_huffman_string(pstart, value);
+    } else {
+        pstart = encode_integer<7>(pstart, (uint8_t)0x80, (uint32_t)value.size());
+        pstart = std::copy(value.begin(), value.end(), pstart);
+    }
+
+    return pstart;
 }
 
 inline http_header::FIELD get_header_field(const uint8_t *&pstart) {

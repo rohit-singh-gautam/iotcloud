@@ -23,6 +23,7 @@ add_library(HTTPParser
     lib/http11driver.cc
     lib/http11.cc
     lib/hpack.cc
+    lib/http2.cc
 )
 
 ADD_CUSTOM_COMMAND(TARGET HTTPParser

@@ -38,7 +38,7 @@ std::ostream& operator<<(std::ostream& os, const std::pair<http_header::FIELD, s
     return os << httpFieldPair.first << ": " << httpFieldPair.second;
 }
 
-std::ostream& operator<<(std::ostream& os, const std::unordered_map<http_header::FIELD, std::string>& httpFields) {
+std::ostream& operator<<(std::ostream& os, const http_header::fields_t& httpFields) {
     for(auto httpFieldPair: httpFields) {
         os << httpFieldPair << "\n";
     }

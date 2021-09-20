@@ -67,4 +67,47 @@ std::string get_huffman_string(const uint8_t *pstart, const uint8_t *pend) {
     return value;
 }
 
+uint8_t *add_huffman_string(uint8_t *pstart, const std::string &value) {
+    constexpr uint8_t mask[] = {0xff, 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x01};
+    uint8_t bit_index = 0;
+    *pstart = 0; // Clean all existing value
+    for(auto &ch: value) {
+        const auto &entry = static_huffman[ch];
+        auto len_left = entry.code_len;
+        auto code = entry.code;
+        while (true) {
+            if (bit_index + len_left <= 8) {
+                *pstart += (code << (8 - bit_index - len_left)) & mask[bit_index];
+                bit_index += len_left;
+                if (bit_index == 8) {
+                    bit_index = 0;
+                    ++pstart;
+                    *pstart = 0;
+                }
+                break;
+            } else {
+                // This will copy atleast one bit
+                *pstart += (code >> (len_left + bit_index - 8)) & mask[bit_index];
+                len_left -= 8 - bit_index;
+                bit_index = 0;
+                ++pstart;
+                *pstart = 0;
+            }
+        }
+    }
+    
+    if (bit_index) {
+        *pstart += mask[bit_index];
+        ++pstart;
+    }
+
+    return pstart;
+}
+
+const static_table_t static_table = {
+#define HTTP2_STATIC_TABLE_ENTRY(x, y, z) {y, z},
+    HTTP2_STATIC_TABLE_LIST
+#undef HTTP2_STATIC_TABLE_ENTRY
+};
+
 } // namespace rohit::http::v2

@@ -49,7 +49,7 @@ public:
             while(true) {
                 auto peer_id = socket_id.accept();
                 if (peer_id.is_null()) break;
-                peerevent *p_peerevent = new peerevent(peer_id);
+                peerevent *p_peerevent = new peerevent(std::move(peer_id));
                 peer_id.set_non_blocking();
                 evtdist.add(peer_id, EPOLLIN | EPOLLOUT, *p_peerevent);
                 ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
@@ -92,8 +92,7 @@ inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
     static_assert(use_ssl, "cert_file and prikey_file parameters require only for SSL");
 }
 
-template <bool use_ssl, bool use_lock = use_ssl>
-class serverpeerevent : public event_executor, public pthread_lock_c<use_lock> {
+class serverpeerevent_base {
 protected:
     struct write_entry {
         uint8_t *buffer;
@@ -101,15 +100,39 @@ protected:
         size_t size;
     };
 
+    std::queue<write_entry> write_queue;
+
+public:
+    inline serverpeerevent_base() : write_queue() { }
+    inline serverpeerevent_base(serverpeerevent_base &&old) : write_queue(std::move(old.write_queue)) { }
+
+    inline void push_write(uint8_t *buffer, size_t size) {
+        write_queue.push({buffer, 0, size});
+    }
+
+    inline void pop_write() { write_queue.pop(); }
+
+    inline write_entry &get_write_buffer() { return write_queue.front(); }
+
+    inline bool is_write_left() { return !write_queue.empty(); }
+
+};
+
+template <bool use_ssl, bool use_lock = use_ssl>
+class serverpeerevent : public serverpeerevent_base, public event_executor, public pthread_lock_c<use_lock> {
+protected:
     socket_variant_t<use_ssl>::type peer_id;
     state_t client_state;
 
-    std::queue<write_entry> write_queue;
 public:
-    inline serverpeerevent(socket_variant_t<use_ssl>::type peer_id) 
-              : peer_id(peer_id),
-                client_state(use_ssl ? state_t::SOCKET_PEER_ACCEPT : state_t::SOCKET_PEER_READ),
-                write_queue() {}
+    inline serverpeerevent(socket_variant_t<use_ssl>::type &&peer_id)
+              : peer_id(std::move(peer_id)),
+                client_state(use_ssl ? state_t::SOCKET_PEER_ACCEPT : state_t::SOCKET_PEER_READ) { }
+
+    inline serverpeerevent(serverpeerevent &&peerevent)
+        :   serverpeerevent_base(std::move(peerevent)),
+            peer_id(std::move(peerevent.peer_id)),
+            client_state(peerevent.client_state) { }
 
 };
 

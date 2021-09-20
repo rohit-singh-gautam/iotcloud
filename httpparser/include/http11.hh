@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cstring>
 #include <iot/core/math.hh>
+#include <iot/core/types.hh>
 
 namespace rohit {
 
@@ -343,6 +344,8 @@ public:
 #undef HTTP_CODE_ENTRY
     };
 
+    typedef std::unordered_map<FIELD, std::string, enum_hash_t<FIELD>> fields_t;
+
     static const std::unordered_map<std::string, FIELD> field_map;
 
     VERSION version;
@@ -359,7 +362,7 @@ private:
 
 public:
     friend std::ostream& operator<<(std::ostream& os, const std::pair<FIELD, std::string>& httpFieldPair);
-    friend std::ostream& operator<<(std::ostream& os, const std::unordered_map<FIELD, std::string>& httpFields);
+    friend std::ostream& operator<<(std::ostream& os, const fields_t& httpFields);
 
     static constexpr const char *get_version_string(const VERSION version) {
         switch(version) {
@@ -402,7 +405,7 @@ public:
 std::ostream& operator<<(std::ostream& os, const http_header::VERSION httpVersion);
 std::ostream& operator<<(std::ostream& os, const http_header::FIELD httpField);
 std::ostream& operator<<(std::ostream& os, const std::pair<http_header::FIELD, std::string>& httpFieldPair);
-std::ostream& operator<<(std::ostream& os, const std::unordered_map<http_header::FIELD, std::string>& httpFields);
+std::ostream& operator<<(std::ostream& os, const http_header::fields_t& httpFields);
 
 struct http_header_line {
     const http_header::FIELD field;
@@ -429,10 +432,12 @@ public:
     static const std::unordered_map<std::string, METHOD> method_map;
 
     METHOD method;
+    
 
-    std::unordered_map<FIELD, std::string> fields;
+    fields_t fields;
 
     inline http_header_request() {}
+    inline http_header_request(VERSION version) : http_header(version) {}
 
     bool match_etag(const char *etag, size_t etag_size);
 
@@ -443,6 +448,17 @@ public:
         } else {
             return "";
         }
+    }
+
+    VERSION upgrade_version() {
+        auto field_itr = fields.find(FIELD::Upgrade);
+        if (field_itr != fields.end()) {
+            if (field_itr->second == "h2c") {
+                return VERSION::VER_2;
+            }
+        }
+
+        return VERSION::VER_1_1;
     }
 
 private:
@@ -475,8 +491,8 @@ public:
 
 class http_header_response : public http_header_response_status {
 public:
-    std::unordered_map<FIELD, std::string> fields;
-    inline http_header_response(VERSION version, CODE code, const std::unordered_map<http_header::FIELD, std::string> &fields)
+    http_header::fields_t fields;
+    inline http_header_response(VERSION version, CODE code, const http_header::fields_t &fields)
         : http_header_response_status(version, code), fields(fields) {}
 };
 
@@ -516,7 +532,7 @@ public:
     http_response(
         VERSION version, 
         CODE code, 
-        const std::unordered_map<FIELD, std::string> &fields,
+        const http_header::fields_t &fields,
         std::string body) : http_header_response(version, code, fields), body(body) { }
 
     std::string body;

@@ -95,7 +95,9 @@ private:
 
     friend class terminate_executor;
 
-    // true is not yet called and execute must be called
+public:
+    // Delayed free can be called while transfer
+    // true = Entry was not made, executor can be called for config::event_cleanup_time_in_ns time
     inline bool delayed_free(event_executor *ptr) {
         bool call_execute = false;
         pthread_mutex_lock(&eventdist_lock);
@@ -109,6 +111,7 @@ private:
         return call_execute;
     }
 
+private:
     inline void add_thread_map(pthread_t pthread) {
         event_thread_entry thread_entry(pthread);
         thread_entry_map.insert(std::make_pair(pthread, thread_entry));
@@ -178,6 +181,10 @@ public:
 
     inline err_t remove_event(const int fd) {
         return evtdist.remove(fd);
+    }
+
+    inline bool delayed_free(event_executor *executor) {
+        return evtdist.delayed_free(executor);
     }
 
     inline err_t add_event(const int fd, const uint32_t event, event_executor &executor) {

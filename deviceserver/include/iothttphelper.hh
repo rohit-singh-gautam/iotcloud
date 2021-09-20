@@ -33,4 +33,10 @@ char *http_add_505_HTTP_Version_Not_Supported(
             const char *date_str,
             const size_t date_str_size);
 
+char *http_add_400_Bad_Request_HTTP2(
+            char *const buffer,
+            const ipv6_socket_addr_t &local_address,
+            const char *date_str,
+            const size_t date_str_size);
+
 } // namespace rohit

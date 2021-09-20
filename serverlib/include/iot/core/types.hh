@@ -15,6 +15,22 @@
 struct sockaddr_in6;
 namespace rohit {
 
+template <typename T, size_t N>
+constexpr size_t _sizeof(const T (&)[N]) {
+    return N;
+}
+
+template <typename T>
+struct enum_hash_t
+{
+    using enum_type = typename std::underlying_type<typename std::decay<T>::type>::type;
+    using result_type = typename std::hash<enum_type>::result_type;
+    result_type operator()(const T &t) const
+    {
+        return std::hash<enum_type>()(static_cast<enum_type>(t));
+    }
+};
+
 template <typename T>
 constexpr T changeEndian(const T &val) {
     static_assert(
