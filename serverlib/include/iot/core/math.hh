@@ -199,7 +199,8 @@ constexpr size_t to_string64_hash(T val, char * const dest) {
     return (size_t)(dest_ptr - dest);
 }
 
-constexpr size_t base64_decode_len(const char * const buffer, const size_t buffer_len) {
+template <typename CHAR_TYPE>
+constexpr size_t base64_decode_len(const CHAR_TYPE * const buffer, const size_t buffer_len) {
     if (buffer_len < 4) return 0;
     size_t decode_len = (buffer_len * 3) / 4;
     if (buffer[buffer_len - 2] == '=') return decode_len - 2;
@@ -208,11 +209,12 @@ constexpr size_t base64_decode_len(const char * const buffer, const size_t buffe
     return decode_len;
 }
 
-constexpr uint8_t * base64_decode(const char *const buffer, const size_t buffer_len, uint8_t *dest) {
-    const char *pstart = buffer;
+template <typename CHAR_TYPE>
+constexpr uint8_t * base64_decode(const CHAR_TYPE *const buffer, const size_t buffer_len, uint8_t *dest) {
+    const CHAR_TYPE *pstart = buffer;
     // Just making sure that len is multiple of 4
     // Bad request can cause buffer overflow
-    const char *pend = buffer + (buffer_len & (~0x03));
+    const CHAR_TYPE *pend = buffer + (buffer_len & (~0x03));
 
     while(pstart < pend) {
         uint8_t val1 = from_base64[*pstart++];

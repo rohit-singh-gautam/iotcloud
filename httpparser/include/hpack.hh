@@ -137,6 +137,7 @@ public:
     dynamic_table_t(size_t max_size = 12) : map_table_t(), max_size(max_size) {}
 
     inline void update_size(size_t new_size) {
+        if (max_size == new_size) return;
         max_size = new_size;
         while (new_size < size()) {
             pop_back();

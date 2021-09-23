@@ -11,6 +11,8 @@
 #include <cstring>
 #include <iot/core/math.hh>
 #include <iot/core/types.hh>
+#include <iot/core/config.hh>
+#include <iot/core/ipv6addr.hh>
 
 namespace rohit {
 
@@ -407,6 +409,21 @@ std::ostream& operator<<(std::ostream& os, const http_header::FIELD httpField);
 std::ostream& operator<<(std::ostream& os, const std::pair<http_header::FIELD, std::string>& httpFieldPair);
 std::ostream& operator<<(std::ostream& os, const http_header::fields_t& httpFields);
 
+template <http_header::CODE code>
+struct code_string
+{
+    static constexpr const char str_with_code[] = "0 bad_type";
+    static constexpr const char str[] = "bad_type";
+};
+
+#define HTTP_CODE_ENTRY(x, y) \
+template <> struct code_string<http_header::CODE::_##x> { \
+    static constexpr const char str_with_code[] = #x " " y; \
+    static constexpr const char str[] = y; \
+};
+HTTP_CODE_LIST
+#undef HTTP_CODE_ENTRY
+
 struct http_header_line {
     const http_header::FIELD field;
     const char *value;
@@ -544,6 +561,39 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& os, const http_response& responseHeader);
+
+template <http_header::CODE code, typename CHAR_TYPE, size_t message_size>
+constexpr CHAR_TYPE *http11_error_html(
+            CHAR_TYPE *buffer,
+            const CHAR_TYPE (&message)[message_size],
+            const ipv6_socket_addr_t &local_address) {
+    constexpr CHAR_TYPE str1[] =
+        "<!DOCTYPE HTML>"
+        "<html><head>"
+        "<title>";
+    constexpr CHAR_TYPE str2[] = "</title>"
+        "</head><body>"
+        "<h1>";
+    constexpr CHAR_TYPE str3[] = "</h1>";
+
+    constexpr CHAR_TYPE str4[] =
+        "<hr><address>" WEB_SERVER_NAME " Server at ";
+
+    constexpr CHAR_TYPE str5[] =
+        "</address></body></html>\n";
+
+    buffer = std::copy(str1, str1 + sizeof(str1) - 1, buffer);
+    buffer = std::copy(code_string<code>::str_with_code, code_string<code>::str_with_code + sizeof(code_string<code>::str_with_code) - 1, buffer);
+    buffer = std::copy(str2, str2 + sizeof(str2) - 1, buffer);
+    buffer = std::copy(code_string<code>::str, code_string<code>::str + sizeof(code_string<code>::str) - 1, buffer);
+    buffer = std::copy(str3, str3 + sizeof(str3) - 1, buffer);
+    buffer = std::copy(message, message + message_size-1, buffer);
+    buffer = std::copy(str4, str4 + sizeof(str4)-1, buffer);
+    buffer += to_string<number_case::upper, false>(local_address, (char *)buffer);
+    buffer = std::copy(str5, str5 + sizeof(str5)-1, buffer);
+
+    return buffer;
+}
 
 constexpr char *copy_http_header_response(
             char *const buffer,

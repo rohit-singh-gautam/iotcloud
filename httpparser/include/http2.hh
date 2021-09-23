@@ -159,9 +159,25 @@ public:
         set_type(type);
         flags = flag; // This will also clean flag
         reserved = 0;
-        set_stream_identifier(stream_identifier);
-        
+        set_stream_identifier(stream_identifier); 
     }
+
+    constexpr void init_frame(uint32_t length, type_t type, flags_t flag, flags_t flag1, uint32_t stream_identifier) {
+        set_length(length);
+        set_type(type);
+        flags = (flags_t)((uint8_t)flag | (uint8_t)flag1); // This will also clean flag
+        reserved = 0;
+        set_stream_identifier(stream_identifier); 
+    }
+
+    constexpr void init_frame(uint32_t length, type_t type, flags_t flag, flags_t flag1, flags_t flag2, uint32_t stream_identifier) {
+        set_length(length);
+        set_type(type);
+        flags = (flags_t)((uint8_t)flag | (uint8_t)flag1 | (uint8_t)flag2); // This will also clean flag
+        reserved = 0;
+        set_stream_identifier(stream_identifier); 
+    }
+
 
     constexpr frame() {}
 
@@ -293,13 +309,14 @@ public:
 } __attribute__((packed)); // struct settings
 
 class settings_store {
+public:
     uint32_t SETTINGS_HEADER_TABLE_SIZE;
     bool SETTINGS_ENABLE_PUSH;
     uint32_t SETTINGS_MAX_CONCURRENT_STREAMS;
     uint32_t SETTINGS_INITIAL_WINDOW_SIZE;
     uint32_t SETTINGS_MAX_FRAME_SIZE;
     uint32_t SETTINGS_MAX_HEADER_LIST_SIZE;
-public:
+
     constexpr settings_store() :
                 SETTINGS_HEADER_TABLE_SIZE(constant::SETTINGS_HEADER_TABLE_SIZE),
                 SETTINGS_ENABLE_PUSH(constant::SETTINGS_ENABLE_PUSH),
@@ -309,14 +326,14 @@ public:
                 SETTINGS_MAX_HEADER_LIST_SIZE(constant::SETTINGS_MAX_HEADER_LIST_SIZE)
     {}
 
-    constexpr uint8_t *parse_one(uint8_t *buf) {
+    constexpr const uint8_t *parse_one(const uint8_t *buf) {
         settings *psettings = (settings *)buf;
         switch(psettings->get_identifier()) {
         case settings::identifier_t::SETTINGS_HEADER_TABLE_SIZE:
             SETTINGS_HEADER_TABLE_SIZE = psettings->get_value();
             break;
         case settings::identifier_t::SETTINGS_ENABLE_PUSH:
-            SETTINGS_ENABLE_PUSH = psettings->get_value();
+            SETTINGS_ENABLE_PUSH = psettings->get_value() != 0;
             break;
         case settings::identifier_t::SETTINGS_MAX_CONCURRENT_STREAMS:
             SETTINGS_MAX_CONCURRENT_STREAMS = psettings->get_value();
@@ -339,11 +356,10 @@ public:
     }
 
     // template will allow input to be both const and non const
-    template <typename CHAR_TYPE>
-    constexpr CHAR_TYPE *parse_frame(CHAR_TYPE *pstart, CHAR_TYPE *pend) {
+    constexpr const uint8_t *parse_frame(const uint8_t *pstart, const uint8_t *pend) {
         const frame *pframe = (frame *)pstart;
         pstart += sizeof(frame);
-        CHAR_TYPE *const pend1 = pstart + pframe->get_length();
+        const uint8_t *const pend1 = pstart + pframe->get_length();
         if (pend1 > pend) {
             // TODO: exception handling required
             // This is badly formed settings
@@ -351,14 +367,14 @@ public:
             return pend;
         }
         const uint8_t padded_bytes = pframe->contains(frame::flags_t::PADDED) ? *pstart++ : 0;
-        const CHAR_TYPE *const pend2 = pend1 - padded_bytes;
+        const uint8_t *const pend2 = pend1 - padded_bytes;
         while(pstart < pend2) {
             pstart = parse_one(pstart);
         }
         return pend1;
     }
 
-    constexpr void parse_base64_frame(const char *buffer, const size_t buffer_size) {
+    constexpr void parse_base64_frame(const uint8_t *buffer, const size_t buffer_size) {
         const size_t decode_len = base64_decode_len(buffer, buffer_size);
         uint8_t decoded_buffer[decode_len];
         base64_decode(buffer, buffer_size, decoded_buffer);
@@ -388,10 +404,33 @@ private:
     uint32_t        error_code;
 
 public:
+    constexpr goaway(
+                const uint32_t &last_stream_id,
+                const frame::error_t &error_code)
+            :   last_stream_id(changeEndian(last_stream_id)),
+                reserved(0),
+                error_code(changeEndian((uint32_t)error_code)) {}
     constexpr uint32_t get_last_stream_id() const { return changeEndian(last_stream_id);}
     constexpr frame::error_t get_error_code() const { return (frame::error_t)changeEndian(error_code); }
 
-    // Additional data
+    template <size_t debug_data_size>
+    static constexpr uint8_t *add_frame(
+                uint8_t *buffer,
+                uint32_t max_stream,
+                frame::error_t error_code,
+                const char (&debug_data)[debug_data_size]) {
+        const uint32_t length = sizeof(frame) + sizeof(goaway) + debug_data_size;
+        frame *pframe = (frame *)buffer;
+        buffer += sizeof(frame);
+        pframe->init_frame(length, frame::type_t::SETTINGS, frame::flags_t::ACK, 0x00);
+        
+        const goaway goaway {max_stream, error_code};
+        buffer = std::copy(buffer, buffer + sizeof(goaway), buffer);
+        buffer += sizeof(goaway);
+
+        buffer = std::copy(debug_data, debug_data + debug_data_size, buffer);
+        return buffer;
+    }
 } __attribute__((packed));
 
 inline std::ostream& operator<<(std::ostream& os, const goaway &goaway) {
@@ -422,67 +461,6 @@ inline void displaymem(std::ostream& os, const uint8_t *pstart, const uint8_t *c
         os << lower_case_numbers[*pstart / 16] << lower_case_numbers[*pstart % 16];
     }
     os << ']' << std::endl;
-}
-
-inline void displaybinary(std::ostream& os, const uint8_t *indata, const size_t indata_size) {
-    const uint8_t *const enddata = indata + indata_size;
-
-    os << "S: " << indata_size << ';';
-
-    while(indata + sizeof(frame) <= enddata) {
-        const frame *pframe = (frame *)indata;
-        indata += sizeof(frame);
-        os << *pframe;
-        switch(pframe->get_type()) {
-            case frame::type_t::HEADERS: {
-                const uint8_t *pstart = indata;
-                const uint8_t *pend = pstart + pframe->get_length();
-                os << '[';
-                for(;pstart < pend; ++pstart) {
-                    os << lower_case_numbers[*pstart / 16] << lower_case_numbers[*pstart % 16];
-                }
-                os << ']';
-                pstart = indata + sizeof(header);
-                for(;pstart < pend; ++pstart) {
-                    if (*pstart >= 32 && *pstart <= 127) {
-                        os << (char)*pstart;
-                    } else {
-                        os << '.';
-                    }
-                }
-                os << ']';
-                break;
-            }
-            case frame::type_t::SETTINGS: {
-                const uint8_t *pstart = indata;
-                const uint8_t *pend = pstart + pframe->get_length();
-                while(pstart + sizeof(settings) <= pend) {
-                    const settings *psettings = (settings *)pstart;
-                    os << *psettings;
-                    pstart += sizeof(settings);
-                }
-                
-                break;
-            }
-            case frame::type_t::GOAWAY: {
-                const uint8_t *pstart = indata;
-                const goaway *pgoaway = (goaway *)pstart;
-                std::string addinginfo((char *)pstart + sizeof(goaway), pframe->get_length() - sizeof(goaway));
-                os << *pgoaway << ":" << addinginfo;
-                break;
-            }
-            case frame::type_t::WINDOW_UPDATE: {
-                const uint8_t *pstart = indata;
-                const window_update *pwindowupdate = (window_update *)pstart;
-                os << *pwindowupdate;
-                break;
-            }
-        }
-        indata += pframe->get_length();
-        os << ';';
-    }
-
-    os << std::endl;
 }
 
 class header_request : public http_header_request {
@@ -573,28 +551,35 @@ public:
     void set_error(const frame::error_t error) {
         this->error = error;
     }
+
+    constexpr header_request *get_next() { return next; }
+    constexpr header_request *get_previous() { return previous; }
+    constexpr const header_request *get_next() const { return next; }
+    constexpr const header_request *get_previous() const { return previous; }
+
 }; // class header_request
 
-
-template <bool use_ssl>
 class request {
     //Stream_count
-    serverpeerevent_base &server_base;
     dynamic_table_t &dynamic_table; // This will be share by the multiple request in a connection
     header_request *first;
     header_request *last;
 
     // <stream identifier> <request header> map
     std::unordered_map<uint32_t, header_request *> header_map;
+    rohit::http::v2::settings_store &peer_settings;
 
-    template <bool _use_ssl>
-    friend std::ostream& operator<<(std::ostream& os, const request<_use_ssl> &request);
+    uint32_t max_stream;
+
+    friend std::ostream& operator<<(std::ostream& os, const request &request);
 
 public:
-    inline request(serverpeerevent_base &server_base, dynamic_table_t &dynamic_table)
-                :   server_base(server_base),
-                    dynamic_table(dynamic_table),
-                    first(nullptr), last(nullptr), header_map() {}
+    inline request(
+            dynamic_table_t &dynamic_table,
+            rohit::http::v2::settings_store &peer_settings)
+                :   dynamic_table(dynamic_table),
+                    first(nullptr), last(nullptr), header_map(),
+                    peer_settings(peer_settings), max_stream(0) {}
     inline ~request() {
         // This class allocate memory, hence will be freeing it
         while(first) {
@@ -633,9 +618,14 @@ public:
         header_map.insert(std::make_pair(pheader->stream_identifier, pheader));
     }
 
-    err_t parse(const uint8_t *pstart, const uint8_t *pend) {
+    err_t parse(
+                const uint8_t *pstart,
+                const uint8_t *pend,
+                uint8_t *&write_buffer) {
         while(pstart + sizeof(frame) <= pend) {
             const frame *pframe = (frame *)pstart;
+            const auto stream_identifier = pframe->get_stream_identifier();
+            if (stream_identifier > max_stream) max_stream = stream_identifier;
             pstart += sizeof(frame);
             const uint8_t padded_bytes = pframe->contains(frame::flags_t::PADDED) ? *pstart++ : 0;
 
@@ -656,10 +646,14 @@ public:
                     stream_dependency = 0x00;
                 }
 
-                const uint32_t stream_identifier = pframe->get_stream_identifier();
                 if (stream_identifier == 0x00) {
                     // PROTOCOL_ERROR we will stop parsing
-                    return err_t::HTTP2_PARSER_PROTOCOL_ERROR;
+                    write_buffer = goaway::add_frame(
+                                write_buffer,
+                                max_stream,
+                                frame::error_t::PROTOCOL_ERROR,
+                                "HEADERS frame requires stream ID to be set");
+                    return err_t::HTTP2_INITIATE_GOAWAY;
                 }
 
                 auto header_itr = header_map.find(stream_identifier);
@@ -693,10 +687,14 @@ public:
 
                 const uint32_t error_code = *(uint32_t *)pstart_;
                 
-                const uint32_t stream_identifier = pframe->get_stream_identifier();
                 if (stream_identifier == 0x00) {
                     // PROTOCOL_ERROR we will stop parsing
-                    return err_t::HTTP2_PARSER_PROTOCOL_ERROR;
+                    write_buffer = goaway::add_frame(
+                                write_buffer,
+                                max_stream,
+                                frame::error_t::PROTOCOL_ERROR,
+                                "RST_STREAM requires stream ID to be set");
+                    return err_t::HTTP2_INITIATE_GOAWAY;
                 }
 
                 auto header_itr = header_map.find(stream_identifier);
@@ -712,54 +710,59 @@ public:
                 break;
             }
             case frame::type_t::SETTINGS: {
-                const uint8_t *pstart_ = pstart;
-                pstart += pframe->get_length();
-                while(pstart_ + sizeof(settings) <= pstart) {
-                    const settings *psettings = (settings *)pstart_;
-                    pstart_ += sizeof(settings);
-                    switch(psettings->get_identifier()) {
-                    case settings::identifier_t::SETTINGS_HEADER_TABLE_SIZE:
-                        dynamic_table.update_size(psettings->get_value());
-                        break;
-                    }
-                }
+                pstart = peer_settings.parse_frame(pstart, pend);
+                dynamic_table.update_size(peer_settings.SETTINGS_HEADER_TABLE_SIZE);
 
-                constexpr size_t write_buffer_size = settings::get_frame_len(1);
-                uint8_t *write_buffer = new uint8_t[write_buffer_size];
-                settings::add_frame(write_buffer,
-                    settings::identifier_t::SETTINGS_ENABLE_PUSH, 0);
-                server_base.push_write(write_buffer, write_buffer_size);
+                write_buffer = settings::add_frame(
+                                        write_buffer,
+                                        settings::identifier_t::SETTINGS_ENABLE_PUSH, 0);
                 break;
             }
             case frame::type_t::PUSH_PROMISE: {
                 const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 // Push promise is not supported we will ignore this
-                return err_t::HTTP2_PARSER_PROTOCOL_ERROR;
+                write_buffer = goaway::add_frame(
+                                write_buffer,
+                                max_stream,
+                                frame::error_t::PROTOCOL_ERROR,
+                                "PUSH PROMISE not supported");
+                return err_t::HTTP2_INITIATE_GOAWAY;
             }
             case frame::type_t::PING: {
                 // Ping contains 64 octet
                 constexpr size_t ping_payload_size = 64;
 
-                if (pframe->get_stream_identifier() != 0x00 || pframe->get_length() != ping_payload_size) {
+                if (stream_identifier != 0x00) {
                     // PROTOCOL_ERROR we will stop parsing
-                    return err_t::HTTP2_PARSER_PROTOCOL_ERROR;
+                    write_buffer = goaway::add_frame(
+                                write_buffer,
+                                max_stream,
+                                frame::error_t::PROTOCOL_ERROR,
+                                "PING can have have stream ID zero(0)");
+                    return err_t::HTTP2_INITIATE_GOAWAY;
+                }
+                if (pframe->get_length() != ping_payload_size) {
+                    // PROTOCOL_ERROR we will stop parsing
+                    write_buffer = goaway::add_frame(
+                                write_buffer,
+                                max_stream,
+                                frame::error_t::PROTOCOL_ERROR,
+                                "PING frame length can only be 64");
+                    return err_t::HTTP2_INITIATE_GOAWAY;
                 }
                 const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 size_t write_buffer_size = sizeof(frame) + ping_payload_size;
-                uint8_t *write_buffer = new uint8_t[write_buffer_size];
                 frame *response_frame = (frame *)write_buffer;
                 response_frame->init_frame(ping_payload_size, frame::type_t::PING, frame::flags_t::ACK, 0x00);
-                std::copy(pstart_, pstart_ + ping_payload_size, write_buffer + sizeof(frame));
-                server_base.push_write(write_buffer, write_buffer_size);
+                write_buffer = std::copy(pstart_, pstart_ + ping_payload_size, write_buffer + sizeof(frame));
                 break;
             }
             case frame::type_t::GOAWAY: {
                 const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
-                // TODO: Implement GOAWAY
-                break;
+                return err_t::HTTP2_INITIATE_GOAWAY;
             }
             case frame::type_t::WINDOW_UPDATE: {
                 const uint8_t *pstart_ = pstart;
@@ -772,6 +775,7 @@ public:
                 pstart += pframe->get_length();
                 // TODO: Implement Continuation, this is required only for POST call
                 // We may not choose to support ignoring this call
+                // Best implementation would be RST_STREAM
                 break;
             }
             default:
@@ -785,7 +789,7 @@ public:
     inline uint8_t *copy_http_header_response(
                 uint8_t * buffer,
                 const std::pair<http_header::FIELD, std::string> &header_line,
-                bool add_index = false) {
+                bool add_index) {
         // 6.1.  Indexed Header Field Representation
         // Case 1: found entry in static table
         if (static_table.contains(header_line)) {
@@ -844,12 +848,140 @@ public:
         }
         
     }
+
+    inline uint8_t *copy_http_header_response(
+                uint8_t * buffer,
+                http_header::FIELD field,
+                const std::string &value,
+                bool add_index) {
+        //
+        return copy_http_header_response(
+            buffer,
+            std::make_pair(field, value),
+            add_index
+        );
+    }
+
+    inline uint8_t *copy_http_header_response(
+                uint8_t * buffer,
+                http_header::FIELD field,
+                const uint8_t *value,
+                size_t N,
+                bool add_index) {
+        //
+        std::string _value((char *)value, N);
+        return copy_http_header_response(
+            buffer,
+            std::make_pair(field, _value),
+            add_index
+        );
+    }
+
+    template <typename CHAR_TYPE, size_t N>
+    inline uint8_t *copy_http_header_response(
+                uint8_t * buffer,
+                http_header::FIELD field,
+                const CHAR_TYPE (&value)[N],
+                bool add_index) {
+        //
+        std::string _value((char *)value, N);
+        return copy_http_header_response(
+            buffer,
+            std::make_pair(field, _value),
+            add_index
+        );
+    }
+
+    template <typename VALUE_TYPE>
+    inline uint8_t *copy_http_header_response(
+                uint8_t * buffer,
+                http_header::FIELD field,
+                const VALUE_TYPE &value,
+                bool add_index) {
+        if constexpr (std::is_enum_v<VALUE_TYPE>) {
+            auto __value = static_cast<typename std::underlying_type_t<typename std::decay_t<VALUE_TYPE>>>(value);
+            const std::string _value = std::to_string(__value);
+            return copy_http_header_response(
+                buffer,
+                std::make_pair(field, _value),
+                add_index
+            );
+        } else {
+            auto __value = static_cast<typename std::decay_t<VALUE_TYPE>>(value);
+            const std::string _value = std::to_string(__value);
+            return copy_http_header_response(
+                buffer,
+                std::make_pair(field, _value),
+                add_index
+            );
+        }
+    }
+
+
+    // Status is always cached
+    template <http_header::FIELD field, http_header::CODE code>
+    uint8_t *copy_http_header_response(
+                uint8_t * buffer) {
+        return copy_http_header_response(buffer, field, code, true);
+    }
+
+    constexpr header_request *get_first_header() { return first; }
+    constexpr const header_request *get_first_header() const { return first; }
 }; // class request
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 200_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 8;
+    return buffer;
+}
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 204_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 9;
+    return buffer;
+}
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 206_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 10;
+    return buffer;
+}
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 304_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 11;
+    return buffer;
+}
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 400_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 12;
+    return buffer;
+}
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 404_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 13;
+    return buffer;
+}
+
+template <>
+constexpr uint8_t *request::copy_http_header_response<http_header::FIELD::Status, 500_rc>(
+            uint8_t * buffer) {
+    *buffer++ = 0x80 + 14;
+    return buffer;
+}
+
 
 std::ostream& operator<<(std::ostream& os, const header_request &header_request);
 
-template <bool use_ssl>
-std::ostream& operator<<(std::ostream& os, const request<use_ssl> &request) {
+inline std::ostream& operator<<(std::ostream& os, const request &request) {
     const header_request *phrequest = request.first;
     while(phrequest) {
         os << *phrequest;

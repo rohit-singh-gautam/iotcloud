@@ -75,6 +75,7 @@ protected:
     using serverpeerevent_base::get_write_buffer;
     using serverpeerevent_base::is_write_left;
 
+    rohit::http::v2::dynamic_table_t dynamic_table;
     rohit::http::v2::settings_store peer_settings;
 
     friend class iothttpevent<use_ssl>;
@@ -85,6 +86,11 @@ public:
     inline iothttp2event(iothttpevent<use_ssl> &&http11event) : iothttpevent<use_ssl>(std::move(http11event)) { }
 
     using iothttpevent<use_ssl>::write_all;
+
+    void process_request(
+                thread_context &ctx,
+                rohit::http::v2::request &request,
+                uint8_t *pwrite_end);
 
     void process_read_buffer(thread_context &ctx, uint8_t *read_buffer, const size_t read_buffer_size);
     void upgrade(thread_context &ctx, const http_header_request &header, uint8_t *read_buffer);
@@ -398,13 +404,91 @@ void iothttp2event<use_ssl>::upgrade(
     // Setting has to be present for this call
     // Caller has to check this
     std::string setting = header.fields.at(http_header::FIELD::HTTP2_Settings);    
-    peer_settings.parse_base64_frame(setting.c_str(), setting.size());
+    peer_settings.parse_base64_frame((uint8_t *)setting.c_str(), setting.size());
 
 
     /* uint8_t *write_buffer = new uint8_t[write_size];
     std::copy(read_buffer, read_buffer + write_size, write_buffer);
     push_write({write_buffer, write_size});
     write_all(ctx); */
+}
+
+template <bool use_ssl>
+void iothttp2event<use_ssl>::process_request(
+            thread_context &ctx,
+            rohit::http::v2::request &request,
+            uint8_t *pwrite_end) {
+    // Process request
+    // Date is used by all hence it is created here
+    std::time_t now_time = std::time(0);   // get time now
+    std::tm* now_tm = std::gmtime(&now_time);
+    uint8_t date_str[config::max_date_string_size];
+    size_t date_str_size = strftime((char *)date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
+
+    auto local_address = peer_id.get_local_ipv6_addr();
+
+    auto *pheader = request.get_first_header();
+    while(pheader) {
+        switch(pheader->method) {
+        case rohit::http_header_request::METHOD::GET: {
+            auto port = local_address.port;
+
+            rohit::http::filemap *filemap_obj = rohit::http::webfilemap.getfilemap(port);
+            auto result = filemap_obj->cache.find(pheader->get_path());
+            if (result == filemap_obj->cache.end()) {
+                pwrite_end = http2_add_404_Not_Found(pwrite_end, request, *pheader, local_address, date_str, date_str_size);
+            } else {
+                auto file_details = result->second;
+
+                if (pheader->match_etag(file_details->etags, file_details->etags_size)) {
+                    rohit::http::v2::frame *pframe = (rohit::http::v2::frame *)pwrite_end;
+                    pwrite_end += sizeof(rohit::http::v2::frame);
+                    pwrite_end = request.copy_http_header_response<http_header::FIELD::Status, 304_rc>(pwrite_end);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Date, date_str, date_str_size, false);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Server, config::web_server_name, true);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::ETag, (uint8_t *)file_details->etags, file_details->etags_size, true);
+                    pframe->init_frame(
+                            (uint32_t)(pwrite_end - (uint8_t *)pframe - sizeof(rohit::http::v2::frame)),
+                            rohit::http::v2::frame::type_t::HEADERS,
+                            rohit::http::v2::frame::flags_t::END_HEADERS, rohit::http::v2::frame::flags_t::END_STREAM,
+                            pheader->stream_identifier);
+                } else {
+                    rohit::http::v2::frame *pframe = (rohit::http::v2::frame *)pwrite_end;
+                    pwrite_end = request.copy_http_header_response<http_header::FIELD::Status, 200_rc>(pwrite_end);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Date, date_str, date_str_size, false);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Server, config::web_server_name, true);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::ETag, (uint8_t *)file_details->etags, file_details->etags_size, true);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Cache_Control, "private, max-age=2592000", true);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Content_Type, "text/html", true);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Content_Length, file_details->content.size, true);
+
+                    pframe->init_frame(
+                            (uint32_t)(pwrite_end - (uint8_t *)pframe - sizeof(rohit::http::v2::frame)),
+                            rohit::http::v2::frame::type_t::HEADERS,
+                            rohit::http::v2::frame::flags_t::END_HEADERS,
+                            pheader->stream_identifier);
+
+                    // Data frame
+                    pframe = (rohit::http::v2::frame *)pwrite_end;
+                    pwrite_end += sizeof(rohit::http::v2::frame);
+                    pframe->init_frame(
+                            file_details->content.size,
+                            rohit::http::v2::frame::type_t::DATA,
+                            rohit::http::v2::frame::flags_t::END_STREAM,
+                            pheader->stream_identifier);
+                    pwrite_end = std::copy(file_details->content.ptr, file_details->content.ptr + file_details->content.size, pwrite_end);
+                }
+            }
+            break;
+        }
+        default:
+            pwrite_end = http2_add_405_Method_Not_Allowed(pwrite_end, request, *pheader, local_address, date_str, date_str_size);
+            break;
+        }
+
+        pheader = pheader->get_next();
+    }
+
 }
 
 template <bool use_ssl>
@@ -437,6 +521,53 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) 
         }
 
         case state_t::SOCKET_PEER_READ: {
+            constexpr size_t read_buffer_size = 65535; // max read length
+            uint8_t read_buffer[read_buffer_size];
+            size_t read_buffer_length;
+
+            auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
+
+            if (err == err_t::SOCKET_RETRY) {
+                // No state change required
+                break;
+            }
+            if (isFailure(err)) {
+                ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
+                client_state = state_t::SOCKET_PEER_EVENT;
+                break;
+            }
+
+            if (read_buffer_length == 0) {
+                // No data indication that wait
+                client_state = state_t::SOCKET_PEER_EVENT;
+                break;
+            }
+
+            rohit::http::v2::request request(dynamic_table, peer_settings);
+            constexpr size_t write_buffer_size = 1024*1024*10; // 10MB Stack
+            uint8_t write_buffer[write_buffer_size];
+            uint8_t *pwrite_end = write_buffer;
+            err_t ret = request.parse(
+                                read_buffer,
+                                read_buffer + read_buffer_length,
+                                pwrite_end);
+
+            if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
+                process_request(ctx, request, pwrite_end);
+                size_t write_size = pwrite_end - write_buffer;
+                uint8_t *_write_buffer = new uint8_t[write_size];
+                std::copy(write_buffer, pwrite_end, _write_buffer);
+                push_write(write_buffer, write_size);
+                write_all(ctx);
+            } else {
+                size_t write_size = pwrite_end - write_buffer;
+                uint8_t *_write_buffer = new uint8_t[write_size];
+                std::copy(write_buffer, pwrite_end, _write_buffer);
+                push_write(write_buffer, write_size);
+                write_all(ctx);
+                close(ctx);
+            }
+
             break;
         }
 
