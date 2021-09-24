@@ -107,7 +107,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
             thread_entry.set_state(state_t::EVENT_DIST_EPOLL_PROCESSING);
             epoll_event &event = events[index];
             ctx.log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
-            event_executor *executor = static_cast<event_executor *>(event.data.ptr);
+            event_executor *executor = (event_executor *)(event.data.ptr);
             thread_entry.set_state(state_t::EVENT_DIST_EPOLL_EXECUTE);
             executor->execute(ctx, event.events);
             if ((event.events & (EPOLLHUP | EPOLLRDHUP )) != 0) {
@@ -187,7 +187,7 @@ void event_distributor::terminate() {
     for(int thread_index = 0; thread_index < thread_count; ++thread_index) {
         auto tempfd = eventfd(1, EFD_SEMAPHORE);
         terminate_executor termateexecutor(*this, tempfd);
-        add(tempfd, EPOLLIN, termateexecutor);
+        add(tempfd, EPOLLIN, &termateexecutor);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         close(tempfd);
     }

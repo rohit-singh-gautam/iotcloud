@@ -101,8 +101,8 @@ void load_and_execute_config(const std::string configfile) {
         if (TYPE == "simple") {
             std::cout << "Creating a server at port " << port << std::endl;
             auto srvevt =
-                new serverevent_type(*evtdist, port);
-            srvevt->init();
+                new serverevent_type(port);
+            srvevt->init(*evtdist);
             srvevts.push_back(srvevt);
         } else if (TYPE == "ssl") {
             const auto cert_file = server["CertFile"].ToString();
@@ -111,19 +111,18 @@ void load_and_execute_config(const std::string configfile) {
 
             std::cout << "Creating a SSL server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
             auto srvevt_ssl = new serverevent_ssl_type(
-                *evtdist,
                 port,
                 cert_file.c_str(),
                 prikey_file.c_str());
-            srvevt_ssl->init();
+            srvevt_ssl->init(*evtdist);
 
             srvevts_ssl.push_back(srvevt_ssl);
         } else if (TYPE == "http") {
             std::cout << "Creating a HTTP server at port " << port << std::endl;
             auto webfolder = server["Folder"].ToString();
             rohit::http::webfilemap.add_folder(port, webfolder);
-            auto srvhttpevt = new httpevent_type(*evtdist, port);
-            srvhttpevt->init();
+            auto srvhttpevt = new httpevent_type(port);
+            srvhttpevt->init(*evtdist);
             srvhttpevts.push_back(srvhttpevt);
 
             ptr_filewatcher->add_folder(webfolder);
@@ -136,11 +135,10 @@ void load_and_execute_config(const std::string configfile) {
             auto webfolder = server["Folder"].ToString();
             rohit::http::webfilemap.add_folder(port, webfolder);
             auto srvhttpevt_ssl = new httpevent_ssl_type(
-                *evtdist,
                 port,
                 cert_file.c_str(),
                 prikey_file.c_str());
-            srvhttpevt_ssl->init();
+            srvhttpevt_ssl->init(*evtdist);
             srvhttpevts_ssl.push_back(srvhttpevt_ssl);
 
             ptr_filewatcher->add_folder(webfolder);

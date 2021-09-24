@@ -17,25 +17,22 @@ namespace rohit {
 template <typename peerevent, bool use_ssl, bool use_lock = use_ssl>
 class serverevent : public event_executor, public pthread_lock_c<use_lock> {
 private:
-    event_distributor &evtdist;
     server_socket_variant_t<use_ssl>::type socket_id;
     const int port;
     const int maxconnection;
 
 public:
-    serverevent(event_distributor &evtdist,
-                const int port,
+    serverevent(const int port,
                 const int maxconnection = 10000);
 
-    serverevent(event_distributor &evtdist,
-                const int port,
+    serverevent(const int port,
                 const char *const cert_file,
                 const char *const prikey_file,
                 const int maxconnection = 10000);
 
-    inline void init() {
+    inline void init(event_distributor &evtdist) {
         socket_id.set_non_blocking();
-        evtdist.add(socket_id, EPOLLIN, *this);
+        evtdist.add(socket_id, EPOLLIN, this);
     }
 
 
@@ -49,9 +46,10 @@ public:
             while(true) {
                 auto peer_id = socket_id.accept();
                 if (peer_id.is_null()) break;
-                peerevent *p_peerevent = new peerevent(std::move(peer_id));
+                peerevent *p_peerevent = new peerevent(peer_id);
                 peer_id.set_non_blocking();
-                evtdist.add(peer_id, EPOLLIN | EPOLLOUT, *p_peerevent);
+                p_peerevent->execute(ctx, EPOLLIN);
+                ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
                 ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
             }
         } catch (const exception_t e) {
@@ -68,11 +66,9 @@ public:
 
 template <typename peerevent, bool use_ssl, bool use_lock>
 inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
-    event_distributor &evtdist,
     const int port,
     const int maxconnection)
-        :   evtdist(evtdist),
-            socket_id(port),
+        :   socket_id(port),
             port(port),
             maxconnection(maxconnection) {
     static_assert(!use_ssl, "Provide cert_file and prikey_file parameters");
@@ -80,13 +76,11 @@ inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
 
 template <typename peerevent, bool use_ssl, bool use_lock>
 inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
-        event_distributor &evtdist,
         const int port,
         const char *const cert_file,
         const char *const prikey_file,
         const int maxconnection)
-            :   evtdist(evtdist),
-                socket_id(port, cert_file, prikey_file),
+            :   socket_id(port, cert_file, prikey_file),
                 port(port),
                 maxconnection(maxconnection) {
     static_assert(use_ssl, "cert_file and prikey_file parameters require only for SSL");
@@ -119,14 +113,14 @@ public:
 };
 
 template <bool use_ssl, bool use_lock = use_ssl>
-class serverpeerevent : public serverpeerevent_base, public event_executor, public pthread_lock_c<use_lock> {
+class serverpeerevent : public event_executor, public serverpeerevent_base, public pthread_lock_c<use_lock> {
 protected:
     socket_variant_t<use_ssl>::type peer_id;
     state_t client_state;
 
 public:
-    inline serverpeerevent(socket_variant_t<use_ssl>::type &&peer_id)
-              : peer_id(std::move(peer_id)),
+    inline serverpeerevent(socket_variant_t<use_ssl>::type &peer_id)
+              : peer_id(peer_id),
                 client_state(use_ssl ? state_t::SOCKET_PEER_ACCEPT : state_t::SOCKET_PEER_READ) { }
 
     inline serverpeerevent(serverpeerevent &&peerevent)

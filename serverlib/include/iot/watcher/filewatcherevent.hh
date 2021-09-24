@@ -34,7 +34,7 @@ public:
     }
 
     inline void init() {
-        evtdist.add(inotifyfd, EPOLLIN, *this);
+        evtdist.add(inotifyfd, EPOLLIN, this);
     }
 
     inline ~filewatcherevent() {

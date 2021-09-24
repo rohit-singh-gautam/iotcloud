@@ -43,7 +43,7 @@ public:
     }
 
     inline void init() {
-        evtdist.add(evtfd, EPOLLIN, *this);
+        evtdist.add(evtfd, EPOLLIN, this);
     }
 
     // This is blocking event

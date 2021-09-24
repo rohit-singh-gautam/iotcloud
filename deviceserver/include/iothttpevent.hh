@@ -49,7 +49,7 @@ protected:
     using serverpeerevent_base::is_write_left;
 
 public:
-    inline iothttpevent(socket_variant_t<use_ssl>::type &&peer_id) : serverpeerevent<use_ssl>(std::move(peer_id)) { }
+    inline iothttpevent(socket_variant_t<use_ssl>::type &peer_id) : serverpeerevent<use_ssl>(peer_id) { }
     inline iothttpevent(iotsslevent &&sslevent) : iothttpevent<use_ssl>(std::move(sslevent)) {
         static_assert(use_ssl == false, "Only SSL event allowed, this function is for ALPN");
     }
@@ -145,6 +145,7 @@ void iothttpevent<use_ssl>::write_all(thread_context &ctx) {
 
 template <bool use_ssl>
 void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
+    std::cout << "Reached here" << std::endl;
     lock();
     if ((event & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
         // TODO: Database has to be update with information that connection is closed
@@ -248,7 +249,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                                     read_buffer_length - rohit::http::v2::connection_preface_size);
 
                         // Add http2executor to epoll
-                        ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, *http2executor);
+                        ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
 
                         ctx.delayed_free(this);
                         return;
@@ -285,7 +286,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                         http2executor->upgrade(ctx, driver.header, (uint8_t *)read_buffer);
 
                         // Add http2executor to epoll
-                        ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, *http2executor);
+                        ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
 
                         ctx.delayed_free(this);
                         return;

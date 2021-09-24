@@ -128,10 +128,10 @@ public:
     // event_executor memory will be used directly
     // clean up is responsibility of event_executor
     // itself.
-    inline err_t add(const int fd, const uint32_t event, event_executor &executor) const {
+    inline err_t add(const int fd, const uint32_t event, event_executor *pexecutor) const {
         epoll_event epoll_data;
         epoll_data.events = event | EPOLLET | EPOLLRDHUP;
-        epoll_data.data.ptr = &executor;
+        epoll_data.data.ptr = pexecutor;
 
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
 
@@ -187,8 +187,8 @@ public:
         return evtdist.delayed_free(executor);
     }
 
-    inline err_t add_event(const int fd, const uint32_t event, event_executor &executor) {
-        return evtdist.add(fd, event, executor);
+    inline err_t add_event(const int fd, const uint32_t event, event_executor *pexecutor) {
+        return evtdist.add(fd, event, pexecutor);
     }
 
 }; // class thread_context
