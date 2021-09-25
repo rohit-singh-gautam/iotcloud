@@ -49,7 +49,11 @@ public:
                 peerevent *p_peerevent = new peerevent(peer_id);
                 peer_id.set_non_blocking();
                 p_peerevent->execute(ctx, EPOLLIN);
-                ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
+
+                if (p_peerevent->get_client_state() != state_t::SERVEREVENT_MOVED) {
+                    // This is already moved we will not add it again
+                    ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
+                }
                 ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
             }
         } catch (const exception_t e) {
@@ -112,7 +116,7 @@ public:
 
 };
 
-template <bool use_ssl, bool use_lock = use_ssl>
+template <bool use_ssl, bool use_lock = true>
 class serverpeerevent : public event_executor, public serverpeerevent_base, public pthread_lock_c<use_lock> {
 protected:
     socket_variant_t<use_ssl>::type peer_id;
@@ -127,6 +131,8 @@ public:
         :   serverpeerevent_base(std::move(peerevent)),
             peer_id(std::move(peerevent.peer_id)),
             client_state(peerevent.client_state) { }
+
+    constexpr const state_t get_client_state() const { return client_state; }
 
 };
 

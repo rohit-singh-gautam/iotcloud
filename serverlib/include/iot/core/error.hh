@@ -90,6 +90,7 @@ namespace rohit {
     \
     ERROR_T_ENTRY(EVENT_DIST_CREATE_FAILED, "Event distributor creation failed") \
     ERROR_T_ENTRY(EVENT_CREATE_FAILED, "Event creation failed") \
+    ERROR_T_ENTRY(EVENT_CREATE_FAILED_ZERO, "Event creation failed for 0 file descriptor value") \
     ERROR_T_ENTRY(EVENT_REMOVE_FAILED, "Event remove failed") \
     ERROR_T_ENTRY(EVENT_SERVER_HELPER_CREATE_FAILED, "Event server helper create failed") \
     \

@@ -60,7 +60,7 @@ start:
 ;
 
 request_header:
-    request_line fields NEWLINE | request_line NEWLINE
+    request_line_end | request_line fields NEWLINE { YYACCEPT; }
 ;
 
 request_line:
@@ -68,6 +68,15 @@ request_line:
         driver.header.method = $1;
         driver.header.fields.insert(std::make_pair(http_header::FIELD::Path, $3));
         driver.header.version = $5;
+    }
+;
+
+request_line_end:
+    METHOD SPACE PATH SPACE VERSION NEWLINE NEWLINE { 
+        driver.header.method = $1;
+        driver.header.fields.insert(std::make_pair(http_header::FIELD::Path, $3));
+        driver.header.version = $5;
+        YYACCEPT;
     }
 ;
 

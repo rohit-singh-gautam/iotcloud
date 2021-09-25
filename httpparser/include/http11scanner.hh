@@ -31,6 +31,8 @@ public:
 
    void BEGIN_REQUEST();
 
+   void END();
+
 private:
    rohit::parser::semantic_type *yylval = nullptr;
 

@@ -49,7 +49,7 @@ protected:
 public:
     constexpr socket_t(const int socket_id) : socket_id(socket_id) {}
     constexpr socket_t(socket_t &sock) : socket_id(sock.socket_id) { }
-    constexpr socket_t(socket_t &&sock) : socket_id(sock.socket_id) { socket_id = 0; }
+    constexpr socket_t(socket_t &&sock) : socket_id(sock.socket_id) { sock.socket_id = 0; }
 
     inline operator int() const { return socket_id; }
 

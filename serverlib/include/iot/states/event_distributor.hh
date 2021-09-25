@@ -133,6 +133,12 @@ public:
         epoll_data.events = event | EPOLLET | EPOLLRDHUP;
         epoll_data.data.ptr = pexecutor;
 
+        if constexpr (config::debug) {
+            if (fd == 0) {
+                throw exception_t(err_t::EVENT_CREATE_FAILED_ZERO);
+            }
+        }
+
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
 
         if (ret == -1) {

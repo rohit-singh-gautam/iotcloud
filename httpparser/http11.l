@@ -322,7 +322,6 @@ field_name          [^\:\r\n]+
 
 <HEADER>":"{space}{field_value}  tokFIELDVALUE(FIELD_VALUE)
 
-
 <INITIAL,REQUEST,HEADER>("\r"|"\r\n")   { loc->lines(); tokVOID(NEWLINE) }
 <INITIAL,REQUEST>{space}                tokVOID(SPACE)
 

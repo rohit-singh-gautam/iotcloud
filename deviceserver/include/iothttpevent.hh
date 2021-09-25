@@ -50,6 +50,7 @@ protected:
 
 public:
     inline iothttpevent(socket_variant_t<use_ssl>::type &peer_id) : serverpeerevent<use_ssl>(peer_id) { }
+    inline iothttpevent(iothttpevent<use_ssl> &&http11event) : serverpeerevent<use_ssl>(std::move(http11event)) { }
     inline iothttpevent(iotsslevent &&sslevent) : iothttpevent<use_ssl>(std::move(sslevent)) {
         static_assert(use_ssl == false, "Only SSL event allowed, this function is for ALPN");
     }
@@ -87,13 +88,13 @@ public:
 
     using iothttpevent<use_ssl>::write_all;
 
-    void process_request(
+    uint8_t *process_request(
                 thread_context &ctx,
                 rohit::http::v2::request &request,
                 uint8_t *pwrite_end);
 
     void process_read_buffer(thread_context &ctx, uint8_t *read_buffer, const size_t read_buffer_size);
-    void upgrade(thread_context &ctx, const http_header_request &header, uint8_t *read_buffer);
+    void upgrade(thread_context &ctx, http_header_request &header, uint8_t *read_buffer);
 
     void execute(thread_context &ctx, const uint32_t event) override;
 
@@ -145,7 +146,6 @@ void iothttpevent<use_ssl>::write_all(thread_context &ctx) {
 
 template <bool use_ssl>
 void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
-    std::cout << "Reached here" << std::endl;
     lock();
     if ((event & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
         // TODO: Database has to be update with information that connection is closed
@@ -179,7 +179,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
         }
 
         case state_t::SOCKET_PEER_READ: {
-            constexpr size_t read_buffer_size = 1024*1024*10; // 10MB Stack
+            constexpr size_t read_buffer_size = 65535;//1024*1024*6; // 6MB Stack
             char read_buffer[read_buffer_size];
             size_t read_buffer_length;
 
@@ -202,12 +202,10 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             }
 
             std::string request_string((char *)read_buffer, read_buffer_length);
-            
-            std::cout << "------Request Start---------\n" << std::string(read_buffer, read_buffer_length)  << "\n------Request End---------\n";
 
             http11driver driver;
             auto parserret = driver.parse(request_string);
-            std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
+            //std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
 
             // Date is used by all hence it is created here
             std::time_t now_time = std::time(0);   // get time now
@@ -227,6 +225,9 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                     write_size = (size_t)(last_write_buffer - read_buffer);
                 } else {
                     if (driver.header.version == http_header::VERSION::VER_2) {
+                        // Mark state as moved
+                        client_state = state_t::SERVEREVENT_MOVED;
+                        
                         // Move to HTTP 2
                         ctx.remove_event(peer_id);
 
@@ -267,11 +268,15 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                     if (driver.header.upgrade_version() == http_header::VERSION::VER_2 && 
                         driver.header.fields.find(http_header::FIELD::HTTP2_Settings) != driver.header.fields.end()) {
                         // Only version 2 is supported
+
                         // Move to HTTP 2
                         ctx.remove_event(peer_id);
 
                         // below will move current structure to std::move
                         iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
+
+                        // Mark state as moved
+                        client_state = state_t::SERVEREVENT_MOVED;
 
                         // Now we can unlock as no new call will come for this connection
                         // Also, this will free up other thread if hold up in lock
@@ -321,7 +326,6 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                             *last_write_buffer++ = '\n';
 
                             write_size = (size_t)(last_write_buffer - read_buffer);
-                            std::cout << "------Response Start---------\n" << std::string(read_buffer, write_size) << "\n------Response End---------\n";
                         } else {
                             const http_header_line header_line[] = {
                                 {http_header::FIELD::Date, date_str, date_str_size},
@@ -362,6 +366,11 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
             break;
         }
 
+        case state_t::SERVEREVENT_MOVED: {
+            // This event is move to HTTP 2.0
+            std::cout << "HTTP 11 executor moved" << std::endl;
+            break;
+        }
     }
 
     unlock();
@@ -382,18 +391,42 @@ void iothttp2event<use_ssl>::process_read_buffer(
     size_t date_str_size = strftime(date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
 
 
+    rohit::http::v2::request request(dynamic_table, peer_settings);
+    constexpr size_t write_buffer_size = 1024*1024*6; // 6MB Stack
+    uint8_t write_buffer[write_buffer_size];
+    uint8_t *pwrite_end = write_buffer;
 
-    /* uint8_t *write_buffer = new uint8_t[write_size];
-    std::copy(read_buffer, read_buffer + write_size, write_buffer);
-    push_write({write_buffer, write_size});
-    write_all(ctx); */
+    err_t ret = request.parse(
+                        read_buffer,
+                        read_buffer + read_buffer_size,
+                        pwrite_end);
+
+    std::cout << "==== HTTP2 Parsed Request ==========================================" << std::endl;
+    //std::cout << request << std::endl;
+    std::cout << "==== HTTP2 Parsed Request END ==========================================" << std::endl;
+
+    if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
+        pwrite_end = process_request(ctx, request, pwrite_end);
+        size_t write_size = pwrite_end - write_buffer;
+        uint8_t *_write_buffer = new uint8_t[write_size];
+        std::copy(write_buffer, pwrite_end, _write_buffer);
+        push_write(_write_buffer, write_size);
+        write_all(ctx);
+    } else {
+        size_t write_size = pwrite_end - write_buffer;
+        uint8_t *_write_buffer = new uint8_t[write_size];
+        std::copy(write_buffer, pwrite_end, _write_buffer);
+        push_write(_write_buffer, write_size);
+        write_all(ctx);
+        close(ctx);
+    }
 }
 
 // Upgrade is for non SSL only
 // HTTP 1.1 for connection without prior knowledge will call this
 template <bool use_ssl>
 void iothttp2event<use_ssl>::upgrade(
-            thread_context &ctx, const http_header_request &header, uint8_t *read_buffer) {
+            thread_context &ctx, http_header_request &header, uint8_t *read_buffer) {
     // HTTP2 on TLS require ALPN support
     auto local_address = peer_id.get_local_ipv6_addr();
 
@@ -407,15 +440,39 @@ void iothttp2event<use_ssl>::upgrade(
     std::string setting = header.fields.at(http_header::FIELD::HTTP2_Settings);    
     peer_settings.parse_base64_frame((uint8_t *)setting.c_str(), setting.size());
 
+    constexpr size_t write_buffer_size = 1024*1024*6; // 6MB Stack
+    uint8_t write_buffer[write_buffer_size];
+    uint8_t *pwrite_end = write_buffer;
 
-    /* uint8_t *write_buffer = new uint8_t[write_size];
-    std::copy(read_buffer, read_buffer + write_size, write_buffer);
-    push_write({write_buffer, write_size});
-    write_all(ctx); */
+    // Adding upgrade packet
+    const http_header_line header_line[] = {
+        {http_header::FIELD::Connection, "Upgrade"},
+        {http_header::FIELD::Upgrade, "h2c"},
+    };
+
+    pwrite_end = (uint8_t*)copy_http_header_response(
+        (char*)pwrite_end,
+        http_header::VERSION::VER_1_1,
+        101_rc,
+        header_line
+    );
+
+
+    pwrite_end = rohit::http::v2::settings::add_frame(
+                        write_buffer,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_ENABLE_PUSH, 0);
+
+    rohit::http::v2::request request(dynamic_table, peer_settings, std::move(header));
+    pwrite_end = process_request(ctx, request, pwrite_end);
+    size_t write_size = pwrite_end - write_buffer;
+    uint8_t *_write_buffer = new uint8_t[write_size];
+    std::copy(write_buffer, pwrite_end, _write_buffer);
+    push_write(_write_buffer, write_size);
+    write_all(ctx);
 }
 
 template <bool use_ssl>
-void iothttp2event<use_ssl>::process_request(
+uint8_t *iothttp2event<use_ssl>::process_request(
             thread_context &ctx,
             rohit::http::v2::request &request,
             uint8_t *pwrite_end) {
@@ -490,6 +547,7 @@ void iothttp2event<use_ssl>::process_request(
         pheader = pheader->get_next();
     }
 
+    return pwrite_end;
 }
 
 template <bool use_ssl>
@@ -545,7 +603,7 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) 
             }
 
             rohit::http::v2::request request(dynamic_table, peer_settings);
-            constexpr size_t write_buffer_size = 1024*1024*10; // 10MB Stack
+            constexpr size_t write_buffer_size = 1024*1024*6; // 6MB Stack
             uint8_t write_buffer[write_buffer_size];
             uint8_t *pwrite_end = write_buffer;
             err_t ret = request.parse(
@@ -553,18 +611,21 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) 
                                 read_buffer + read_buffer_length,
                                 pwrite_end);
 
+            std::cout << "==== HTTP2 Parsed Request ==========================================" << std::endl;
+            //std::cout << request << std::endl;
+            std::cout << "==== HTTP2 Parsed Request END ==========================================" << std::endl;
             if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
-                process_request(ctx, request, pwrite_end);
+                pwrite_end = process_request(ctx, request, pwrite_end);
                 size_t write_size = pwrite_end - write_buffer;
                 uint8_t *_write_buffer = new uint8_t[write_size];
                 std::copy(write_buffer, pwrite_end, _write_buffer);
-                push_write(write_buffer, write_size);
+                push_write(_write_buffer, write_size);
                 write_all(ctx);
             } else {
                 size_t write_size = pwrite_end - write_buffer;
                 uint8_t *_write_buffer = new uint8_t[write_size];
                 std::copy(write_buffer, pwrite_end, _write_buffer);
-                push_write(write_buffer, write_size);
+                push_write(_write_buffer, write_size);
                 write_all(ctx);
                 close(ctx);
             }

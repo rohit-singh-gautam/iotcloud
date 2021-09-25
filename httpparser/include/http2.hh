@@ -302,6 +302,7 @@ public:
     static constexpr uint8_t *add_frame(uint8_t *buffer, const ARGS&... args) {
         constexpr uint32_t length = sizeof(frame) + sizeof...(ARGS) * 3;
         frame *pframe = (frame *)buffer;
+        buffer += sizeof(frame);
         pframe->init_frame(length, frame::type_t::SETTINGS, frame::flags_t::ACK, 0x00);
         return add(buffer, args...);
     }
@@ -355,15 +356,16 @@ public:
         return buf + sizeof(settings);
     }
 
-    // template will allow input to be both const and non const
-    constexpr const uint8_t *parse_frame(const uint8_t *pstart, const uint8_t *pend) {
-        const frame *pframe = (frame *)pstart;
-        pstart += sizeof(frame);
-        const uint8_t *const pend1 = pstart + pframe->get_length();
+    constexpr const uint8_t *parse_frame(
+                const frame *pframe,
+                const uint8_t *pstart,
+                const uint8_t *pend) {
+        //
+        const uint32_t frame_length = pframe->get_length();
+        const uint8_t *const pend1 = pstart + frame_length;
         if (pend1 > pend) {
             // TODO: exception handling required
             // This is badly formed settings
-            std::cout << "Badly formed connection found" << std::endl;
             return pend;
         }
         const uint8_t padded_bytes = pframe->contains(frame::flags_t::PADDED) ? *pstart++ : 0;
@@ -372,6 +374,13 @@ public:
             pstart = parse_one(pstart);
         }
         return pend1;
+    }
+
+    // template will allow input to be both const and non const
+    constexpr const uint8_t *parse_frame(const uint8_t *pstart, const uint8_t *pend) {
+        const frame *pframe = (frame *)pstart;
+        pstart += sizeof(frame);
+        return parse_frame(pframe, pstart, pend);
     }
 
     constexpr void parse_base64_frame(const uint8_t *buffer, const size_t buffer_size) {
@@ -484,6 +493,14 @@ public:
                     error(frame::error_t::NO_ERROR),
                     next(nullptr), previous(nullptr) {}
 
+    // Upgrade from http 1.1
+    inline header_request(http_header_request &&header)
+                :   http_header_request(std::move(header)),
+                    stream_identifier(1),   // Upgrade stream is 1
+                    weight(16),             // Setting up default
+                    error(frame::error_t::NO_ERROR),
+                    next(nullptr), previous(nullptr) {}
+
     void parse_header(const uint8_t *pstart, const uint8_t *pend, dynamic_table_t &dynamic_table) {
         while(pstart < pend) {
             if ((*pstart & 0x80) == 0x80) {
@@ -580,6 +597,19 @@ public:
                 :   dynamic_table(dynamic_table),
                     first(nullptr), last(nullptr), header_map(),
                     peer_settings(peer_settings), max_stream(0) {}
+
+    inline request(
+                dynamic_table_t &dynamic_table,
+                rohit::http::v2::settings_store &peer_settings,
+                http_header_request &&header)
+        :   dynamic_table(dynamic_table),
+                    first(nullptr), last(nullptr), header_map(),
+                    peer_settings(peer_settings), max_stream(0)
+    {
+        header_request *pheader = new header_request(std::move(header));
+        insert(pheader, 0x00);
+    }
+
     inline ~request() {
         // This class allocate memory, hence will be freeing it
         while(first) {
@@ -598,8 +628,12 @@ public:
                 // We are creating dummy header and appending it at the end
                 request = new header_request(stream_dependency);
                 header_map.insert(std::make_pair(stream_dependency, request));
-                last->next = request;
                 request->next = pheader;
+                if (last != nullptr)
+                    last->next = request;
+                else {
+                    first = request;
+                }
                 last = pheader;
             } else {
                 request = header_itr->second;
@@ -611,7 +645,11 @@ public:
             }
         } else {
             // Just appending at the end
-            last->next = pheader;
+            if (last != nullptr) {
+                last->next = pheader;
+            } else {
+                first = pheader;
+            }
             last = pheader;
         }
 
@@ -710,7 +748,9 @@ public:
                 break;
             }
             case frame::type_t::SETTINGS: {
-                pstart = peer_settings.parse_frame(pstart, pend);
+                const uint8_t *pstart_ = pstart;
+                pstart += pframe->get_length();
+                peer_settings.parse_frame(pframe, pstart_, pend);
                 dynamic_table.update_size(peer_settings.SETTINGS_HEADER_TABLE_SIZE);
 
                 write_buffer = settings::add_frame(

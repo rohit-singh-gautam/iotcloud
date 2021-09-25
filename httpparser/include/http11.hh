@@ -20,7 +20,7 @@ namespace rohit {
 
 #define HTTP_VERSION_LIST \
     HTTP_VERSION_ENTRY(VER_1_1, "HTTP/1.1") \
-    HTTP_VERSION_ENTRY(VER_2, "HTTP/2") \
+    HTTP_VERSION_ENTRY(VER_2, "HTTP/2.0") \
     LIST_DEFINITION_END
 
 #define HTTP_FIELD_LIST \
@@ -354,6 +354,8 @@ public:
 
     constexpr http_header() {}
     constexpr http_header(VERSION version) : version(version) { }
+    constexpr http_header(http_header &header) : version(header.version) {}
+    constexpr http_header(http_header &&header) : version(header.version) {}
 
 private:
     static const char *strVERSION[];
@@ -448,13 +450,15 @@ public:
 
     static const std::unordered_map<std::string, METHOD> method_map;
 
-    METHOD method;
-    
-
+    METHOD method;  
     fields_t fields;
 
     inline http_header_request() {}
     inline http_header_request(VERSION version) : http_header(version) {}
+    inline http_header_request(http_header_request &header)
+        : http_header(header), method(header.method), fields(header.fields) {}
+    inline http_header_request(http_header_request &&header)
+        : http_header(std::move(header)), method(header.method), fields(std::move(header.fields)) {}
 
     bool match_etag(const char *etag, size_t etag_size);
 

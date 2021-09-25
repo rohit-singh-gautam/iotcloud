@@ -69,7 +69,12 @@ std::ostream& operator<<(std::ostream& os, const http_header_request::METHOD req
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_request& requestHeader) {
-    return os << requestHeader.method << " " << requestHeader.version << "\n"
+    os << requestHeader.method << " ";
+    auto path_itr = requestHeader.fields.find(rohit::http_header::FIELD::Path);
+    if (path_itr != requestHeader.fields.end()) {
+        os << path_itr->second << " ";
+    }
+    return os << requestHeader.version << "\n"
               << requestHeader.fields << "\n";
 }
 
