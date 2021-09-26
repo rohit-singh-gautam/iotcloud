@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const state_t &state) {
     switch (state) {
     default: // This will avoid error, such condition will never reach
         assert(true);
-#define STATE_ENTRY(x, y) case state_t::x: return os << y;
+#define STATE_ENTRY(x, y) case state_t::x: return os << #x " " y;
         STATE_ENTRY_LIST
 #undef STATE_ENTRY
     }
