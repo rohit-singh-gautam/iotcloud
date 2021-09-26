@@ -14,10 +14,10 @@ std::ostream& operator<<(std::ostream& os, const header_request &header_request)
         << "Weight: " << header_request.weight << std::endl;
     
     if (header_request.error != frame::error_t::NO_ERROR) {
-        os << "Error: " << header_request << std::endl;
+        os << "Error: " << header_request.error << std::endl;
     }
 
-    return os << header_request;
+    return os << http11request;
 }
 
 } // namespace rohit::http::v2
