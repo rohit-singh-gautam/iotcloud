@@ -346,22 +346,25 @@ inline std::string get_header_string(const uint8_t *&pstart) {
     }
 }
 
-inline size_t huffman_string_size(const std::string &value) {
-    size_t size = 8;
-    for(auto &ch: value) {
-        size += static_huffman[ch].code_len;
+inline size_t huffman_string_size(const uint8_t *pvalue_start, const uint8_t *const pvalue_end) {
+    size_t size = 7;
+    for(;pvalue_start < pvalue_end; ++pvalue_start) {
+        size += static_huffman[*pvalue_start].code_len;
     }
     return size / 8;
 }
 
-uint8_t *add_huffman_string(uint8_t *pstart, const std::string &value);
+uint8_t *add_huffman_string(uint8_t *pstart, const uint8_t *pvalue_start, const uint8_t *const pvalue_end);
 
 inline uint8_t *add_header_string(uint8_t *pstart, const std::string &value) {
-    size_t size = huffman_string_size(value);
+    const uint8_t *const pvalue_start = (const uint8_t *)value.c_str();
+    const uint8_t *const pvalue_end = pvalue_start + value.size() - !value.back();
+    size_t size = huffman_string_size(pvalue_start, pvalue_end);
     if (size < value.size()) {
         // Encoded string is smaller hence we are encoded
         pstart = encode_integer<7>(pstart, (uint8_t)0x80, (uint32_t)size);
-        pstart = add_huffman_string(pstart, value);
+        const auto pstart_ = pstart;
+        pstart = add_huffman_string(pstart, pvalue_start, pvalue_end);
     } else {
         pstart = encode_integer<7>(pstart, (uint8_t)0x80, (uint32_t)value.size());
         pstart = std::copy(value.begin(), value.end(), pstart);

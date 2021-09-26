@@ -29,9 +29,6 @@ node *created_huffman_tree() {
                 curr = curr->right;
             }
         }
-        if (curr->left != nullptr || curr->right != nullptr) {
-            std::cout << "Leaf node not null symbol " << symbol << std::endl;
-        }
         curr->set_leaf(symbol);
     }
 
@@ -49,10 +46,6 @@ std::string get_huffman_string(const uint8_t *pstart, const uint8_t *pend) {
                 curr = curr->right;
             }
 
-            if ((curr->left == nullptr || curr->right == nullptr) && !(curr->left == nullptr && curr->right == nullptr)) {
-                std::cout << "Only one of left or right is nullptr " << std::endl;
-            }
-
             if (curr->is_leaf()) {
                 if (curr->is_eos()) return value;
                 value.push_back(curr->get_symbol());
@@ -67,12 +60,12 @@ std::string get_huffman_string(const uint8_t *pstart, const uint8_t *pend) {
     return value;
 }
 
-uint8_t *add_huffman_string(uint8_t *pstart, const std::string &value) {
+uint8_t *add_huffman_string(uint8_t *pstart, const uint8_t *pvalue_start, const uint8_t *const pvalue_end) {
     constexpr uint8_t mask[] = {0xff, 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x01};
     uint8_t bit_index = 0;
     *pstart = 0; // Clean all existing value
-    for(auto &ch: value) {
-        const auto &entry = static_huffman[ch];
+    for(;pvalue_start < pvalue_end; ++pvalue_start) {
+        const auto &entry = static_huffman[*pvalue_start];
         auto len_left = entry.code_len;
         auto code = entry.code;
         while (true) {
@@ -98,7 +91,7 @@ uint8_t *add_huffman_string(uint8_t *pstart, const std::string &value) {
     
     if (bit_index) {
         *pstart += mask[bit_index];
-        ++pstart;
+        pstart++;
     }
 
     return pstart;
