@@ -617,6 +617,7 @@ constexpr char *copy_http_header_response(
     write_buffer = std::copy(line.value, line.value + line.size - 1, write_buffer);
 
     // Adding newline
+    *write_buffer++ = '\r';
     *write_buffer++ = '\n';
 
     return write_buffer;    
@@ -658,6 +659,7 @@ constexpr char *copy_http_header_response(
     write_buffer = std::copy(code_buf, code_buf + code_size - 1, write_buffer);
 
     // Adding newline
+    *write_buffer++ = '\r';
     *write_buffer++ = '\n';
 
     // Adding lines
@@ -701,6 +703,7 @@ constexpr char *copy_http_response(
 
 
     // Adding newline
+    *write_buffer++ = '\r';
     *write_buffer++ = '\n';
 
     // Adding body

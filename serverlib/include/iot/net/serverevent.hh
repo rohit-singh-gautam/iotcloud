@@ -130,7 +130,9 @@ public:
     inline serverpeerevent(serverpeerevent &&peerevent)
         :   serverpeerevent_base(std::move(peerevent)),
             peer_id(std::move(peerevent.peer_id)),
-            client_state(peerevent.client_state) { }
+            client_state(peerevent.client_state) { 
+        peerevent.client_state = state_t::SERVEREVENT_MOVED;
+    }
 
     constexpr const state_t get_client_state() const { return client_state; }
 

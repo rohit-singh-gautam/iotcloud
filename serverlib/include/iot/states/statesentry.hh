@@ -27,6 +27,7 @@ namespace rohit {
     STATE_ENTRY(SOCKET_PEER_CLOSE, "Next operation is CLOSE") \
     STATE_ENTRY(SOCKET_PEER_CLOSED, "Socket is close no further operation must be performed on this") \
     STATE_ENTRY(HTTP2_SETTINGS_WRITE, "HTTP2 write settings as this is first packet") \
+    STATE_ENTRY(HTTP2_NEXT_MAGIC, "HTTP2 next frame is a magic frame") \
     STATE_ENTRY(SERVEREVENT_MOVED, "SERVEREVENT is moved to another object") \
     \
     STATE_DEFINITION_END

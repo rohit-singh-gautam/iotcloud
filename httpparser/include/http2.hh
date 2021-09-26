@@ -298,12 +298,19 @@ public:
         return sizeof(frame) + count * 6;
     }
 
-    template <typename... ARGS>
-    static constexpr uint8_t *add_frame(uint8_t *buffer, const ARGS&... args) {
-        constexpr uint32_t length = sizeof(frame) + sizeof...(ARGS) * 3;
+    static constexpr uint8_t *add_ack_frame(uint8_t *buffer) {
         frame *pframe = (frame *)buffer;
         buffer += sizeof(frame);
-        pframe->init_frame(length, frame::type_t::SETTINGS, frame::flags_t::ACK, 0x00);
+        pframe->init_frame(0x00, frame::type_t::SETTINGS, frame::flags_t::ACK, 0x00);
+        return buffer;
+    }
+
+    template <typename... ARGS>
+    static constexpr uint8_t *add_frame(uint8_t *buffer, const ARGS&... args) {
+        constexpr uint32_t length = sizeof...(ARGS) * 3;
+        frame *pframe = (frame *)buffer;
+        buffer += sizeof(frame);
+        pframe->init_frame(length, frame::type_t::SETTINGS, frame::flags_t::NONE, 0x00);
         return add(buffer, args...);
     }
 
@@ -501,7 +508,8 @@ public:
                     error(frame::error_t::NO_ERROR),
                     next(nullptr), previous(nullptr) {}
 
-    void parse_header(const uint8_t *pstart, const uint8_t *pend, dynamic_table_t &dynamic_table) {
+    void parse_header(const uint8_t *pstart, const uint8_t *pend, const uint32_t stream_identifier, dynamic_table_t &dynamic_table) {
+        this->stream_identifier = stream_identifier;
         while(pstart < pend) {
             if ((*pstart & 0x80) == 0x80) {
                 // rfc7541 # 6.1 Indexed Header Field Representation
@@ -703,7 +711,7 @@ public:
                     request = header_itr->second;
                 }
 
-                request->parse_header(pstart_, pstart - padded_bytes, dynamic_table);
+                request->parse_header(pstart_, pstart - padded_bytes, stream_identifier, dynamic_table);
                 break;
             }
             case frame::type_t::PRIORITY: {
@@ -750,12 +758,11 @@ public:
             case frame::type_t::SETTINGS: {
                 const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
-                peer_settings.parse_frame(pframe, pstart_, pend);
-                dynamic_table.update_size(peer_settings.SETTINGS_HEADER_TABLE_SIZE);
-
-                write_buffer = settings::add_frame(
-                                        write_buffer,
-                                        settings::identifier_t::SETTINGS_ENABLE_PUSH, 0);
+                if (!pframe->contains(frame::flags_t::ACK)) {
+                    peer_settings.parse_frame(pframe, pstart_, pend);
+                    dynamic_table.update_size(peer_settings.SETTINGS_HEADER_TABLE_SIZE);
+                    write_buffer = settings::add_ack_frame(write_buffer);
+                }
                 break;
             }
             case frame::type_t::PUSH_PROMISE: {
@@ -870,12 +877,12 @@ public:
             // Case 1: Field indexed
             if (static_table.contains(header_line.first)) {
                 // Subcase 1: Static table
-                buffer = encode_integer<6>(buffer, (uint8_t)0x00, static_table[header_line.first]);
+                buffer = encode_integer<4>(buffer, (uint8_t)0x00, static_table[header_line.first]);
                 buffer = add_header_string(buffer, header_line.second);
             } else
             if (dynamic_table.contains(header_line.first)) {
                 // Subcase 2: Dynamic table
-                buffer = encode_integer<6>(buffer, (uint8_t)0x00, dynamic_table[header_line.first]);
+                buffer = encode_integer<4>(buffer, (uint8_t)0x00, dynamic_table[header_line.first]);
                 buffer = add_header_string(buffer, header_line.second);
                 return buffer;
             } else {
@@ -902,6 +909,7 @@ public:
         );
     }
 
+    // N includes null character
     inline uint8_t *copy_http_header_response(
                 uint8_t * buffer,
                 http_header::FIELD field,
@@ -917,6 +925,7 @@ public:
         );
     }
 
+    // N includes null character
     template <typename CHAR_TYPE, size_t N>
     inline uint8_t *copy_http_header_response(
                 uint8_t * buffer,

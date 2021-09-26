@@ -224,10 +224,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                     auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
                     write_size = (size_t)(last_write_buffer - read_buffer);
                 } else {
-                    if (driver.header.version == http_header::VERSION::VER_2) {
-                        // Mark state as moved
-                        client_state = state_t::SERVEREVENT_MOVED;
-                        
+                    if (driver.header.version == http_header::VERSION::VER_2) {                        
                         // Move to HTTP 2
                         ctx.remove_event(peer_id);
 
@@ -240,8 +237,6 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                         // Even event is removed so no new event will come in
                         // We are avoiding one lock in this way
                         unlock();
-
-                        const std::string &settings = driver.header.fields[http_header::FIELD::HTTP2_Settings];
 
                         // Execute all read and write
                         http2executor->process_read_buffer(
@@ -284,8 +279,6 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
                         // Even event is removed so no new event will come in
                         // We are avoiding one lock in this way
                         unlock();
-
-                        const std::string &settings = driver.header.fields[http_header::FIELD::HTTP2_Settings];
 
                         // Execute all read and write
                         http2executor->upgrade(ctx, driver.header, (uint8_t *)read_buffer);
@@ -368,7 +361,6 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
 
         case state_t::SERVEREVENT_MOVED: {
             // This event is move to HTTP 2.0
-            std::cout << "HTTP 11 executor moved" << std::endl;
             break;
         }
     }
@@ -396,29 +388,40 @@ void iothttp2event<use_ssl>::process_read_buffer(
     uint8_t write_buffer[write_buffer_size];
     uint8_t *pwrite_end = write_buffer;
 
+    pwrite_end = rohit::http::v2::settings::add_frame(
+                        pwrite_end,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_ENABLE_PUSH, 0,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_MAX_CONCURRENT_STREAMS, 10,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_INITIAL_WINDOW_SIZE, 1048576,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_HEADER_TABLE_SIZE, 2048);
+
     err_t ret = request.parse(
                         read_buffer,
                         read_buffer + read_buffer_size,
                         pwrite_end);
 
     std::cout << "==== HTTP2 Parsed Request ==========================================" << std::endl;
-    //std::cout << request << std::endl;
+    std::cout << request << std::endl;
     std::cout << "==== HTTP2 Parsed Request END ==========================================" << std::endl;
 
     if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
         pwrite_end = process_request(ctx, request, pwrite_end);
-        size_t write_size = pwrite_end - write_buffer;
-        uint8_t *_write_buffer = new uint8_t[write_size];
-        std::copy(write_buffer, pwrite_end, _write_buffer);
-        push_write(_write_buffer, write_size);
-        write_all(ctx);
+        if (write_buffer != pwrite_end) {
+            size_t write_size = pwrite_end - write_buffer;
+            uint8_t *_write_buffer = new uint8_t[write_size];
+            std::copy(write_buffer, pwrite_end, _write_buffer);
+            push_write(_write_buffer, write_size);
+            if (request.get_first_header() != nullptr) write_all(ctx);
+        }
     } else {
-        size_t write_size = pwrite_end - write_buffer;
-        uint8_t *_write_buffer = new uint8_t[write_size];
-        std::copy(write_buffer, pwrite_end, _write_buffer);
-        push_write(_write_buffer, write_size);
-        write_all(ctx);
-        close(ctx);
+        if (write_buffer != pwrite_end) {
+            size_t write_size = pwrite_end - write_buffer;
+            uint8_t *_write_buffer = new uint8_t[write_size];
+            std::copy(write_buffer, pwrite_end, _write_buffer);
+            push_write(_write_buffer, write_size);
+            write_all(ctx);
+            close(ctx);
+        }
     }
 }
 
@@ -457,10 +460,18 @@ void iothttp2event<use_ssl>::upgrade(
         header_line
     );
 
+    // Additional newline before http2
+    *pwrite_end++ = '\r';
+    *pwrite_end++ = '\n';
 
     pwrite_end = rohit::http::v2::settings::add_frame(
-                        write_buffer,
-                        rohit::http::v2::settings::identifier_t::SETTINGS_ENABLE_PUSH, 0);
+                        pwrite_end,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_ENABLE_PUSH, 0,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_MAX_CONCURRENT_STREAMS, 100,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_INITIAL_WINDOW_SIZE, 1048576,
+                        rohit::http::v2::settings::identifier_t::SETTINGS_HEADER_TABLE_SIZE, 2048);
+ 
+    pwrite_end = rohit::http::v2::settings::add_ack_frame(pwrite_end);
 
     rohit::http::v2::request request(dynamic_table, peer_settings, std::move(header));
     pwrite_end = process_request(ctx, request, pwrite_end);
@@ -468,7 +479,9 @@ void iothttp2event<use_ssl>::upgrade(
     uint8_t *_write_buffer = new uint8_t[write_size];
     std::copy(write_buffer, pwrite_end, _write_buffer);
     push_write(_write_buffer, write_size);
-    write_all(ctx);
+    if (request.get_first_header() != nullptr) write_all(ctx);
+
+    client_state = state_t::HTTP2_NEXT_MAGIC;
 }
 
 template <bool use_ssl>
@@ -502,7 +515,7 @@ uint8_t *iothttp2event<use_ssl>::process_request(
                     rohit::http::v2::frame *pframe = (rohit::http::v2::frame *)pwrite_end;
                     pwrite_end += sizeof(rohit::http::v2::frame);
                     pwrite_end = request.copy_http_header_response<http_header::FIELD::Status, 304_rc>(pwrite_end);
-                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Date, date_str, date_str_size, false);
+                    pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Date, date_str, date_str_size, true);
                     pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Server, config::web_server_name, true);
                     pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::ETag, (uint8_t *)file_details->etags, file_details->etags_size, true);
                     pframe->init_frame(
@@ -512,6 +525,7 @@ uint8_t *iothttp2event<use_ssl>::process_request(
                             pheader->stream_identifier);
                 } else {
                     rohit::http::v2::frame *pframe = (rohit::http::v2::frame *)pwrite_end;
+                    pwrite_end += sizeof(rohit::http::v2::frame);
                     pwrite_end = request.copy_http_header_response<http_header::FIELD::Status, 200_rc>(pwrite_end);
                     pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Date, date_str, date_str_size, false);
                     pwrite_end = request.copy_http_header_response(pwrite_end, http_header::FIELD::Server, config::web_server_name, true);
@@ -579,6 +593,71 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) 
             break;
         }
 
+        case state_t::HTTP2_NEXT_MAGIC: {
+            constexpr size_t read_buffer_size = 65535; // max read length
+            uint8_t read_buffer[read_buffer_size];
+            size_t read_buffer_length;
+
+            auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
+
+            if (err == err_t::SOCKET_RETRY) {
+                // No state change required
+                break;
+            }
+            if (isFailure(err)) {
+                ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
+                client_state = state_t::SOCKET_PEER_EVENT;
+                break;
+            }
+
+            if (read_buffer_length == 0) {
+                // No data indication that wait
+                client_state = state_t::SOCKET_PEER_EVENT;
+                break;
+            }
+
+            err_t ret;
+            constexpr size_t write_buffer_size = 1024*1024*6; // 6MB Stack
+            uint8_t write_buffer[write_buffer_size];
+            uint8_t *pwrite_end = write_buffer;
+            rohit::http::v2::request request(dynamic_table, peer_settings);
+
+            if (strncmp((char *)read_buffer, rohit::http::v2::connection_preface, rohit::http::v2::connection_preface_size) != 0) {
+                // TODO: Add protocol error 
+                ret = err_t::HTTP2_INITIATE_GOAWAY;
+            } else {
+                ret = request.parse(
+                                    read_buffer + rohit::http::v2::connection_preface_size,
+                                    read_buffer + read_buffer_length - rohit::http::v2::connection_preface_size,
+                                    pwrite_end);
+
+                std::cout << "==== HTTP2 Parsed Request ==========================================" << std::endl;
+                std::cout << request << std::endl;
+                std::cout << "==== HTTP2 Parsed Request END ==========================================" << std::endl;
+            }
+            if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
+                pwrite_end = process_request(ctx, request, pwrite_end);
+                if (write_buffer != pwrite_end) {
+                    size_t write_size = pwrite_end - write_buffer;
+                    uint8_t *_write_buffer = new uint8_t[write_size];
+                    std::copy(write_buffer, pwrite_end, _write_buffer);
+                    push_write(_write_buffer, write_size);
+                    if (request.get_first_header() != nullptr) write_all(ctx);
+                }
+            } else {
+                if (write_buffer != pwrite_end) {
+                    size_t write_size = pwrite_end - write_buffer;
+                    uint8_t *_write_buffer = new uint8_t[write_size];
+                    std::copy(write_buffer, pwrite_end, _write_buffer);
+                    push_write(_write_buffer, write_size);
+                    write_all(ctx);
+                    close(ctx);
+                }
+            }
+
+            break;
+        }
+
         case state_t::SOCKET_PEER_READ: {
             constexpr size_t read_buffer_size = 65535; // max read length
             uint8_t read_buffer[read_buffer_size];
@@ -612,22 +691,26 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) 
                                 pwrite_end);
 
             std::cout << "==== HTTP2 Parsed Request ==========================================" << std::endl;
-            //std::cout << request << std::endl;
+            std::cout << request << std::endl;
             std::cout << "==== HTTP2 Parsed Request END ==========================================" << std::endl;
             if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
                 pwrite_end = process_request(ctx, request, pwrite_end);
-                size_t write_size = pwrite_end - write_buffer;
-                uint8_t *_write_buffer = new uint8_t[write_size];
-                std::copy(write_buffer, pwrite_end, _write_buffer);
-                push_write(_write_buffer, write_size);
-                write_all(ctx);
+                if (write_buffer != pwrite_end) {
+                    size_t write_size = pwrite_end - write_buffer;
+                    uint8_t *_write_buffer = new uint8_t[write_size];
+                    std::copy(write_buffer, pwrite_end, _write_buffer);
+                    push_write(_write_buffer, write_size);
+                    write_all(ctx);
+                }
             } else {
-                size_t write_size = pwrite_end - write_buffer;
-                uint8_t *_write_buffer = new uint8_t[write_size];
-                std::copy(write_buffer, pwrite_end, _write_buffer);
-                push_write(_write_buffer, write_size);
-                write_all(ctx);
-                close(ctx);
+                if (write_buffer != pwrite_end) {
+                    size_t write_size = pwrite_end - write_buffer;
+                    uint8_t *_write_buffer = new uint8_t[write_size];
+                    std::copy(write_buffer, pwrite_end, _write_buffer);
+                    push_write(_write_buffer, write_size);
+                    write_all(ctx);
+                    close(ctx);
+                }
             }
 
             break;
