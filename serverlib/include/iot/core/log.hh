@@ -91,7 +91,8 @@ namespace rohit {
     LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_FAILED, ERROR, SOCKET, "Unable to load Primary Key, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP, INFO, SOCKET, "Socket cleanup SSL") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP_ATTEMPT, DEBUG, SOCKET, "Socket cleanup SSL left %i") \
-    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_SUCCESS, DEBUG, SOCKET, "SSL Socket %i accept success") \
+    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_RETRY, DEBUG, SOCKET, "SSL Socket %i accept retry SSL Accept") \
+    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_SUCCESS, VERBOSE, SOCKET, "SSL Socket %i accept success") \
     LOGGER_ENTRY(SOCKET_SSL_ACCEPT_FAILED, ERROR, SOCKET, "SSL Socket %i accept failed") \
     \
     LOGGER_ENTRY(EVENT_DIST_CREATING_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor creating %llu threads") \
@@ -117,17 +118,18 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_REMOVE_FAILED, INFO, EVENT_EXECUTOR, "Event removal failed with error %ve") \
     \
     LOGGER_ENTRY(EVENT_SERVER_RECEIVED_CLOSED, INFO, EVENT_SERVER, "Event server listner close request received") \
-    LOGGER_ENTRY(EVENT_SERVER_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "Event server with ID %i received event %vv") \
+    LOGGER_ENTRY(EVENT_SERVER_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "Event server with ID %i received event") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "SSL Event server with ID %i received event %vv") \
     LOGGER_ENTRY(EVENT_SERVER_ACCEPT_FAILED, ERROR, EVENT_SERVER, "Event server failed to accept connection with error %ve") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_ACCEPT_FAILED, ERROR, EVENT_SERVER, "SSL Event server failed to accept connection with error %ve") \
     LOGGER_ENTRY(EVENT_SERVER_PEER_CREATED, VERBOSE, EVENT_SERVER, "Event server new peer requested from remote %vN") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_PEER_CREATED, VERBOSE, EVENT_SERVER, "SSL Event server new peer requested from remote %vN") \
     LOGGER_ENTRY(EVENT_SERVER_HELPER_CREATE_FAILED, ERROR, EVENT_SERVER, "Event server helper create failed") \
-    LOGGER_ENTRY(EVENT_SERVER_HELPER_ONLY_READ_SUPPORTED, INFO, EVENT_SERVER, "Event server helper only supports read event") \
     LOGGER_ENTRY(EVENT_SERVER_HELPER_WRITE_FAILED, WARNING, EVENT_SERVER, "Event server event write failed with error %ve") \
     LOGGER_ENTRY(EVENT_SERVER_HELPER_READ_FAILED, WARNING, EVENT_SERVER, "Event server event read failed with error %ve") \
     LOGGER_ENTRY(EVENT_SERVER_HELPER_UNKNOWN, WARNING, EVENT_SERVER, "Event server unknown message") \
+    LOGGER_ENTRY(EVENT_SERVER_MOVED_ENTERED, WARNING, EVENT_SERVER, "Entered event server after move, must not happen") \
+    LOGGER_ENTRY(EVENT_SERVER_UNKNOWN_STATE, WARNING, EVENT_SERVER, "Entered event server for unknown state %vs") \
     \
     LOGGER_ENTRY(IOT_EVENT_SERVER_COMMAND_RECEIVED, VERBOSE, IOT_EVENT_SERVER, "IOT Event Server received message %vN") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %vE") \
@@ -137,8 +139,9 @@ namespace rohit {
     \
     LOGGER_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, ERROR, IOT_HTTPSERVER, "FILEWATCHER event create failed") \
     LOGGER_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, WARNING, IOT_HTTPSERVER, "FILEWATCHER failed to add folder for watch with error %ve") \
-    LOGGER_ENTRY(FILEWATCHER_ONLY_READ_SUPPORTED, INFO, IOT_HTTPSERVER, "FILEWATCHER only supports read event") \
     LOGGER_ENTRY(FILEWATCHER_EVENT_READ_FAILED, INFO, IOT_HTTPSERVER, "FILEWATCHER event read failed with error %ve") \
+    LOGGER_ENTRY(HTTP_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "HTTP Event Server peer read failed with error %vE") \
+    LOGGER_ENTRY(HTTP2_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "HTTP2 Event Server peer read failed with error %vE") \
     \
     LOGGER_ENTRY(SYSTEM_ERROR, ERROR, SYSTEM, "System Error '%ve'") \
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \

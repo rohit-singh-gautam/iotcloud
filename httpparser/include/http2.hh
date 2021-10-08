@@ -430,6 +430,11 @@ public:
     constexpr frame::error_t get_error_code() const { return (frame::error_t)changeEndian(error_code); }
 
     template <size_t debug_data_size>
+    static constexpr size_t add_frame_size(const char (&debug_data)[debug_data_size]) {
+        return sizeof(frame) + sizeof(goaway) + debug_data_size;
+    }
+
+    template <size_t debug_data_size>
     static constexpr uint8_t *add_frame(
                 uint8_t *buffer,
                 uint32_t max_stream,

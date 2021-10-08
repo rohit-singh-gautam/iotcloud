@@ -38,7 +38,7 @@ public:
     }
 
     inline ~filewatcherevent() {
-        close(inotifyfd);
+        ::close(inotifyfd);
     }
 
     // This function is called for each event
@@ -109,11 +109,7 @@ public:
     }
 
 private:
-    inline void execute(thread_context &ctx, const uint32_t poll_event) override {
-        if ((poll_event & EPOLLIN) == 0) {
-            ctx.log<log_t::FILEWATCHER_ONLY_READ_SUPPORTED>();
-            return;
-        }
+    inline void execute(thread_context &ctx) override {
         if ( !evtdist.pause(ctx) ) {
             return;
         }
@@ -208,6 +204,10 @@ private:
 
         evtdist.resume(ctx);
     } // execute
+
+    void close(thread_context &ctx) override {
+        ctx.delayed_free(this);
+    }
 };
 
 } // namespace rohit

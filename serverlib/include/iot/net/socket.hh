@@ -162,8 +162,6 @@ inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
 }
 
 class socket_ssl_t : public socket_t {
-public:
-
 protected:
     static void init_openssl(bool isclient = false);
     static void cleanup_openssl();
@@ -173,6 +171,14 @@ protected:
     SSL *ssl;
 
     static SSL_CTX *create_context(bool isClient = false);
+    static int alpn_cb(
+                SSL *s, const unsigned char **out, unsigned char *outlen,
+                const unsigned char *in, unsigned int inlen, void *arg);
+
+    static int alpn_negotiate_cb(SSL *ssl,
+                                const unsigned char **out,
+                                unsigned int *outlen,
+                                void *arg);
 
     friend void init_iot(const char *logfilename, const int thread_count);
     friend void destroy_iot();
@@ -191,12 +197,16 @@ public:
             return err_t::CLOSE_FAILURE;
         }
         auto ssl_ret = SSL_accept(ssl);
-        auto ssl_error = SSL_get_error(ssl, ssl_ret);
-        if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+        if (ssl_ret <= 0) {
+            auto ssl_error = SSL_get_error(ssl, ssl_ret);
+            if (ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
+                glog.log<log_t::SOCKET_SSL_ACCEPT_RETRY>(socket_id);
+                return error_c::ssl_error_ret(ssl_error);
+            }
             glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id);
-            close();
             return error_c::ssl_error_ret(ssl_error);
         }
+
 
         glog.log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id);
         return err_t::SUCCESS;
@@ -287,6 +297,16 @@ public:
         actual_sent = ret;
         assert(actual_sent == send_len);
         return err_t::SUCCESS;
+    }
+
+    inline void get_protocol(const uint8_t *&data, size_t &len) {
+        unsigned int _len;
+        SSL_get0_alpn_selected(ssl, &data, &_len);
+
+        if (data == nullptr) {
+            SSL_get0_next_proto_negotiated(ssl, &data, &_len);
+        }
+        len = _len;
     }
 
     inline err_t close() {

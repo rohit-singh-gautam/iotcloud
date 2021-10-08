@@ -18,14 +18,81 @@ namespace rohit {
 class thread_context;
 
 class event_executor {
-private:
-    friend class event_distributor;
+protected:
+    std::atomic<int> executor_count = 0;
+    bool closed = false;   
 
     // This is pure virtual function can be called only from event_distributor
-    virtual void execute(thread_context &ctx, const uint32_t event) = 0;
+    // event is irreralevent as in our case we are following
+    // no read till all write is done and compulsary read after write
+    virtual void execute(thread_context &ctx) = 0;
+
+    // Close is not thread safe
+    // Implementation requires to care about it
+    // close also require to free itself
+    // ctx.delayed_free(this); is recommended method to free
+    virtual void close(thread_context &ctx) = 0;
+
+    friend class event_distributor;
 
 public:
-    virtual ~event_executor() { }
+    virtual ~event_executor() = default;
+
+    // Make sure to call enter loop before making this call
+    inline void execute_protector_noenter(thread_context &ctx) {
+        assert(executor_count >= 1);
+        auto loop = true;
+
+        while(loop) {
+            if (closed) {
+                close(ctx);
+
+                // No need to exit loop
+                // This will prevent other thread to enter
+                break;
+            }
+            execute(ctx);
+            loop = !exit_loop();
+        }
+    }
+
+    inline void execute_protector(thread_context &ctx) {
+        auto loop = enter_loop();
+
+        while(loop) {
+            if (closed) {
+                close(ctx);
+
+                // No need to exit loop
+                // This will prevent other thread to enter
+                break;
+            }
+            execute(ctx);
+            loop = !exit_loop();
+        }
+    }
+
+    inline void mark_closed(thread_context &ctx) {
+        closed = true;
+        auto loop = enter_loop();
+
+        // If existing thread is running
+        // it is task of existing thread to close
+        if (loop) {
+            // No need to exit loop
+            close(ctx);
+        }
+    }
+
+    bool enter_loop() {
+        auto value = executor_count++;
+        return value == 0;
+    }
+    
+    bool exit_loop() {
+        auto value = --executor_count;
+        return value == 0;
+    }
 
 }; // class event_executor
 
@@ -196,7 +263,6 @@ public:
     inline err_t add_event(const int fd, const uint32_t event, event_executor *pexecutor) {
         return evtdist.add(fd, event, pexecutor);
     }
-
 }; // class thread_context
 
 } // namespace rohit

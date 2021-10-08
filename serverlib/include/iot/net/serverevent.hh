@@ -9,7 +9,8 @@
 #include <iot/states/event_distributor.hh>
 #include <iot/states/statesentry.hh>
 #include <iot/states/states.hh>
-#include "socket.hh"
+#include <iot/net/socket.hh>
+#include <atomic>
 
 namespace rohit {
 
@@ -36,22 +37,20 @@ public:
     }
 
 
-    void execute(thread_context &ctx, const uint32_t event) override {
-        ctx.log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id, event);
-        if ((event & (EPOLLHUP | EPOLLRDHUP)) != 0) {
-            ctx.log<log_t::EVENT_SERVER_RECEIVED_CLOSED>();
-            return;
-        }
+    void execute(thread_context &ctx) override {
+        ctx.log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id);
         try {
             while(true) {
                 auto peer_id = socket_id.accept();
                 if (peer_id.is_null()) break;
                 peerevent *p_peerevent = new peerevent(peer_id);
                 peer_id.set_non_blocking();
-                p_peerevent->execute(ctx, EPOLLIN);
-
-                if (p_peerevent->get_client_state() != state_t::SERVEREVENT_MOVED) {
-                    // This is already moved we will not add it again
+                p_peerevent->execute_protector(ctx);
+                if constexpr (peerevent::movable) {
+                    if (p_peerevent->get_client_state() != state_t::SERVEREVENT_MOVED) {
+                        ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
+                    }
+                } else {
                     ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
                 }
                 ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
@@ -65,6 +64,11 @@ public:
 
     void close() {
         socket_id.close();
+    }
+
+    void close(thread_context &ctx) override {
+        socket_id.close();
+        ctx.delayed_free(this);
     }
 };
 
@@ -116,8 +120,8 @@ public:
 
 };
 
-template <bool use_ssl, bool use_lock = true>
-class serverpeerevent : public event_executor, public serverpeerevent_base, public pthread_lock_c<use_lock> {
+template <bool use_ssl>
+class serverpeerevent : public event_executor, public serverpeerevent_base {
 protected:
     socket_variant_t<use_ssl>::type peer_id;
     state_t client_state;
@@ -136,6 +140,54 @@ public:
 
     constexpr const state_t get_client_state() const { return client_state; }
 
-};
+    void write_all(thread_context &ctx);
+
+    void close(thread_context &ctx) override;
+
+}; // class serverpeerevent
+
+template <bool use_ssl>
+void serverpeerevent<use_ssl>::close(thread_context &ctx) {
+    int last_peer_id = peer_id;
+    if (last_peer_id) {
+        auto ret = peer_id.close();
+        if (ret != err_t::SOCKET_RETRY) {
+            ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
+            client_state = state_t::SOCKET_PEER_CLOSED;
+            ctx.delayed_free(this);
+        } else {
+            client_state = state_t::SOCKET_PEER_CLOSE;
+        }
+    }
+}
+
+template <bool use_ssl>
+void serverpeerevent<use_ssl>::write_all(thread_context &ctx) {
+    err_t err = err_t::SUCCESS;
+    client_state = state_t::SOCKET_PEER_EVENT;
+    while (is_write_left()) {
+        auto &write_buffer = get_write_buffer();
+
+        size_t written_length;
+        size_t write_size = write_buffer.size - write_buffer.written;
+        err = peer_id.write(write_buffer.buffer + write_buffer.written, write_size, written_length);
+        if (err == err_t::SUCCESS) {
+            assert(written_length == write_size);
+            pop_write();
+            delete[] write_buffer.buffer;
+        } else if (err == err_t::SOCKET_RETRY) {
+            assert(written_length <= write_size);
+            write_buffer.written += written_length;
+            err = err_t::SUCCESS;
+            client_state = state_t::SOCKET_PEER_WRITE;
+            break;
+        } else if (isFailure(err)) {
+            ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
+            // Removing from write queue
+            pop_write();
+            delete[] write_buffer.buffer;
+        }
+    }
+}
 
 } // namespace rohit

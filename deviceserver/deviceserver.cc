@@ -47,7 +47,7 @@ bool parse_and_display(int argc, char *argv[]) {
 typedef rohit::serverevent<rohit::iotserverevent<false>, false> serverevent_type;
 typedef rohit::serverevent<rohit::iotserverevent<true>, true> serverevent_ssl_type;
 typedef rohit::serverevent<rohit::iothttpevent<false>, false> httpevent_type;
-typedef rohit::serverevent<rohit::iothttpevent<true>, true> httpevent_ssl_type;
+typedef rohit::serverevent<rohit::iothttpsslevent, true> httpevent_ssl_type;
 
 rohit::event_distributor *evtdist = nullptr;
 std::vector<serverevent_type *> srvevts;

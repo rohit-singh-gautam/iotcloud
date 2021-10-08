@@ -18,28 +18,36 @@
 
 namespace rohit {
 
-class iotsslevent : public serverpeerevent<true> {
+class iothttpsslevent : public serverpeerevent<true> {
+public:
+    static constexpr bool movable = true;
+
 private:
     using serverpeerevent<true>::peer_id;
-    using serverpeerevent<true>::lock;
-    using serverpeerevent<true>::unlock;
+    using serverpeerevent<true>::enter_loop;
+    using serverpeerevent<true>::exit_loop;
     using serverpeerevent<true>::client_state;
     using serverpeerevent<true>::write_queue;
 
 public:
-    using serverpeerevent<true>::serverpeerevent;
+    inline iothttpsslevent(socket_ssl_t &peer_id) : serverpeerevent<true>(peer_id) { }
 
-    void execute(thread_context &ctx, const uint32_t event) override;
+    void execute(thread_context &ctx) override;
 
-    void close(thread_context &ctx);
+    using serverpeerevent<true>::write_all;
+
+    using serverpeerevent<true>::close;
 };
 
 template <bool use_ssl>
 class iothttpevent : public serverpeerevent<use_ssl> {
+public:
+    static constexpr bool movable = true;
+
 protected:
     using serverpeerevent<use_ssl>::peer_id;
-    using serverpeerevent<use_ssl>::lock;
-    using serverpeerevent<use_ssl>::unlock;
+    using serverpeerevent<use_ssl>::enter_loop;
+    using serverpeerevent<use_ssl>::exit_loop;
     using serverpeerevent<use_ssl>::client_state;
     using serverpeerevent<use_ssl>::write_queue;
 
@@ -48,26 +56,33 @@ protected:
     using serverpeerevent_base::get_write_buffer;
     using serverpeerevent_base::is_write_left;
 
+    friend class iothttpsslevent;
+
 public:
     inline iothttpevent(socket_variant_t<use_ssl>::type &peer_id) : serverpeerevent<use_ssl>(peer_id) { }
     inline iothttpevent(iothttpevent<use_ssl> &&http11event) : serverpeerevent<use_ssl>(std::move(http11event)) { }
-    inline iothttpevent(iotsslevent &&sslevent) : iothttpevent<use_ssl>(std::move(sslevent)) {
-        static_assert(use_ssl == false, "Only SSL event allowed, this function is for ALPN");
+    inline iothttpevent(iothttpsslevent &&sslevent) : serverpeerevent<use_ssl>(std::move(sslevent)) {
+        static_assert(use_ssl == true, "Only SSL event allowed, this function is for ALPN");
     }
 
-    void write_all(thread_context &ctx);
+    using serverpeerevent<use_ssl>::write_all;
 
-    void execute(thread_context &ctx, const uint32_t event) override;
+    void read_helper(thread_context &ctx);
 
-    void close(thread_context &ctx);
+    void execute(thread_context &ctx) override;
+
+    using serverpeerevent<use_ssl>::close;
 };
 
 template <bool use_ssl>
 class iothttp2event : public iothttpevent<use_ssl> {
+public:
+    static constexpr bool movable = false;
+
 protected:
     using serverpeerevent<use_ssl>::peer_id;
-    using serverpeerevent<use_ssl>::lock;
-    using serverpeerevent<use_ssl>::unlock;
+    using serverpeerevent<use_ssl>::enter_loop;
+    using serverpeerevent<use_ssl>::exit_loop;
     using serverpeerevent<use_ssl>::client_state;
     using serverpeerevent<use_ssl>::write_queue;
 
@@ -79,14 +94,15 @@ protected:
     rohit::http::v2::dynamic_table_t dynamic_table;
     rohit::http::v2::settings_store peer_settings;
 
+    friend class iothttpsslevent;
     friend class iothttpevent<use_ssl>;
 
 public:
-    inline iothttp2event(socket_variant_t<use_ssl>::type &&peer_id) : iothttpevent<use_ssl>(std::move(peer_id)) { }
-    inline iothttp2event(iotsslevent &&sslevent) : iothttpevent<use_ssl>(std::move(sslevent)) { }
+    inline iothttp2event(socket_variant_t<use_ssl>::type &&peer_id) : iothttpevent<use_ssl>(peer_id) { }
+    inline iothttp2event(iothttpsslevent &&sslevent) : iothttpevent<use_ssl>(std::move(sslevent)) { }
     inline iothttp2event(iothttpevent<use_ssl> &&http11event) : iothttpevent<use_ssl>(std::move(http11event)) { }
 
-    using iothttpevent<use_ssl>::write_all;
+    using serverpeerevent<use_ssl>::write_all;
 
     uint8_t *process_request(
                 thread_context &ctx,
@@ -98,59 +114,19 @@ public:
 
     void upgrade(thread_context &ctx, http_header_request &header, uint8_t *read_buffer);
 
-    void execute(thread_context &ctx, const uint32_t event) override;
+    template <state_t state>
+    void read_helper(thread_context &ctx);
 
-    using iothttpevent<use_ssl>::close;
+    void execute(thread_context &ctx) override;
+
+    using serverpeerevent<use_ssl>::close;
 };
-
-template <bool use_ssl>
-void iothttpevent<use_ssl>::close(thread_context &ctx) {
-    int last_peer_id = peer_id;
-    if (last_peer_id) {
-        auto ret = peer_id.close();
-        if (ret != err_t::SOCKET_RETRY) {
-            ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
-            client_state = state_t::SOCKET_PEER_CLOSED;
-        } else {
-            client_state = state_t::SOCKET_PEER_CLOSE;
-        }
-    }
-}
-
-template <bool use_ssl>
-void iothttpevent<use_ssl>::write_all(thread_context &ctx) {
-    err_t err = err_t::SUCCESS;
-    client_state = state_t::SOCKET_PEER_EVENT;
-    while (is_write_left()) {
-        auto &write_buffer = get_write_buffer();
-
-        size_t written_length;
-        size_t write_size = write_buffer.size - write_buffer.written;
-        err = peer_id.write(write_buffer.buffer + write_buffer.written, write_size, written_length);
-        if (err == err_t::SUCCESS) {
-            assert(written_length == write_size);
-            pop_write();
-            delete[] write_buffer.buffer;
-        } else if (err == err_t::SOCKET_RETRY) {
-            assert(written_length <= write_size);
-            write_buffer.written += written_length;
-            err = err_t::SUCCESS;
-            client_state = state_t::SOCKET_PEER_WRITE;
-            break;
-        } else if (isFailure(err)) {
-            ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
-            // Removing from write queue
-            pop_write();
-            delete[] write_buffer.buffer;
-        }
-    }
-}
 
 // Non SSL connection will be coming from HTTP 1.1 even
 // This is first request finally migrated to HTTP 2 request
 // read_buffer will  not contain connection_preface
 template <bool use_ssl>
-template <bool moved>
+template <bool first_frame>
 void iothttp2event<use_ssl>::process_read_buffer(
             thread_context &ctx, uint8_t *read_buffer, const size_t read_buffer_size) {
     // HTTP2 on TLS require ALPN support
@@ -160,7 +136,24 @@ void iothttp2event<use_ssl>::process_read_buffer(
     uint8_t write_buffer[write_buffer_size];
     uint8_t *pwrite_end = write_buffer;
 
-    if constexpr (moved) {
+    if constexpr (first_frame) {
+        // First frame in read buffer must be settings
+        auto pframe = (rohit::http::v2::frame *)read_buffer;
+        if (pframe->get_type() != rohit::http::v2::frame::type_t::SETTINGS) {
+            // Initiate GOAWAY
+            pwrite_end = rohit::http::v2::goaway::add_frame(
+                                write_buffer, 1, // No frame has been created hence max frame is 1
+                                rohit::http::v2::frame::error_t::PROTOCOL_ERROR,
+                                "SETTINGS expected");
+            
+            size_t write_size = pwrite_end - write_buffer;
+            uint8_t *_write_buffer = new uint8_t[write_size];
+            std::copy(write_buffer, pwrite_end, _write_buffer);
+            push_write(_write_buffer, write_size);
+            write_all(ctx);
+            close(ctx);
+            return;
+        }
         pwrite_end = rohit::http::v2::settings::add_frame(
                         pwrite_end,
                         rohit::http::v2::settings::identifier_t::SETTINGS_ENABLE_PUSH, 0,
@@ -174,10 +167,6 @@ void iothttp2event<use_ssl>::process_read_buffer(
                         read_buffer + read_buffer_size,
                         pwrite_end);
 
-    std::cout << "==== HTTP2 Parsed Request ==========================================" << std::endl;
-    std::cout << request << std::endl;
-    std::cout << "==== HTTP2 Parsed Request END ==========================================" << std::endl;
-
     if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
         pwrite_end = process_request(ctx, request, pwrite_end);
         if (write_buffer != pwrite_end) {
@@ -185,7 +174,7 @@ void iothttp2event<use_ssl>::process_read_buffer(
             uint8_t *_write_buffer = new uint8_t[write_size];
             std::copy(write_buffer, pwrite_end, _write_buffer);
             push_write(_write_buffer, write_size);
-            if (request.get_first_header() != nullptr) write_all(ctx);
+            write_all(ctx);
         }
     } else {
         if (write_buffer != pwrite_end) {
@@ -200,228 +189,214 @@ void iothttp2event<use_ssl>::process_read_buffer(
 }
 
 template <bool use_ssl>
-void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
-    lock();
-    if ((event & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
-        // TODO: Database has to be update with information that connection is closed
-        close(ctx);
-        unlock();
+void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
+    constexpr size_t read_buffer_size = 65535;//1024*1024*6; // 6MB Stack
+    char read_buffer[read_buffer_size];
+    size_t read_buffer_length;
+
+    auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
+
+    if (err == err_t::SOCKET_RETRY) {
+        // No state change required
+        return;
+    }
+    if (isFailure(err)) {
+        ctx.log<log_t::HTTP_EVENT_SERVER_READ_FAILED>(err);
         return;
     }
 
-    // if state is SOCKET_PEER_EVENT change state based on event
-    if (client_state == state_t::SOCKET_PEER_EVENT) {
-        ctx.log<log_t::IOT_EVENT_SERVER_COMMAND_RECEIVED>(peer_id.get_peer_ipv6_addr());
-        if (event & EPOLLIN) client_state = state_t::SOCKET_PEER_READ;
-        else if (event & EPOLLOUT) client_state = state_t::SOCKET_PEER_WRITE;
+    if (read_buffer_length == 0) {
+        // No data indication that wait
+        return;
     }
 
-    switch (client_state) {
-        case state_t::SOCKET_PEER_ACCEPT: {
-            // TODO: This must be moved out of this function
-            auto err = peer_id.accept();
-            if (err == err_t::SUCCESS) {
-                client_state = state_t::SOCKET_PEER_EVENT;
-            } else {
-                close(ctx);
-            }
-            break;
-        }
+    std::string request_string((char *)read_buffer, read_buffer_length);
 
+    http11driver driver;
+    auto parserret = driver.parse(request_string);
+
+    // Date is used by all hence it is created here
+    std::time_t now_time = std::time(0);   // get time now
+    std::tm* now_tm = std::gmtime(&now_time);
+    char date_str[config::max_date_string_size];
+    size_t date_str_size = strftime(date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
+
+    auto local_address = peer_id.get_local_ipv6_addr();
+    size_t write_size = 0;
+    if (parserret != err_t::SUCCESS) {
+        auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
+        write_size = (size_t)(last_write_buffer - read_buffer);
+    } if (driver.header.method == rohit::http_header_request::METHOD::PRI) {
+        if constexpr(use_ssl) {
+            // Reply in HTTP 1.1 only
+            auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
+            write_size = (size_t)(last_write_buffer - read_buffer);
+        } else {
+            if (driver.header.version == http_header::VERSION::VER_2) {                
+                // Move to HTTP 2
+                ctx.remove_event(peer_id);
+
+                // below will move current structure to std::move
+                iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
+
+                http2executor->enter_loop();
+
+                // Add http2executor to epoll
+                ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
+
+                // Execute all read and write
+                http2executor->template process_read_buffer<true>(
+                            ctx,
+                            (uint8_t *)read_buffer + rohit::http::v2::connection_preface_size,
+                            read_buffer_length - rohit::http::v2::connection_preface_size);
+
+                // This is important as we may have missed few events
+                http2executor->execute_protector_noenter(ctx);
+
+                ctx.delayed_free(this);
+                // No need to exit loop this will be freed anyway
+                return;
+            } else {
+                auto last_write_buffer = http_add_505_HTTP_Version_Not_Supported(read_buffer, local_address, date_str, date_str_size);
+                write_size = (size_t)(last_write_buffer - read_buffer);
+            }
+        }
+    } else {
+        if constexpr (!use_ssl) {
+            // SSL use only ALPN
+            // Without ALPN it will continue to be HTTP 1.1
+            // We will upgrade to HTTP2 only when settings are present
+            // Or we will fail this
+            if (driver.header.upgrade_version() == http_header::VERSION::VER_2 && 
+                driver.header.fields.find(http_header::FIELD::HTTP2_Settings) != driver.header.fields.end()) {
+                // Only version 2 is supported
+
+                // Move to HTTP 2
+                ctx.remove_event(peer_id);
+
+                // below will move current structure to std::move
+                iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
+
+                http2executor->enter_loop();
+
+                // Add http2executor to epoll
+                ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);   
+
+                // Execute all read and write
+                http2executor->upgrade(ctx, driver.header, (uint8_t *)read_buffer);
+
+                // This is important as we may have missed few events
+                http2executor->execute_protector_noenter(ctx);
+
+                ctx.delayed_free(this);
+                return;
+            }
+        }
+        
+        if (driver.header.method == rohit::http_header_request::METHOD::GET) {
+            auto port = local_address.port;
+
+            rohit::http::filemap *filemap_obj = rohit::http::webfilemap.getfilemap(port);
+            auto result = filemap_obj->cache.find(driver.header.get_path());
+            if (result == filemap_obj->cache.end()) {
+                auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
+                write_size = (size_t)(last_write_buffer - read_buffer);
+            } else {
+                auto file_details = result->second;
+
+                if (driver.header.match_etag(file_details->etags, file_details->etags_size)) {
+                    const http_header_line header_line[] = {
+                        {http_header::FIELD::Date, date_str, date_str_size},
+                        {http_header::FIELD::Server, config::web_server_name},
+                        {http_header::FIELD::ETag, file_details->etags, file_details->etags_size},
+                    };
+                    char *last_write_buffer = copy_http_header_response(
+                        read_buffer,
+                        http_header::VERSION::VER_1_1,
+                        304_rc,
+                        header_line
+                    );
+
+                    *last_write_buffer++ = '\n';
+
+                    write_size = (size_t)(last_write_buffer - read_buffer);
+                } else {
+                    const http_header_line header_line[] = {
+                        {http_header::FIELD::Date, date_str, date_str_size},
+                        {http_header::FIELD::Server, config::web_server_name},
+                        {http_header::FIELD::Cache_Control, "private, max-age=2592000"},
+                        {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
+                        {http_header::FIELD::Content_Type, file_details->content_type.ptr, file_details->content_type.size},
+                    };
+
+                    char *last_write_buffer = copy_http_response(
+                        read_buffer,
+                        http_header::VERSION::VER_1_1,
+                        200_rc,
+                        header_line,
+                        file_details->content.ptr,
+                        file_details->content.size
+                    );
+
+                    write_size = (size_t)(last_write_buffer - read_buffer);
+                }
+            }
+        }
+        else {
+            auto last_write_buffer = http_add_405_Method_Not_Allowed(read_buffer, local_address, date_str, date_str_size);
+            write_size = (size_t)(last_write_buffer - read_buffer);
+        }
+    }
+
+    uint8_t *write_buffer = new uint8_t[write_size];
+    std::copy(read_buffer, read_buffer + write_size, write_buffer);
+    push_write(write_buffer, write_size);
+    write_all(ctx);
+
+    // Tail recurssion
+    read_helper(ctx);
+}
+
+template <bool use_ssl>
+void iothttpevent<use_ssl>::execute(thread_context &ctx) {
+    switch (client_state) {
         case state_t::SOCKET_PEER_CLOSE: {
+            // This is server initiated close
+            // Socket has to be closed by server
+            // SSL may require it to call again
             close(ctx);
             break;
         }
 
+        case state_t::SOCKET_PEER_EVENT:
         case state_t::SOCKET_PEER_READ: {
-            constexpr size_t read_buffer_size = 65535;//1024*1024*6; // 6MB Stack
-            char read_buffer[read_buffer_size];
-            size_t read_buffer_length;
-
-            auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
-
-            if (err == err_t::SOCKET_RETRY) {
-                // No state change required
-                break;
-            }
-            if (isFailure(err)) {
-                ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
-                client_state = state_t::SOCKET_PEER_EVENT;
-                break;
-            }
-
-            if (read_buffer_length == 0) {
-                // No data indication that wait
-                client_state = state_t::SOCKET_PEER_EVENT;
-                break;
-            }
-
-            std::string request_string((char *)read_buffer, read_buffer_length);
-
-            http11driver driver;
-            auto parserret = driver.parse(request_string);
-            //std::cout << "------Driver Start---------\n" << driver << "\n------Driver End---------\n";
-
-            // Date is used by all hence it is created here
-            std::time_t now_time = std::time(0);   // get time now
-            std::tm* now_tm = std::gmtime(&now_time);
-            char date_str[config::max_date_string_size];
-            size_t date_str_size = strftime(date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
-
-            auto local_address = peer_id.get_local_ipv6_addr();
-            size_t write_size = 0;
-            if (parserret != err_t::SUCCESS) {
-                auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
-                write_size = (size_t)(last_write_buffer - read_buffer);
-            } if (driver.header.method == rohit::http_header_request::METHOD::PRI) {
-                if constexpr(use_ssl) {
-                    // Reply in HTTP 1.1 only
-                    auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
-                    write_size = (size_t)(last_write_buffer - read_buffer);
-                } else {
-                    if (driver.header.version == http_header::VERSION::VER_2) {                        
-                        // Move to HTTP 2
-                        ctx.remove_event(peer_id);
-
-                        // below will move current structure to std::move
-                        iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
-
-                        // Now we can unlock as no new call will come for this connection
-                        // Also, this will free up other thread if hold up in lock
-                        // As this thread is moved it is quivalent to close
-                        // Even event is removed so no new event will come in
-                        // We are avoiding one lock in this way
-                        unlock();
-
-                        // Execute all read and write
-                        http2executor->template process_read_buffer<true>(
-                                    ctx,
-                                    (uint8_t *)read_buffer + rohit::http::v2::connection_preface_size,
-                                    read_buffer_length - rohit::http::v2::connection_preface_size);
-
-                        // Add http2executor to epoll
-                        ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
-
-                        ctx.delayed_free(this);
-                        return;
-                    } else {
-                        auto last_write_buffer = http_add_505_HTTP_Version_Not_Supported(read_buffer, local_address, date_str, date_str_size);
-                        write_size = (size_t)(last_write_buffer - read_buffer);
-                    }
-                }
-            } else {
-                if constexpr (!use_ssl) {
-                    // SSL use only ALPN
-                    // Without ALPN it will continue to be HTTP 1.1
-                    // We will upgrade to HTTP2 only when settings are present
-                    // Or we will fail this
-                    if (driver.header.upgrade_version() == http_header::VERSION::VER_2 && 
-                        driver.header.fields.find(http_header::FIELD::HTTP2_Settings) != driver.header.fields.end()) {
-                        // Only version 2 is supported
-
-                        // Move to HTTP 2
-                        ctx.remove_event(peer_id);
-
-                        // below will move current structure to std::move
-                        iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
-
-                        // Mark state as moved
-                        client_state = state_t::SERVEREVENT_MOVED;
-
-                        // Now we can unlock as no new call will come for this connection
-                        // Also, this will free up other thread if hold up in lock
-                        // As this thread is moved it is quivalent to close
-                        // Even event is removed so no new event will come in
-                        // We are avoiding one lock in this way
-                        unlock();
-
-                        // Execute all read and write
-                        http2executor->upgrade(ctx, driver.header, (uint8_t *)read_buffer);
-
-                        // Add http2executor to epoll
-                        ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
-
-                        ctx.delayed_free(this);
-                        return;
-
-                    }
-                }
-                
-                if (driver.header.method == rohit::http_header_request::METHOD::GET) {
-                    auto port = local_address.port;
-
-                    rohit::http::filemap *filemap_obj = rohit::http::webfilemap.getfilemap(port);
-                    auto result = filemap_obj->cache.find(driver.header.get_path());
-                    if (result == filemap_obj->cache.end()) {
-                        auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
-                        write_size = (size_t)(last_write_buffer - read_buffer);
-                    } else {
-                        auto file_details = result->second;
-
-                        if (driver.header.match_etag(file_details->etags, file_details->etags_size)) {
-                            const http_header_line header_line[] = {
-                                {http_header::FIELD::Date, date_str, date_str_size},
-                                {http_header::FIELD::Server, config::web_server_name},
-                                {http_header::FIELD::ETag, file_details->etags, file_details->etags_size},
-                            };
-                            char *last_write_buffer = copy_http_header_response(
-                                read_buffer,
-                                http_header::VERSION::VER_1_1,
-                                304_rc,
-                                header_line
-                            );
-
-                            *last_write_buffer++ = '\n';
-
-                            write_size = (size_t)(last_write_buffer - read_buffer);
-                        } else {
-                            const http_header_line header_line[] = {
-                                {http_header::FIELD::Date, date_str, date_str_size},
-                                {http_header::FIELD::Server, config::web_server_name},
-                                {http_header::FIELD::Cache_Control, "private, max-age=2592000"},
-                                {http_header::FIELD::ETag, file_details->etags, rohit::http::file_info::etags_size},
-                                {http_header::FIELD::Content_Type, file_details->content_type.ptr, file_details->content_type.size},
-                            };
-
-                            char *last_write_buffer = copy_http_response(
-                                read_buffer,
-                                http_header::VERSION::VER_1_1,
-                                200_rc,
-                                header_line,
-                                file_details->content.ptr,
-                                file_details->content.size
-                            );
-
-                            write_size = (size_t)(last_write_buffer - read_buffer);
-                        }
-                    }
-                }
-                else {
-                    auto last_write_buffer = http_add_405_Method_Not_Allowed(read_buffer, local_address, date_str, date_str_size);
-                    write_size = (size_t)(last_write_buffer - read_buffer);
-                }
-            }
-
-            uint8_t *write_buffer = new uint8_t[write_size];
-            std::copy(read_buffer, read_buffer + write_size, write_buffer);
-            push_write(write_buffer, write_size);
-            write_all(ctx);
+            read_helper(ctx);
             break;
         }
 
         case state_t::SOCKET_PEER_WRITE: {
             write_all(ctx);
+            read_helper(ctx);
             break;
         }
 
         case state_t::SERVEREVENT_MOVED: {
             // This event is move to HTTP 2.0
+            // We must never reach here
+            ctx.log<log_t::EVENT_SERVER_MOVED_ENTERED>();
             break;
         }
-    }
 
-    unlock();
-} // void iothttpevent<use_ssl>::execute(thread_context &ctx, const uint32_t event)
+        case state_t::SOCKET_PEER_CLOSED:
+            // This has to be ignored
+            break;
+
+        default:
+            // We must never reach here
+            ctx.log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
+            break;
+    }
+} // void iothttpevent<use_ssl>::execute(thread_context &ctx)
 
 // Upgrade is for non TLS only
 // HTTP 1.1 for connection without prior knowledge will call this
@@ -558,85 +533,71 @@ uint8_t *iothttp2event<use_ssl>::process_request(
 }
 
 template <bool use_ssl>
-void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) {
-    lock();
-    if ((event & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
-        // TODO: Database has to be update with information that connection is closed
-        close(ctx);
-        unlock();
+template <state_t state>
+void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
+    constexpr size_t read_buffer_size = 65535; // max read length
+    uint8_t read_buffer[read_buffer_size];
+    size_t read_buffer_length;
+
+    auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
+
+    if (err == err_t::SOCKET_RETRY) {
+        // No state change required
+        return;
+    }
+    if (isFailure(err)) {
+        ctx.log<log_t::HTTP2_EVENT_SERVER_READ_FAILED>(err);
         return;
     }
 
-    // if state is SOCKET_PEER_EVENT change state based on event
-    if (client_state == state_t::SOCKET_PEER_EVENT) {
-        ctx.log<log_t::IOT_EVENT_SERVER_COMMAND_RECEIVED>(peer_id.get_peer_ipv6_addr());
-        if (event & EPOLLIN) client_state = state_t::SOCKET_PEER_READ;
-        else if (event & EPOLLOUT) client_state = state_t::SOCKET_PEER_WRITE;
+    if (read_buffer_length == 0) {
+        // No data indication that wait
+        return;
     }
 
+    if constexpr (state == state_t::HTTP2_NEXT_MAGIC) {
+        std::string str_data((char *)read_buffer, rohit::http::v2::connection_preface_size);
+
+        if (read_buffer_length < rohit::http::v2::connection_preface_size ||
+            strncmp((char *)read_buffer, rohit::http::v2::connection_preface, rohit::http::v2::connection_preface_size))
+        {
+            // This is bad request
+            close(ctx);
+        }
+        
+        auto new_read_buffer = read_buffer + rohit::http::v2::connection_preface_size;
+        auto new_read_buffer_length = read_buffer_length - rohit::http::v2::connection_preface_size;
+
+        if (new_read_buffer_length == 0) {
+            client_state = state_t::HTTP2_FIRST_FRAME;
+            return;
+        } else {
+            client_state = state_t::SOCKET_PEER_EVENT;
+            process_read_buffer<true>(ctx, new_read_buffer, new_read_buffer_length);
+        }
+    } else {
+        process_read_buffer<state == state_t::HTTP2_FIRST_FRAME>(ctx, read_buffer, read_buffer_length);
+    }
+
+    read_helper<state_t::SOCKET_PEER_READ>(ctx);
+}
+
+template <bool use_ssl>
+void iothttp2event<use_ssl>::execute(thread_context &ctx) {
     switch (client_state) {
-        case state_t::SOCKET_PEER_ACCEPT: {
-            // TODO: This must be moved out of this function
-            auto err = peer_id.accept();
-            if (err == err_t::SUCCESS) {
-                client_state = state_t::SOCKET_PEER_EVENT;
-            } else {
-                close(ctx);
-            }
-            break;
-        }
-
         case state_t::HTTP2_NEXT_MAGIC: {
-            constexpr size_t read_buffer_size = 65535; // max read length
-            uint8_t read_buffer[read_buffer_size];
-            size_t read_buffer_length;
-
-            auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
-
-            if (err == err_t::SOCKET_RETRY) {
-                // No state change required
-                break;
-            }
-            if (isFailure(err)) {
-                ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
-                client_state = state_t::SOCKET_PEER_EVENT;
-                break;
-            }
-
-            if (read_buffer_length == 0) {
-                // No data indication that wait
-                client_state = state_t::SOCKET_PEER_EVENT;
-                break;
-            }
-
-            process_read_buffer<false>(ctx, read_buffer, read_buffer_length);
+            read_helper<state_t::HTTP2_NEXT_MAGIC>(ctx);
             break;
         }
 
+        case state_t::HTTP2_FIRST_FRAME: {
+            read_helper<state_t::HTTP2_FIRST_FRAME>(ctx);
+            break;
+        }
+
+        case state_t::SOCKET_PEER_EVENT:
         case state_t::SOCKET_PEER_READ: {
-            constexpr size_t read_buffer_size = 65535; // max read length
-            uint8_t read_buffer[read_buffer_size];
-            size_t read_buffer_length;
-
-            auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
-
-            if (err == err_t::SOCKET_RETRY) {
-                // No state change required
-                break;
-            }
-            if (isFailure(err)) {
-                ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
-                client_state = state_t::SOCKET_PEER_EVENT;
-                break;
-            }
-
-            if (read_buffer_length == 0) {
-                // No data indication that wait
-                client_state = state_t::SOCKET_PEER_EVENT;
-                break;
-            }
-
-            process_read_buffer<false>(ctx, read_buffer, read_buffer_length);
+            read_helper<state_t::SOCKET_PEER_READ>(ctx);
             break;
         }
 
@@ -644,15 +605,21 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx, const uint32_t event) 
             close(ctx);
             break;
         }
+        case state_t::SOCKET_PEER_CLOSED:
+            // This has to be ignored
+            break;
 
         case state_t::SOCKET_PEER_WRITE: {
             write_all(ctx);
+            read_helper<state_t::SOCKET_PEER_READ>(ctx);
             break;
         }
 
+        default:
+            // We must never reach here
+            ctx.log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
+            break;
     }
-
-    unlock();
 }
 
 } // namespace rohit

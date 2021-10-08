@@ -8,6 +8,7 @@
 #include <iot/states/event_distributor.hh>
 #include <sys/eventfd.h>
 #include <pthread.h>
+#include <atomic>
 
 namespace rohit {
 
@@ -22,12 +23,12 @@ private:
     event_distributor &evtdist;
     const int evtfd;
 
-    int pause_count;
+    std::atomic<int> pause_count = 0;
     pthread_mutex_t pause_mutex;
 
 public:
     inline helperevent_executor(event_distributor &evtdist)
-                : evtdist(evtdist), evtfd(eventfd(1, EFD_NONBLOCK)), pause_count(0)
+                : evtdist(evtdist), evtfd(eventfd(1, EFD_NONBLOCK))
     {
         if (evtfd == -1) {
             glog.log<log_t::FILEWATCHER_EVENT_CREATE_FAILED>();
@@ -38,7 +39,7 @@ public:
     }
 
     ~helperevent_executor() {        
-        close(evtfd);
+        ::close(evtfd);
         pthread_mutex_destroy(&pause_mutex);
     }
 
@@ -59,7 +60,7 @@ public:
     // Returns true if pause from current thread
     inline bool pause_all_thread(thread_context &ctx) {
         ctx.log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
-        auto last_pause_count = __sync_fetch_and_add(&pause_count, 1);
+        auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
         if (last_pause_count == 0) { // This will protect from muliple thread calling this function
             const auto thread_count = evtdist.get_thread_count();
@@ -92,19 +93,14 @@ public:
 private:
     inline void pause(thread_context &ctx) {
         ctx.log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
-        auto last_pause_count = __sync_fetch_and_add(&pause_count, 1);
+        auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
         --pause_count; // This is already syncronized
         pthread_mutex_unlock(&pause_mutex);
         ctx.log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
     }
 
-    inline void execute(thread_context &ctx, const uint32_t poll_event) override {
-        if ((poll_event & EPOLLIN) == 0) {
-            ctx.log<log_t::EVENT_SERVER_HELPER_ONLY_READ_SUPPORTED>();
-            return;
-        }
-
+    inline void execute(thread_context &ctx) override {
         help_event message;
         int len;
 
@@ -123,7 +119,10 @@ private:
             ctx.log<log_t::EVENT_SERVER_HELPER_UNKNOWN>();
             break;
         }
+    }
 
+    void close(thread_context &ctx) override {
+        ctx.delayed_free(this);
     }
 };
 
