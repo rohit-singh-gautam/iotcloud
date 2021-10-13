@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <iot/core/types.hh>
 #include <stdint.h>
 #include <stddef.h>
 #include <type_traits>
@@ -76,9 +77,8 @@ constexpr uint8_t from_base64[] {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 240 - 255
 };
 
-template <typename T, T radix = 10, number_case number_case = number_case::lower, bool null_terminated = true>
+template <std::integral T, T radix = 10, number_case number_case = number_case::lower, bool null_terminated = true>
 constexpr size_t to_string(T val, char * const dest) {
-    static_assert(std::is_integral_v<T>, "Only integral type allowed");
     static_assert(!std::is_signed<T>::value || (std::is_signed<T>::value && radix == 10), "Signed type only allowed for radix 10" );
     static_assert(radix >= 2, "Radix must be atleast 2");
     static_assert(radix <= 36, "Radix more than 36 not supported");
@@ -107,9 +107,8 @@ constexpr size_t to_string(T val, char * const dest) {
     return (size_t)(dest_ptr - dest);
 }
 
-template <typename T, bool null_terminated = true> 
+template <std::floating_point T, bool null_terminated = true> 
 constexpr size_t floatToString(char *dest, T val) {
-    static_assert(std::is_floating_point_v<T>, "Only floating point type allowed");
     size_t ret = sprintf(dest, "%f", val);
 
     if constexpr (null_terminated == true) {
@@ -119,9 +118,8 @@ constexpr size_t floatToString(char *dest, T val) {
     return ret;
 }
 
-template <typename T, T radix = 10>
+template <std::unsigned_integral T, T radix = 10>
 constexpr T to_uint(const char *src, size_t *len = nullptr) {
-    static_assert(std::is_integral_v<T> && std::is_unsigned_v<T>, "Only unsigned integral type allowed");
     T val = 0;
     char current = 0;
     const char *psrc = src;
@@ -137,9 +135,8 @@ constexpr T to_uint(const char *src, size_t *len = nullptr) {
     return val;
 }
 
-template <typename T, T radix = 10>
+template <std::signed_integral T, T radix = 10>
 constexpr T to_int(const char *src, size_t *len = nullptr) {
-    static_assert(std::is_integral_v<T> && std::is_signed_v<T>, "Only signed integral type allowed");
     T val = 0;
     char current = 0;
     const char *psrc = src;
@@ -168,7 +165,7 @@ constexpr T to_int(const char *src, size_t *len = nullptr) {
     return val * sign;
 }
 
-template <typename T, bool null_terminated = true>
+template <std::integral T, bool null_terminated = true>
 constexpr size_t to_string64_hash() {
     size_t value = (sizeof(T) * 8 + 5) / 6;
     if constexpr (null_terminated) {
@@ -177,10 +174,8 @@ constexpr size_t to_string64_hash() {
     return value;
 }
 
-template <typename T, bool null_terminated = true>
+template <std::integral T, bool null_terminated = true>
 constexpr size_t to_string64_hash(T val, char * const dest) {
-    static_assert(std::is_integral_v<T>, "Only integral type allowed");
-
     char * dest_ptr = dest;
     constexpr auto total_bits = sizeof(T) * 8;
 
@@ -199,8 +194,8 @@ constexpr size_t to_string64_hash(T val, char * const dest) {
     return (size_t)(dest_ptr - dest);
 }
 
-template <typename CHAR_TYPE>
-constexpr size_t base64_decode_len(const CHAR_TYPE * const buffer, const size_t buffer_len) {
+template <byte_type BYTE_TYPE>
+constexpr size_t base64_decode_len(const BYTE_TYPE * const buffer, const size_t buffer_len) {
     if (buffer_len < 4) return 0;
     size_t decode_len = (buffer_len * 3) / 4;
     if (buffer[buffer_len - 2] == '=') return decode_len - 2;
@@ -209,12 +204,12 @@ constexpr size_t base64_decode_len(const CHAR_TYPE * const buffer, const size_t 
     return decode_len;
 }
 
-template <typename CHAR_TYPE>
-constexpr uint8_t * base64_decode(const CHAR_TYPE *const buffer, const size_t buffer_len, uint8_t *dest) {
-    const CHAR_TYPE *pstart = buffer;
+template <byte_type BYTE_TYPE>
+constexpr uint8_t * base64_decode(const BYTE_TYPE *const buffer, const size_t buffer_len, uint8_t *dest) {
+    const BYTE_TYPE *pstart = buffer;
     // Just making sure that len is multiple of 4
     // Bad request can cause buffer overflow
-    const CHAR_TYPE *pend = buffer + (buffer_len & (~0x03));
+    const BYTE_TYPE *pend = buffer + (buffer_len & (~0x03));
 
     while(pstart < pend) {
         uint8_t val1 = from_base64[*pstart++];

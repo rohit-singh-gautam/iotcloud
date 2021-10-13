@@ -15,6 +15,9 @@
 struct sockaddr_in6;
 namespace rohit {
 
+template <typename BYTE_TYPE>
+concept byte_type = std::is_same_v<BYTE_TYPE, char> || std::is_same_v<BYTE_TYPE, uint8_t>;
+
 template <typename T, size_t N>
 constexpr size_t _sizeof(const T (&)[N]) {
     return N;

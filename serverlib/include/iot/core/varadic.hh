@@ -11,14 +11,10 @@
 
 namespace rohit {
 
-template <typename T>
-constexpr size_t sizeofvaargs(const T& arg) {
-    return sizeof(arg);
-}
-
 template <typename T, typename... ARGS>
 constexpr size_t sizeofvaargs(const T& arg, const ARGS&... args) {
-    return sizeofvaargs(arg) + sizeofvaargs(args...);
+    static_assert(!std::is_pointer_v<T>, "Pointer type of variable argument no supported");
+    return sizeof(arg) + sizeofvaargs(args...);
 }
 
 template <typename T>

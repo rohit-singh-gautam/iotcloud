@@ -263,6 +263,10 @@ public:
     inline err_t add_event(const int fd, const uint32_t event, event_executor *pexecutor) {
         return evtdist.add(fd, event, pexecutor);
     }
+
+    static constexpr size_t buffer_size = 16384;
+    uint8_t read_buffer[buffer_size]; // Read buffer size;
+    uint8_t write_buffer[buffer_size]; // Write buffer size
 }; // class thread_context
 
 } // namespace rohit
