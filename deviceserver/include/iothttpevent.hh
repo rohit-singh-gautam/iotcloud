@@ -111,7 +111,7 @@ public:
     template <bool moved>
     void process_read_buffer(thread_context &ctx, uint8_t *read_buffer, const size_t read_buffer_size);
 
-    void upgrade(thread_context &ctx, http_header_request &header, uint8_t *read_buffer);
+    void upgrade(thread_context &ctx, http_header_request &header);
 
     template <state_t state>
     void read_helper(thread_context &ctx);
@@ -143,7 +143,7 @@ void iothttp2event<use_ssl>::process_read_buffer(
                                 write_buffer, 1, // No frame has been created hence max frame is 1
                                 rohit::http::v2::frame::error_t::PROTOCOL_ERROR,
                                 "SETTINGS expected");
-            
+
             size_t write_size = pwrite_end - write_buffer;
             uint8_t *_write_buffer = new uint8_t[write_size];
             std::copy(write_buffer, pwrite_end, _write_buffer);
@@ -152,6 +152,7 @@ void iothttp2event<use_ssl>::process_read_buffer(
             close(ctx);
             return;
         }
+
         pwrite_end = rohit::http::v2::settings::add_frame(
                         pwrite_end,
                         rohit::http::v2::settings::identifier_t::SETTINGS_ENABLE_PUSH, 0,
@@ -182,8 +183,8 @@ void iothttp2event<use_ssl>::process_read_buffer(
 
 template <bool use_ssl>
 void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
-    constexpr size_t read_buffer_size = 65535;//1024*1024*6; // 6MB Stack
-    char read_buffer[read_buffer_size];
+    constexpr size_t read_buffer_size = thread_context::buffer_size;
+    auto read_buffer = ctx.read_buffer;
     size_t read_buffer_length;
 
     auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
@@ -210,19 +211,21 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
     // Date is used by all hence it is created here
     std::time_t now_time = std::time(0);   // get time now
     std::tm* now_tm = std::gmtime(&now_time);
-    char date_str[config::max_date_string_size];
-    size_t date_str_size = strftime(date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
+    uint8_t date_str[config::max_date_string_size];
+    size_t date_str_size = strftime((char *)date_str, config::max_date_string_size, "%a, %d %b %Y %H:%M:%S %Z", now_tm) + 1;
+
+    auto write_buffer = ctx.write_buffer;
 
     auto local_address = peer_id.get_local_ipv6_addr();
     size_t write_size = 0;
     if (parserret != err_t::SUCCESS) {
-        auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
-        write_size = (size_t)(last_write_buffer - read_buffer);
+        auto last_write_buffer = http_add_400_Bad_Request(write_buffer, local_address, date_str, date_str_size);
+        write_size = (size_t)(last_write_buffer - write_buffer);
     } if (driver.header.method == rohit::http_header_request::METHOD::PRI) {
         if constexpr(use_ssl) {
             // Reply in HTTP 1.1 only
-            auto last_write_buffer = http_add_400_Bad_Request(read_buffer, local_address, date_str, date_str_size);
-            write_size = (size_t)(last_write_buffer - read_buffer);
+            auto last_write_buffer = http_add_400_Bad_Request(write_buffer, local_address, date_str, date_str_size);
+            write_size = (size_t)(last_write_buffer - write_buffer);
         } else {
             if (driver.header.version == http_header::VERSION::VER_2) {                
                 // Move to HTTP 2
@@ -237,10 +240,14 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                 ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
 
                 // Execute all read and write
-                http2executor->template process_read_buffer<true>(
-                            ctx,
-                            (uint8_t *)read_buffer + rohit::http::v2::connection_preface_size,
-                            read_buffer_length - rohit::http::v2::connection_preface_size);
+                auto new_read_buffer = read_buffer + rohit::http::v2::connection_preface_size;
+                auto new_read_buffer_length = read_buffer_length - rohit::http::v2::connection_preface_size;
+
+                if (new_read_buffer_length == 0) {
+                    http2executor->client_state = state_t::HTTP2_FIRST_FRAME;
+                } else {
+                    http2executor->template process_read_buffer<true>(ctx, new_read_buffer, new_read_buffer_length);
+                }
 
                 // This is important as we may have missed few events
                 http2executor->execute_protector_noenter(ctx);
@@ -249,8 +256,8 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                 // No need to exit loop this will be freed anyway
                 return;
             } else {
-                auto last_write_buffer = http_add_505_HTTP_Version_Not_Supported(read_buffer, local_address, date_str, date_str_size);
-                write_size = (size_t)(last_write_buffer - read_buffer);
+                auto last_write_buffer = http_add_505_HTTP_Version_Not_Supported(write_buffer, local_address, date_str, date_str_size);
+                write_size = (size_t)(last_write_buffer - write_buffer);
             }
         }
     } else {
@@ -275,7 +282,7 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                 ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);   
 
                 // Execute all read and write
-                http2executor->upgrade(ctx, driver.header, (uint8_t *)read_buffer);
+                http2executor->upgrade(ctx, driver.header);
 
                 // This is important as we may have missed few events
                 http2executor->execute_protector_noenter(ctx);
@@ -291,8 +298,8 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
             rohit::http::filemap *filemap_obj = rohit::http::webfilemap.getfilemap(port);
             auto result = filemap_obj->cache.find(driver.header.get_path());
             if (result == filemap_obj->cache.end()) {
-                auto last_write_buffer = http_add_404_Not_Found(read_buffer, local_address, date_str, date_str_size);
-                write_size = (size_t)(last_write_buffer - read_buffer);
+                auto last_write_buffer = http_add_404_Not_Found(write_buffer, local_address, date_str, date_str_size);
+                write_size = (size_t)(last_write_buffer - write_buffer);
             } else {
                 auto file_details = result->second;
 
@@ -302,8 +309,8 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                         {http_header::FIELD::Server, config::web_server_name},
                         {http_header::FIELD::ETag, file_details->etags, file_details->etags_size},
                     };
-                    char *last_write_buffer = copy_http_header_response(
-                        read_buffer,
+                    auto *last_write_buffer = copy_http_header_response(
+                        write_buffer,
                         http_header::VERSION::VER_1_1,
                         304_rc,
                         header_line
@@ -311,7 +318,7 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
 
                     *last_write_buffer++ = '\n';
 
-                    write_size = (size_t)(last_write_buffer - read_buffer);
+                    write_size = (size_t)(last_write_buffer - write_buffer);
                 } else {
                     const http_header_line header_line[] = {
                         {http_header::FIELD::Date, date_str, date_str_size},
@@ -321,28 +328,42 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                         {http_header::FIELD::Content_Type, file_details->content_type.ptr, file_details->content_type.size},
                     };
 
-                    char *last_write_buffer = copy_http_response(
-                        read_buffer,
+                    auto last_write_buffer = copy_http_header_response(
+                        write_buffer,
                         http_header::VERSION::VER_1_1,
                         200_rc,
-                        header_line,
-                        file_details->content.ptr,
-                        file_details->content.size
+                        header_line
                     );
 
-                    write_size = (size_t)(last_write_buffer - read_buffer);
+                    last_write_buffer = copy_http_response_content_length(last_write_buffer, file_details->content.size);
+
+                    const auto write_size_header = (size_t)(last_write_buffer - write_buffer);
+
+                    auto _write_buffer = new uint8_t[write_size_header + 2 + file_details->content.size];
+                    last_write_buffer = std::copy(write_buffer, write_buffer + write_size_header, _write_buffer);
+                    *last_write_buffer++ = '\r';
+                    *last_write_buffer++ = '\n';
+                    last_write_buffer = std::copy(
+                                            file_details->content.begin(),
+                                            file_details->content.end(),
+                                            last_write_buffer);
+
+                    const auto write_size_full = (size_t)(last_write_buffer - _write_buffer);
+                    push_write(_write_buffer, write_size_full);
                 }
             }
         }
         else {
-            auto last_write_buffer = http_add_405_Method_Not_Allowed(read_buffer, local_address, date_str, date_str_size);
-            write_size = (size_t)(last_write_buffer - read_buffer);
+            auto last_write_buffer = http_add_405_Method_Not_Allowed(write_buffer, local_address, date_str, date_str_size);
+            write_size = (size_t)(last_write_buffer - write_buffer);
         }
     }
 
-    uint8_t *write_buffer = new uint8_t[write_size];
-    std::copy(read_buffer, read_buffer + write_size, write_buffer);
-    push_write(write_buffer, write_size);
+    if (write_size != 0) {
+        auto _write_buffer = new uint8_t[write_size];
+        std::copy(write_buffer, write_buffer + write_size, _write_buffer);
+        push_write(_write_buffer, write_size);
+    }
     write_all(ctx);
 
     // Tail recurssion
@@ -394,7 +415,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx) {
 // HTTP 1.1 for connection without prior knowledge will call this
 template <bool use_ssl>
 void iothttp2event<use_ssl>::upgrade(
-            thread_context &ctx, http_header_request &header, uint8_t *read_buffer) {
+            thread_context &ctx, http_header_request &header) {
     // HTTP2 on TLS require ALPN support
     // Hence this function will never be called for TLS
 
@@ -403,9 +424,9 @@ void iothttp2event<use_ssl>::upgrade(
     std::string setting = header.fields.at(http_header::FIELD::HTTP2_Settings);    
     peer_settings.parse_base64_frame((uint8_t *)setting.c_str(), setting.size());
 
-    constexpr size_t write_buffer_size = 1024*1024*6; // 6MB Stack
-    uint8_t write_buffer[write_buffer_size];
-    uint8_t *pwrite_end = write_buffer;
+    constexpr size_t write_buffer_size = ctx.buffer_size;
+    auto write_buffer = ctx.write_buffer;
+    auto pwrite_end = write_buffer;
 
     // Adding upgrade packet
     const http_header_line header_line[] = {
@@ -413,8 +434,8 @@ void iothttp2event<use_ssl>::upgrade(
         {http_header::FIELD::Upgrade, "h2c"},
     };
 
-    pwrite_end = (uint8_t*)copy_http_header_response(
-        (char*)pwrite_end,
+    pwrite_end = copy_http_header_response(
+        pwrite_end,
         http_header::VERSION::VER_1_1,
         101_rc,
         header_line
@@ -430,7 +451,7 @@ void iothttp2event<use_ssl>::upgrade(
                         rohit::http::v2::settings::identifier_t::SETTINGS_MAX_CONCURRENT_STREAMS, 100,
                         rohit::http::v2::settings::identifier_t::SETTINGS_INITIAL_WINDOW_SIZE, 1048576,
                         rohit::http::v2::settings::identifier_t::SETTINGS_HEADER_TABLE_SIZE, 2048);
- 
+
     pwrite_end = rohit::http::v2::settings::add_ack_frame(pwrite_end);
     size_t write_size = pwrite_end - write_buffer;
     uint8_t *_write_buffer = new uint8_t[write_size];
@@ -603,6 +624,8 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
         {
             // This is bad request
             close(ctx);
+            std::cout << "This is bad request hence closing" << std::endl;
+            return;
         }
         
         auto new_read_buffer = read_buffer + rohit::http::v2::connection_preface_size;
@@ -619,7 +642,7 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
         process_read_buffer<state == state_t::HTTP2_FIRST_FRAME>(ctx, read_buffer, read_buffer_length);
     }
 
-    read_helper<state_t::SOCKET_PEER_READ>(ctx);
+    if constexpr (use_ssl) read_helper<state_t::SOCKET_PEER_READ>(ctx);
 }
 
 template <bool use_ssl>

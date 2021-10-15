@@ -43,8 +43,11 @@ public:
             while(true) {
                 auto peer_id = socket_id.accept();
                 if (peer_id.is_null()) break;
+                const auto non_blocking = peer_id.set_non_blocking();
+                if (!non_blocking) {
+                    ctx.log<log_t::SOCKET_SET_NONBLOCKING_FAILED>((int)peer_id);
+                }
                 peerevent *p_peerevent = new peerevent(peer_id);
-                peer_id.set_non_blocking();
                 p_peerevent->execute_protector(ctx);
                 if constexpr (peerevent::movable) {
                     if (p_peerevent->get_client_state() != state_t::SERVEREVENT_MOVED) {

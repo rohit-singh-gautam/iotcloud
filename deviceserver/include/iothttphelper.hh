@@ -10,28 +10,28 @@
 
 namespace rohit {
 
-char *http_add_404_Not_Found(
-            char *const buffer,
+uint8_t *http_add_404_Not_Found(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size);
 
-char *http_add_400_Bad_Request(
-            char *const buffer,
+uint8_t *http_add_400_Bad_Request(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size);
 
-char *http_add_405_Method_Not_Allowed(
-            char *const buffer,
+uint8_t *http_add_405_Method_Not_Allowed(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size);
 
-char *http_add_505_HTTP_Version_Not_Supported(
-            char *const buffer,
+uint8_t *http_add_505_HTTP_Version_Not_Supported(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size);
 
 template <http_header::CODE code, size_t message_size>
@@ -42,7 +42,7 @@ uint8_t *http2_add_error_html(
     const ipv6_socket_addr_t &local_address,
     const uint8_t *date_str,
     const size_t date_str_size,
-    const char (&message)[message_size])
+    const uint8_t (&message)[message_size])
 {
     rohit::http::v2::frame *pframe = (rohit::http::v2::frame *)buffer;
     buffer += sizeof(rohit::http::v2::frame);
@@ -55,8 +55,8 @@ uint8_t *http2_add_error_html(
     if constexpr (code == 405_rc)
         buffer = request.copy_http_header_response(buffer, http_header::FIELD::Allow, "GET, PRI", true);
 
-    char body[1024] = {0};
-    char *last_write_body = http11_error_html<http_header::CODE::_404>(body, message, local_address);
+    uint8_t body[1024] = {0};
+    uint8_t *last_write_body = http11_error_html<http_header::CODE::_404>(body, message, local_address);
     const size_t content_length = (size_t)(last_write_body - body);
     buffer = request.copy_http_header_response(buffer, http_header::FIELD::Content_Length, content_length, true);
 
@@ -86,9 +86,9 @@ inline uint8_t *http2_add_404_Not_Found(
             const uint8_t *date_str,
             const size_t date_str_size)
 {
+    const uint8_t message[] = "<p>The requested URL was not found on this server.</p>";
     return http2_add_error_html<404_rc>(
-        buffer, request, header, local_address, date_str, date_str_size,
-        "<p>The requested URL was not found on this server.</p>");
+        buffer, request, header, local_address, date_str, date_str_size, message);
 }
 
 inline uint8_t *http2_add_400_Bad_Request(
@@ -99,10 +99,11 @@ inline uint8_t *http2_add_400_Bad_Request(
             const uint8_t *date_str,
             const size_t date_str_size)
 {
-    return http2_add_error_html<400_rc>(
-        buffer, request, header, local_address, date_str, date_str_size,
+    const uint8_t message[] =
         "<p>Server was unable to parse your http request.</p>"
-        "<p>Are you trying to make https request on http port?</p>");
+        "<p>Are you trying to make https request on http port?</p>";
+    return http2_add_error_html<400_rc>(
+        buffer, request, header, local_address, date_str, date_str_size, message);
 }
 
 inline uint8_t *http2_add_405_Method_Not_Allowed(
@@ -113,9 +114,9 @@ inline uint8_t *http2_add_405_Method_Not_Allowed(
             const uint8_t *date_str,
             const size_t date_str_size)
 {
+    const uint8_t message[] = "<p>This method is not supported by server.</p>";
     return http2_add_error_html<405_rc>(
-        buffer, request, header, local_address, date_str, date_str_size,
-        "<p>This method is not supported by server.</p>");
+        buffer, request, header, local_address, date_str, date_str_size, message);
 }
 
 inline uint8_t *http_add_505_HTTP_Version_Not_Supported(
@@ -126,9 +127,9 @@ inline uint8_t *http_add_505_HTTP_Version_Not_Supported(
             const uint8_t *date_str,
             const size_t date_str_size)
 {
+    const uint8_t message[] = "<p>This HTTP version is not supported by server.</p>";
     return http2_add_error_html<505_rc>(
-        buffer, request, header, local_address, date_str, date_str_size,
-        "<p>This HTTP version is not supported by server.</p>");
+        buffer, request, header, local_address, date_str, date_str_size, message);
 }
 
 } // namespace rohit

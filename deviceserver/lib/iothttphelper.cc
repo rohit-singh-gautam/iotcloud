@@ -9,10 +9,10 @@
 
 namespace rohit {
 
-char *http_add_404_Not_Found(
-            char *const buffer,
+uint8_t *http_add_404_Not_Found(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size)
 {
     const http_header_line header_line[] = {
@@ -21,27 +21,28 @@ char *http_add_404_Not_Found(
         {http_header::FIELD::Content_Type, "text/html"},
     };
 
-    char *last_write_buffer = copy_http_header_response(
+    auto last_write_buffer = copy_http_header_response(
         buffer,
         http_header::VERSION::VER_1_1,
         404_rc,
         header_line
     );
     
-    char body[1024] = {0};
-    char *last_write_body = body;
+    uint8_t body[1024] = {0};
+    uint8_t *last_write_body = body;
 
-    const char message[] =
+    const uint8_t message[] =
                 "<p>The requested URL was not found on this server.</p>";
     last_write_body = http11_error_html<http_header::CODE::_404>(last_write_body, message, local_address);
 
-    char content_length[10];
+    uint8_t content_length[10];
     size_t content_length_size = to_string((size_t)(last_write_body - body), content_length);
     const http_header_line length_line(http_header::FIELD::Content_Length, content_length, content_length_size);
     last_write_buffer = copy_http_header_response(
         last_write_buffer,
         length_line
     );
+    *last_write_buffer++ = '\r';
     *last_write_buffer++ = '\n';
 
     last_write_buffer = std::copy(body, last_write_body, last_write_buffer);
@@ -49,10 +50,10 @@ char *http_add_404_Not_Found(
     return last_write_buffer;
 }
 
-char *http_add_400_Bad_Request(
-            char *const buffer,
+uint8_t *http_add_400_Bad_Request(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size)
 {
     const http_header_line header_line[] = {
@@ -62,17 +63,17 @@ char *http_add_400_Bad_Request(
         {http_header::FIELD::Connection, "close"},
     };
 
-    char *last_write_buffer = copy_http_header_response(
+    uint8_t *last_write_buffer = copy_http_header_response(
         buffer,
         http_header::VERSION::VER_1_1,
         400_rc,
         header_line
     );
     
-    char body[1024] = {0};
-    char *last_write_body = body;
+    uint8_t body[1024] = {0};
+    uint8_t *last_write_body = body;
 
-    const char message[] =
+    const uint8_t message[] =
                 "<p>Server was unable to parse your http request.</p>"
                 "<p>Are you trying to make https request on http port?</p>";
     last_write_body = http11_error_html<http_header::CODE::_400>(last_write_body, message, local_address);
@@ -84,6 +85,7 @@ char *http_add_400_Bad_Request(
         last_write_buffer,
         length_line
     );
+    *last_write_buffer++ = '\r';
     *last_write_buffer++ = '\n';
 
     last_write_buffer = std::copy(body, last_write_body, last_write_buffer);
@@ -91,10 +93,10 @@ char *http_add_400_Bad_Request(
     return last_write_buffer;
 }
 
-char *http_add_405_Method_Not_Allowed(
-            char *const buffer,
+uint8_t *http_add_405_Method_Not_Allowed(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size)
 {
     const http_header_line header_line[] = {
@@ -104,27 +106,28 @@ char *http_add_405_Method_Not_Allowed(
         {http_header::FIELD::Allow, "GET, PRI"},
     };
 
-    char *last_write_buffer = copy_http_header_response(
+    auto last_write_buffer = copy_http_header_response(
         buffer,
         http_header::VERSION::VER_1_1,
         405_rc,
         header_line
     );
     
-    char body[1024] = {0};
-    char *last_write_body = body;
+    uint8_t body[1024] = {0};
+    uint8_t *last_write_body = body;
 
-    const char message[] =
+    const uint8_t message[] =
                 "<p>This method is not supported by server.</p>";
     last_write_body = http11_error_html<http_header::CODE::_405>(last_write_body, message, local_address);
 
-    char content_length[10];
+    uint8_t content_length[10];
     size_t content_length_size = to_string((size_t)(last_write_body - body), content_length);
-    const http_header_line length_line(http_header::FIELD::Content_Length, content_length, content_length_size);
+    const http_header_line length_line(http_header::FIELD::Content_Length, (char *)content_length, content_length_size);
     last_write_buffer = copy_http_header_response(
         last_write_buffer,
         length_line
     );
+    *last_write_buffer++ = '\r';
     *last_write_buffer++ = '\n';
 
     last_write_buffer = std::copy(body, last_write_body, last_write_buffer);
@@ -132,10 +135,10 @@ char *http_add_405_Method_Not_Allowed(
     return last_write_buffer;
 }
 
-char *http_add_505_HTTP_Version_Not_Supported(
-            char *const buffer,
+uint8_t *http_add_505_HTTP_Version_Not_Supported(
+            uint8_t *const buffer,
             const ipv6_socket_addr_t &local_address,
-            const char *date_str,
+            const uint8_t *date_str,
             const size_t date_str_size)
 {
     const http_header_line header_line[] = {
@@ -145,27 +148,28 @@ char *http_add_505_HTTP_Version_Not_Supported(
         {http_header::FIELD::Connection, "close"},
     };
 
-    char *last_write_buffer = copy_http_header_response(
+    auto last_write_buffer = copy_http_header_response(
         buffer,
         http_header::VERSION::VER_1_1,
         505_rc,
         header_line
     );
     
-    char body[1024] = {0};
-    char *last_write_body = body;
+    uint8_t body[1024] = {0};
+    uint8_t *last_write_body = body;
 
-    const char message[] =
+    const uint8_t message[] =
                 "<p>This HTTP version is not supported by server.</p>";
     last_write_body = http11_error_html<http_header::CODE::_505>(last_write_body, message, local_address);
 
-    char content_length[10];
+    uint8_t content_length[10];
     size_t content_length_size = to_string((size_t)(last_write_body - body), content_length);
-    const http_header_line length_line(http_header::FIELD::Content_Length, content_length, content_length_size);
+    const http_header_line length_line(http_header::FIELD::Content_Length, (char *)content_length, content_length_size);
     last_write_buffer = copy_http_header_response(
         last_write_buffer,
         length_line
     );
+    *last_write_buffer++ = '\r';
     *last_write_buffer++ = '\n';
 
     last_write_buffer = std::copy(body, last_write_body, last_write_buffer);

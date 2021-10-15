@@ -428,13 +428,17 @@ HTTP_CODE_LIST
 
 struct http_header_line {
     const http_header::FIELD field;
-    const char *value;
+    const uint8_t *value;
     const size_t size;
     template <size_t N>
-    constexpr http_header_line(const http_header::FIELD field, const char (&value)[N]) : field(field), value(value), size(N) {}
-    inline http_header_line(const http_header::FIELD field, const char *value) : field(field), value(value), size(strlen(value) + 1) {}
-    constexpr http_header_line(const http_header::FIELD field, const char *value, size_t size)
+    constexpr http_header_line(const http_header::FIELD field, const uint8_t (&value)[N]) : field(field), value(value), size(N) {}
+    template <size_t N>
+    constexpr http_header_line(const http_header::FIELD field, const char (&value)[N]) : field(field), value((uint8_t *)value), size(N) {}
+    inline http_header_line(const http_header::FIELD field, const uint8_t *value) : field(field), value(value), size(strlen((char *)value) + 1) {}
+    constexpr http_header_line(const http_header::FIELD field, const uint8_t *value, size_t size)
         : field(field), value(value), size(size) {}
+    inline http_header_line(const http_header::FIELD field, const char *value, size_t size)
+        : field(field), value((uint8_t *)(value)), size(size) {}
 };
 
 class http_header_request : public http_header {
@@ -566,7 +570,7 @@ public:
 
 std::ostream& operator<<(std::ostream& os, const http_response& responseHeader);
 
-template <http_header::CODE code, typename CHAR_TYPE, size_t message_size>
+template <http_header::CODE code, byte_type CHAR_TYPE, size_t message_size>
 constexpr CHAR_TYPE *http11_error_html(
             CHAR_TYPE *buffer,
             const CHAR_TYPE (&message)[message_size],
@@ -599,10 +603,10 @@ constexpr CHAR_TYPE *http11_error_html(
     return buffer;
 }
 
-constexpr char *copy_http_header_response(
-            char *const buffer,
+constexpr uint8_t *copy_http_header_response(
+            uint8_t *const buffer,
             const http_header_line &line) {
-    char *write_buffer = buffer;
+    uint8_t *write_buffer = buffer;
 
     // Adding field
     const char *field_buf = http_header::get_field_string(line.field);
@@ -624,10 +628,10 @@ constexpr char *copy_http_header_response(
 }
 
 template <size_t N>
-constexpr char *copy_http_header_response(
-            char *const buffer,
+constexpr uint8_t *copy_http_header_response(
+            uint8_t *const buffer,
             const http_header_line (&lines)[N]) {
-    char *write_buffer = buffer;
+    uint8_t *write_buffer = buffer;
 
     // Adding all lines
     for(auto line: lines) {
@@ -638,15 +642,15 @@ constexpr char *copy_http_header_response(
 }
 
 template <size_t N>
-constexpr char *copy_http_header_response(
-            char *const buffer,
+constexpr uint8_t *copy_http_header_response(
+            uint8_t *const buffer,
             const http_header::VERSION version,
             const http_header::CODE response_code,
             const http_header_line (&lines)[N]) {
-    char *write_buffer = buffer;
+    uint8_t *write_buffer = buffer;
 
     // Adding version
-    const char *ver_buf = http_header::get_version_string(version);
+    const uint8_t *ver_buf = (uint8_t *)http_header::get_version_string(version);
     const size_t ver_size = http_header::get_version_string_size(version);
     write_buffer = std::copy(ver_buf, ver_buf + ver_size - 1, write_buffer);
 
@@ -654,7 +658,7 @@ constexpr char *copy_http_header_response(
     *write_buffer++ = ' ';
 
     // Adding code;
-    const char *code_buf = http_header::get_code_string(response_code);
+    const uint8_t *code_buf = (uint8_t *)http_header::get_code_string(response_code);
     const size_t code_size = http_header::get_code_string_size(response_code);
     write_buffer = std::copy(code_buf, code_buf + code_size - 1, write_buffer);
 
@@ -668,39 +672,33 @@ constexpr char *copy_http_header_response(
     return write_buffer;
 }
 
+constexpr uint8_t *copy_http_response_content_length(
+            uint8_t *const buffer,
+            size_t content_length) {
+    uint8_t *write_buffer = buffer;
+
+    uint8_t content_length_str[10];
+    size_t content_length_size = to_string(content_length, content_length_str);
+    
+    const http_header_line length_line(http_header::FIELD::Content_Length, content_length_str, content_length_size);
+    return copy_http_header_response(write_buffer, length_line);
+}
+
 template <size_t N>
-constexpr char *copy_http_response(
-            char *const buffer,
+constexpr uint8_t *copy_http_response(
+            uint8_t *const buffer,
             const http_header::VERSION version,
             const http_header::CODE response_code,
             const http_header_line (&lines)[N],
-            const char *body,
+            const uint8_t *body,
             const size_t M)  {
-    char *write_buffer = buffer;
+    uint8_t *write_buffer = buffer;
 
     // Adding response header
     write_buffer = copy_http_header_response(write_buffer, version, response_code, lines);
 
     // Adding length
-    char content_length[10];
-    size_t content_length_size = to_string(M, content_length);
-    
-    const http_header_line length_line(http_header::FIELD::Content_Length, content_length, content_length_size);
-    write_buffer = copy_http_header_response(write_buffer, length_line);
-
-    // Adding md5
-    md5::Digest result = md5::compute(body);
-    constexpr size_t md5_string_len = result.size() * 2 + 1;
-    char md5_string[md5_string_len];
-    char *md5_string_ptr = md5_string;
-    for(uint8_t val: result) {
-        *md5_string_ptr++ = upper_case_numbers[val / 16];
-        *md5_string_ptr++ = upper_case_numbers[val % 16];
-    }
-
-    const http_header_line mdr_line(http_header::FIELD::Content_MD5, md5_string, md5_string_len);
-    write_buffer = copy_http_header_response(write_buffer, mdr_line);
-
+    write_buffer = copy_http_response_content_length(write_buffer, M);
 
     // Adding newline
     *write_buffer++ = '\r';
@@ -713,12 +711,12 @@ constexpr char *copy_http_response(
 }
 
 template <size_t N, size_t M>
-constexpr char *copy_http_response(
-            char *const buffer,
+constexpr uint8_t *copy_http_response(
+            uint8_t *const buffer,
             const http_header::VERSION version,
             const http_header::CODE response_code,
             const http_header_line (&lines)[N],
-            const char (&body)[M]) {
+            const uint8_t (&body)[M]) {
     return copy_http_response(
         buffer,
         version,

@@ -13,7 +13,8 @@
 
 namespace rohit {
 
-constexpr void reverse(char *start, char *end) {
+template <byte_type BYTE_TYPE>
+constexpr void reverse(BYTE_TYPE *start, BYTE_TYPE *end) {
     while(start < end) {
         std::swap(*start, *end);
         ++start; --end;
@@ -77,12 +78,12 @@ constexpr uint8_t from_base64[] {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 240 - 255
 };
 
-template <std::integral T, T radix = 10, number_case number_case = number_case::lower, bool null_terminated = true>
-constexpr size_t to_string(T val, char * const dest) {
+template <std::integral T, T radix = 10, number_case number_case = number_case::lower, bool null_terminated = true, byte_type BYTE_TYPE>
+constexpr size_t to_string(T val, BYTE_TYPE * const dest) {
     static_assert(!std::is_signed<T>::value || (std::is_signed<T>::value && radix == 10), "Signed type only allowed for radix 10" );
     static_assert(radix >= 2, "Radix must be atleast 2");
     static_assert(radix <= 36, "Radix more than 36 not supported");
-    char *dest_ptr = dest;
+    BYTE_TYPE *dest_ptr = dest;
 
     T val1;
     if constexpr (std::is_signed<T>::value) val1 = abs(val);
