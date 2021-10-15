@@ -27,7 +27,7 @@ constexpr char connection_preface[] = {
         'H', 'T', 'T', 'P', '/', '2', '.', '0',
         '\r', '\n', '\r', '\n', 'S', 'M', '\r', '\n', '\r', '\n'};
 
-constexpr size_t connection_preface_size = _sizeof(connection_preface);
+constexpr size_t connection_preface_size = std::size(connection_preface);
 
 
 // This is definition of frame

@@ -624,7 +624,6 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
         {
             // This is bad request
             close(ctx);
-            std::cout << "This is bad request hence closing" << std::endl;
             return;
         }
         
