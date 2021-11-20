@@ -100,7 +100,7 @@ constexpr size_t to_string(T val, BYTE_TYPE * const dest) {
     if constexpr (std::is_signed<T>::value) {
         if (val < 0) *dest_ptr++ = '-';
     }
-    reverse(dest , dest_ptr - 1);
+    std::reverse(dest , dest_ptr);
 
     if constexpr (null_terminated == true) {
         *dest_ptr++ = '\0';
