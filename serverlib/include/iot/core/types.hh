@@ -142,15 +142,14 @@ enum class state_t : state_type {
 enum class err_t : log_id_type;
 
 typedef bool bool_t;
-typedef char char_t;
 typedef char * string_t;
 typedef float float_t;
 typedef double double_t;
+typedef long double longdouble_t;
 
 #define LIST_DEFINITION_END
 
 #define TYPE_LIST \
-    TYPE_LIST_ENTRY(char_t) \
     TYPE_LIST_ENTRY(bool_t) \
     TYPE_LIST_ENTRY(int8_t) \
     TYPE_LIST_ENTRY(int16_t) \
@@ -162,6 +161,7 @@ typedef double double_t;
     TYPE_LIST_ENTRY(uint64_t) \
     TYPE_LIST_ENTRY(float_t) \
     TYPE_LIST_ENTRY(double_t) \
+    TYPE_LIST_ENTRY(longdouble_t) \
     TYPE_LIST_ENTRY(string_t) \
     TYPE_LIST_ENTRY(err_t) \
     TYPE_LIST_ENTRY(state_t) \
@@ -217,6 +217,13 @@ struct what_type<x> \
 };
     TYPE_LIST
 #undef TYPE_LIST_ENTRY
+
+template <>
+struct what_type<char>
+{
+    static constexpr const type_identifier value = type_identifier::int8_t;
+    static constexpr const char str[] = "int8_t";
+};
 
 template <>
 struct what_type<long long>

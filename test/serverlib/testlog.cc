@@ -76,15 +76,6 @@ void test_types_helper() {
     std::cout << std::endl;
 }
 
-#define fmtfn(x, ...) check_formatstring_args<rohit::log_t::x>(__VA_ARGS__)
-#define fmtstr(x, ...) "check_formatstring_args<rohit::log_t::" #x ">(" #__VA_ARGS__ ")"
-
-#define check_formatstring_args_macro(result, x, ...)  { \
-    auto ret = fmtfn(x, __VA_ARGS__); \
-    if (ret == result) { success++; std::cout << "Success  "; } \
-    else { failed++; std::cout << "Failed   "; }\
-    std::cout << fmtstr(x, __VA_ARGS__) ": (SIZE_MAX,18446744073709551615==SUCCESS) " << ret << std::endl; }
-
 void test_types_what_type() {
     using namespace rohit;
     std::cout << "Type comparison template test " << std::endl;
@@ -115,23 +106,13 @@ void test_types_what_type() {
 
     std::cout << "sizeof(long long)" << sizeof(long long) << std::endl;
 
-    check_formatstring_args_macro(SIZE_MAX, PTHREAD_JOIN_FAILED, EINVAL);
-    check_formatstring_args_macro(SIZE_MAX, PTHREAD_CREATE_FAILED, EACCES);
-    check_formatstring_args_macro(0, TEST_INTEGER_LOGS);
-    check_formatstring_args_macro(0, PTHREAD_JOIN_FAILED);
-    check_formatstring_args_macro(SIZE_MAX, SYSTEM_ERROR, EINVAL);
-    check_formatstring_args_macro(SIZE_MAX, IOT_ERROR, rohit::err_t::MATH_INSUFFICIENT_BUFFER);
-    check_formatstring_args_macro(SIZE_MAX, TEST_FLOAT_LOGS, 101.0f, 102.0);
-    check_formatstring_args_macro(SIZE_MAX, TEST_INTEGER_LOGS, 101, 102l, 103ll, (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
     constexpr rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
-    check_formatstring_args_macro(SIZE_MAX, TEST_GUID_LOG, guid, guid);
-    check_formatstring_args_macro(SIZE_MAX, TEST_STATE_LOG, rohit::state_t::EVENT_DIST_NONE);
+
 
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
     rohit::ipv6_addr_t ipv6addr = rohit::to_ipv6_addr_t("eb::1");
     rohit::ipv6_port_t ipv6port = 8080;
-    check_formatstring_args_macro(SIZE_MAX, TEST_IPV6ADDR_LOGS, 'v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
 }
 
 void test_types() {

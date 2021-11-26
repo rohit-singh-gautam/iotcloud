@@ -18,11 +18,7 @@ constexpr bool to_bool(const char *value) {
 }
 
 constexpr bool to_type(const type_identifier id, void *store, const char *value) {
-    switch (id) {
-    case type_identifier::char_t: 
-        *(char_t *)store = *value;
-        break;
-    
+    switch (id) {    
     case type_identifier::bool_t:
         *(bool_t *)store = to_bool(value);
         break;

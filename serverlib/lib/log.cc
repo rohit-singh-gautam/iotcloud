@@ -270,7 +270,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
     *pStr++ = ':';
 
     formatstring_state state = formatstring_state::COPY;
-    formatstring_type_length lenght_specifier = formatstring_type_length::NONE;
+    formatstring_modifier lenght_specifier = formatstring_modifier::NONE;
     while(*desc_str) {
         char c = *desc_str++;
         switch (state)
@@ -279,8 +279,8 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
             switch (c)
             {
             case '%':
-                state = formatstring_state::MODIFIER;
-                lenght_specifier = formatstring_type_length::NONE;
+                state = formatstring_state::SPECIFIER;
+                lenght_specifier = formatstring_modifier::NONE;
                 break;
             
             default:
@@ -289,7 +289,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
             }
             break;
 
-        case formatstring_state::MODIFIER:
+        case formatstring_state::SPECIFIER:
             switch (c)
             {
             case '%':
@@ -300,11 +300,11 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
             case 'd':
             case 'i': {
                 switch(lenght_specifier) {
-                case formatstring_type_length::h: integerToStringHelper<int16_t>(pStr, data_args); break;
-                case formatstring_type_length::hh: integerToStringHelper<int8_t>(pStr, data_args); break;
-                case formatstring_type_length::NONE: integerToStringHelper<int32_t>(pStr, data_args); break;
-                case formatstring_type_length::l:
-                case formatstring_type_length::ll: integerToStringHelper<int64_t>(pStr, data_args); break;
+                case formatstring_modifier::h: integerToStringHelper<int16_t>(pStr, data_args); break;
+                case formatstring_modifier::hh: integerToStringHelper<int8_t>(pStr, data_args); break;
+                case formatstring_modifier::NONE: integerToStringHelper<int32_t>(pStr, data_args); break;
+                case formatstring_modifier::l:
+                case formatstring_modifier::ll: integerToStringHelper<int64_t>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -312,11 +312,11 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
 
             case 'u': {
                 switch(lenght_specifier) {
-                case formatstring_type_length::NONE: integerToStringHelper<uint32_t>(pStr, data_args); break;
-                case formatstring_type_length::h: integerToStringHelper<uint16_t>(pStr, data_args); break;
-                case formatstring_type_length::hh: integerToStringHelper<uint8_t>(pStr, data_args); break;
-                case formatstring_type_length::l:
-                case formatstring_type_length::ll: integerToStringHelper<uint64_t>(pStr, data_args); break;
+                case formatstring_modifier::NONE: integerToStringHelper<uint32_t>(pStr, data_args); break;
+                case formatstring_modifier::h: integerToStringHelper<uint16_t>(pStr, data_args); break;
+                case formatstring_modifier::hh: integerToStringHelper<uint8_t>(pStr, data_args); break;
+                case formatstring_modifier::l:
+                case formatstring_modifier::ll: integerToStringHelper<uint64_t>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -324,11 +324,11 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
 
             case 'o': {
                 switch(lenght_specifier) {
-                case formatstring_type_length::NONE: integerToStringHelper<uint32_t, 8>(pStr, data_args); break;
-                case formatstring_type_length::h: integerToStringHelper<uint16_t, 8>(pStr, data_args); break;
-                case formatstring_type_length::hh: integerToStringHelper<uint8_t, 8>(pStr, data_args); break;
-                case formatstring_type_length::l:
-                case formatstring_type_length::ll: integerToStringHelper<uint64_t, 8>(pStr, data_args); break;
+                case formatstring_modifier::NONE: integerToStringHelper<uint32_t, 8>(pStr, data_args); break;
+                case formatstring_modifier::h: integerToStringHelper<uint16_t, 8>(pStr, data_args); break;
+                case formatstring_modifier::hh: integerToStringHelper<uint8_t, 8>(pStr, data_args); break;
+                case formatstring_modifier::l:
+                case formatstring_modifier::ll: integerToStringHelper<uint64_t, 8>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -336,11 +336,11 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
 
             case 'x': {
                 switch(lenght_specifier) {
-                case formatstring_type_length::NONE: integerToStringHelper<uint32_t, 16>(pStr, data_args); break;
-                case formatstring_type_length::h: integerToStringHelper<uint16_t, 16>(pStr, data_args); break;
-                case formatstring_type_length::hh: integerToStringHelper<uint8_t, 16>(pStr, data_args); break;
-                case formatstring_type_length::l:
-                case formatstring_type_length::ll: integerToStringHelper<uint64_t, 16>(pStr, data_args); break;
+                case formatstring_modifier::NONE: integerToStringHelper<uint32_t, 16>(pStr, data_args); break;
+                case formatstring_modifier::h: integerToStringHelper<uint16_t, 16>(pStr, data_args); break;
+                case formatstring_modifier::hh: integerToStringHelper<uint8_t, 16>(pStr, data_args); break;
+                case formatstring_modifier::l:
+                case formatstring_modifier::ll: integerToStringHelper<uint64_t, 16>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -348,11 +348,11 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
 
             case 'X': {
                 switch(lenght_specifier) {
-                case formatstring_type_length::NONE: integerToStringHelper<uint32_t, 16, number_case::upper>(pStr, data_args); break;
-                case formatstring_type_length::h: integerToStringHelper<uint16_t, 16, number_case::upper>(pStr, data_args); break;
-                case formatstring_type_length::hh: integerToStringHelper<uint8_t, 16, number_case::upper>(pStr, data_args); break;
-                case formatstring_type_length::l:
-                case formatstring_type_length::ll: integerToStringHelper<uint64_t, 16, number_case::upper>(pStr, data_args); break;
+                case formatstring_modifier::NONE: integerToStringHelper<uint32_t, 16, number_case::upper>(pStr, data_args); break;
+                case formatstring_modifier::h: integerToStringHelper<uint16_t, 16, number_case::upper>(pStr, data_args); break;
+                case formatstring_modifier::hh: integerToStringHelper<uint8_t, 16, number_case::upper>(pStr, data_args); break;
+                case formatstring_modifier::l:
+                case formatstring_modifier::ll: integerToStringHelper<uint64_t, 16, number_case::upper>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -361,8 +361,8 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
             case 'f': {
                 switch(lenght_specifier) {
                 default:
-                case formatstring_type_length::NONE: floatToStringHelper<float>(pStr, data_args); break;
-                case formatstring_type_length::l: floatToStringHelper<double>(pStr, data_args); break;
+                case formatstring_modifier::NONE: floatToStringHelper<float>(pStr, data_args); break;
+                case formatstring_modifier::l: floatToStringHelper<double>(pStr, data_args); break;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -373,20 +373,20 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 break;
             
             case 'v':
-                state = formatstring_state::MODIFIER_CUSTOM;
+                state = formatstring_state::SPECIFIER_CUSTOM;
                 break;
 
             // Specifiers
             case 'h':
-                if (lenght_specifier == formatstring_type_length::h)
-                    lenght_specifier = formatstring_type_length::hh;
-                else lenght_specifier = formatstring_type_length::h;
+                if (lenght_specifier == formatstring_modifier::h)
+                    lenght_specifier = formatstring_modifier::hh;
+                else lenght_specifier = formatstring_modifier::h;
                 break;
             
             case 'l':
-                if (lenght_specifier == formatstring_type_length::l)
-                    lenght_specifier = formatstring_type_length::ll;
-                else lenght_specifier = formatstring_type_length::l;
+                if (lenght_specifier == formatstring_modifier::l)
+                    lenght_specifier = formatstring_modifier::ll;
+                else lenght_specifier = formatstring_modifier::l;
                 break;
             
             default: // Junk character we just ignoring it
@@ -395,7 +395,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
             } // switch (c)
             break; // case formatstring_state::MODIFIER:
         
-        case formatstring_state::MODIFIER_CUSTOM:
+        case formatstring_state::SPECIFIER_CUSTOM:
             switch (c) {
                 case 'n': ipv6_socket_addr_t_to_string_helper(pStr, data_args); break;
                 case 'N': ipv6_socket_addr_t_to_string_helper<number_case::upper>(pStr, data_args); break;

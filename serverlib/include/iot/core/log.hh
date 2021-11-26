@@ -150,7 +150,7 @@ namespace rohit {
     LOGGER_ENTRY(IOT_ERROR, ERROR, SYSTEM, "IOT Error '%vE'") \
     LOGGER_ENTRY(TEST_STATE_LOG, INFO, TEST, "State '%vs'") \
     LOGGER_ENTRY(TEST_GUID_LOG, INFO, TEST, "IOT Error '%vg' caps '%vG'") \
-    LOGGER_ENTRY(TEST_FLOAT_LOGS, INFO, TEST, "Test float %%%f, double %lf") \
+    LOGGER_ENTRY(TEST_FLOAT_LOGS, INFO, TEST, "Test float %%%hf, double %f") \
     LOGGER_ENTRY(TEST_INTEGER_LOGS, INFO, TEST, "Test %%, Integer %i, long %li, long long %lli, Short %hi, Short Short %hhi, Unsigned %u, long %lu, long long %llu, Short %hu, Short Short %hhu") \
     LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, INFO, TEST, "Test char %c, ipv6_socket_addr_t %vn caps: %vN; ipv6_addr_t %vi caps: %vI ipv6_port_t %vp") \
     \
@@ -228,7 +228,6 @@ template <log_t ID> struct log_description {
     static constexpr const logger_level level = logger_level::VERBOSE; \
     static constexpr const module_t module = module_t::TEST; \
     static constexpr const size_t type_count = 0; \
-    static constexpr const auto type_list = formatstring_type_list<type_count>(""); \
     static constexpr const auto length = 0; \
     log_description() {  } \
 };
@@ -281,14 +280,10 @@ constexpr size_t log_t_count = 0 + LOGGER_LOG_LIST;
 #undef LOGGER_ENTRY
 
 template <log_t ID, typename... ARGS>
-constexpr size_t check_formatstring_args() {
-    return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list, ARGS...>();
+consteval void check_formatstring_args() {
+    check_formatstring_assert<std::size(log_description<ID>::value), log_description<ID>::value, ARGS...>();
 }
 
-template <log_t ID, typename... ARGS>
-constexpr size_t check_formatstring_args(const ARGS&...) {
-    return check_formatstring_args<log_description<ID>::type_count, log_description<ID>::type_list, ARGS...>();
-}
 
 class logger_logs_entry_common {
 public:
@@ -317,7 +312,7 @@ public:
             : logger_logs_entry_common(timestamp, ID) {
         static_assert(totalsize != log_description<ID>::length, "Total size of argument must be less than 256");
         static_assert(log_description<ID>::type_count == sizeof...(ARGS), "Wrong number of parameters");
-        static_assert(check_formatstring_args<ID, ARGS...>() == SIZE_MAX, "Wrong parameter type");
+        check_formatstring_args<ID, ARGS...>();
         copyvaradic(arguments, args...);
     }
 } __attribute__((packed));
