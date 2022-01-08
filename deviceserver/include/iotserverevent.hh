@@ -52,7 +52,7 @@ void iotserverevent<use_ssl>::read_helper(thread_context &ctx) {
         return;
     }
     if (isFailure(err)) {
-        ctx.log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
+        log<log_t::IOT_EVENT_SERVER_READ_FAILED>(err);
         return;
     }
 

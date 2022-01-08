@@ -28,7 +28,7 @@ public:
                 : evtdist(evtdist), inotifyfd(inotify_init1(IN_NONBLOCK)), watch_fds(), folderlist()
     {
         if (inotifyfd == -1) {
-            glog.log<log_t::FILEWATCHER_EVENT_CREATE_FAILED>();
+            log<log_t::FILEWATCHER_EVENT_CREATE_FAILED>();
             throw exception_t(err_t::FILEWATCHER_EVENT_CREATE_FAILED);
         }   
     }
@@ -71,7 +71,7 @@ public:
                     IN_CREATE | IN_DELETE | IN_CLOSE_WRITE | IN_MOVED_FROM | IN_MOVED_TO );
 
         if (watch_fd == -1) {
-            glog.log<log_t::FILEWATCHER_ADD_FOLDER_FAILED>(errno);
+            log<log_t::FILEWATCHER_ADD_FOLDER_FAILED>(errno);
             return err_t::FILEWATCHER_ADD_FOLDER_FAILED;
         }
 
@@ -129,7 +129,7 @@ private:
         while(true) {
             len = read(inotifyfd, buf, sizeof(buf));
             if (len == -1 && errno != EAGAIN) {
-                ctx.log<log_t::EVENT_SERVER_HELPER_READ_FAILED>(errno);
+                log<log_t::EVENT_SERVER_HELPER_READ_FAILED>(errno);
                 break;
             }
 

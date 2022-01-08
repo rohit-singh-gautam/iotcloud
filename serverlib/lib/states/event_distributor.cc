@@ -18,16 +18,16 @@ event_distributor::event_distributor(const int thread_count, const int max_event
     epollfd = epoll_create(max_event_size);
 
     if (epollfd == -1) {
-        glog.log<log_t::EVENT_DIST_CREATE_FAILED>(errno);
+        log<log_t::EVENT_DIST_CREATE_FAILED>(errno);
         throw exception_t(err_t::EVENT_DIST_CREATE_FAILED);
     } else {
-        glog.log<log_t::EVENT_DIST_CREATE_SUCCESS>();
+        log<log_t::EVENT_DIST_CREATE_SUCCESS>();
     }
 
     auto cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
     if (!thread_count) this->thread_count = cpu_count;
     if (thread_count > cpu_count) {
-        glog.log<log_t::EVENT_DIST_TOO_MANY_THREAD>();
+        log<log_t::EVENT_DIST_TOO_MANY_THREAD>();
     }
 
     pthread_mutex_init(&eventdist_lock, nullptr);
@@ -41,16 +41,16 @@ void event_distributor::init() {
     pthread_t cleanup_thread;
     auto cleanup_ret = pthread_create(&cleanup_thread, NULL, &event_distributor::cleanup, this);
     if (cleanup_ret != 0) {
-        glog.log<log_t::PTHREAD_CREATE_FAILED>(cleanup_ret);
+        log<log_t::PTHREAD_CREATE_FAILED>(cleanup_ret);
     }
     add_thread_map(cleanup_thread);
 
-    glog.log<log_t::EVENT_DIST_CREATING_THREAD>(this->thread_count);
+    log<log_t::EVENT_DIST_CREATING_THREAD>(this->thread_count);
     for (size_t cpu_index = 0; cpu_index < this->thread_count; ++cpu_index) {
         pthread_t pthread;
         auto ret = pthread_create(&pthread, NULL, &event_distributor::loop, this);
         if (ret != 0) {
-            glog.log<log_t::PTHREAD_CREATE_FAILED>(ret);
+            log<log_t::PTHREAD_CREATE_FAILED>(ret);
             this->thread_count = cpu_index;
             break;
         }
@@ -58,7 +58,7 @@ void event_distributor::init() {
     }
 
     if (this->thread_count == 0) {
-        glog.log<log_t::EVENT_DIST_CREATE_NO_THREAD>();
+        log<log_t::EVENT_DIST_CREATE_NO_THREAD>();
         throw exception_t(err_t::EVENT_DIST_CREATE_FAILED);
     }
 
@@ -78,7 +78,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
     event_thread_entry &thread_entry = pevtdist->thread_entry_map[pthread_self()];
 
     // This is infinite loop
-    ctx.log<log_t::EVENT_DIST_LOOP_CREATED>();
+    log<log_t::EVENT_DIST_LOOP_CREATED>();
 
     epoll_event events[event_wait_count];
     while(true) {
@@ -93,7 +93,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
                 }
             }
 
-            ctx.log<log_t::EVENT_DIST_LOOP_WAIT_INTERRUPTED>(errno);
+            log<log_t::EVENT_DIST_LOOP_WAIT_INTERRUPTED>(errno);
             sleep(1);
             // Check again if terminated
             if (pevtdist->is_terminate) {
@@ -107,7 +107,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
             thread_entry.set_state(state_t::EVENT_DIST_EPOLL_PROCESSING);
 
             epoll_event &event = events[index];
-            ctx.log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
+            log<log_t::EVENT_DIST_EVENT_RECEIVED>(event.events);
 
             event_executor *executor = (event_executor *)(event.data.ptr);
             thread_entry.set_state(state_t::EVENT_DIST_EPOLL_EXECUTE);
@@ -144,7 +144,7 @@ void *event_distributor::cleanup(void *pvoid_evtdist) {
                 thread_entry.second.state != state_t::EVENT_DIST_EPOLL_WAIT &&
                 current_time - thread_entry.second.timestamp >= config::event_dist_deadlock_in_nanos)
             {
-                glog.log<log_t::EVENT_DIST_DEADLOCK_DETECTED>(thread_entry.second.pthread, thread_entry.second.state);
+                log<log_t::EVENT_DIST_DEADLOCK_DETECTED>(thread_entry.second.pthread, thread_entry.second.state);
             }
         }
 
@@ -163,9 +163,9 @@ void event_distributor::wait() {
     for (auto thread_entry: thread_entry_map) {
         auto ret = pthread_join(thread_entry.second.pthread, nullptr);
         if (ret != 0) {
-            glog.log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
+            log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_FAILED>(ret);
         } else {
-            glog.log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_SUCCESS>();
+            log<log_t::EVENT_DIST_EXIT_THREAD_JOIN_SUCCESS>();
         }
     }   
 }
@@ -190,7 +190,7 @@ private:
 };
 
 void event_distributor::terminate() {
-    glog.log<log_t::EVENT_DIST_TERMINATING>();
+    log<log_t::EVENT_DIST_TERMINATING>();
     is_terminate = true;
 
     for(int thread_index = 0; thread_index < thread_count; ++thread_index) {
@@ -203,7 +203,7 @@ void event_distributor::terminate() {
 
     auto ret = close(epollfd);
     if (ret != 0) {
-        glog.log<log_t::EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED>(ret);
+        log<log_t::EVENT_DIST_EXIT_EPOLL_CLOSE_FAILED>(ret);
     }
 }
 

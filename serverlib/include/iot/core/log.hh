@@ -13,8 +13,10 @@
 #include <iostream>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <bitset>
 #include <queue>
+#include <algorithm>
 
 namespace rohit {
 
@@ -119,7 +121,7 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_REMOVE_SUCCESS, DEBUG, EVENT_EXECUTOR, "Event removal succeeded") \
     LOGGER_ENTRY(EVENT_REMOVE_FAILED, INFO, EVENT_EXECUTOR, "Event removal failed with error %ve") \
     \
-    LOGGER_ENTRY(EVENT_SERVER_RECEIVED_CLOSED, INFO, EVENT_SERVER, "Event server listner close request received") \
+    LOGGER_ENTRY(EVENT_SERVER_RECEIVED_CLOSED, INFO, EVENT_SERVER, "Event server listener close request received") \
     LOGGER_ENTRY(EVENT_SERVER_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "Event server with ID %i received event") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_RECEIVED_EVENT, DEBUG, EVENT_SERVER, "SSL Event server with ID %i received event %vv") \
     LOGGER_ENTRY(EVENT_SERVER_ACCEPT_FAILED, ERROR, EVENT_SERVER, "Event server failed to accept connection with error %ve") \
@@ -155,7 +157,7 @@ namespace rohit {
     LOGGER_ENTRY(TEST_IPV6ADDR_LOGS, INFO, TEST, "Test char %c, ipv6_socket_addr_t %vn caps: %vN; ipv6_addr_t %vi caps: %vI ipv6_port_t %vp") \
     \
     LOGGER_ENTRY(WEB_SERVER_NO_EXTENSION, DEBUG, SYSTEM, "Web Server, file without extension is not supported, ignoring") \
-    LOGGER_ENTRY(WEB_SERVER_UNSUPPORTED_EXTENSION, DEBUG, SYSTEM, "Web Server, unsupported file extenstion, ignoring") \
+    LOGGER_ENTRY(WEB_SERVER_UNSUPPORTED_EXTENSION, DEBUG, SYSTEM, "Web Server, unsupported file extension, ignoring") \
     \
     LOGGER_ENTRY(MAX_LOG, VERBOSE, TEST, "Max log no entry must be made beyond this") \
     LIST_DEFINITION_END
@@ -388,10 +390,35 @@ public:
 
 extern active_module enabled_log_module;
 
+class logger;
+
+class logger_list {
+    // As this will be in global variable,
+    // enabled would be accessed even after destruction
+    // mutex and logger_store cannot be accessed after
+    // destruction of this class
+    // Creation of thread is a slow process we do not have
+    // to be super optimize here
+    std::atomic<bool> enabled = true;
+    std::mutex mutex { };
+    std::unordered_set<logger *> logger_store { }; 
+
+    int fd = 0;
+
+public:
+    ~logger_list();
+
+    void add(logger *new_logger);
+    void remove(logger *new_logger);
+
+    void flush();
+
+    void set_fd(const int fd);
+};
+
 // This is global
-// Any prameter change will have global impact
-template <bool multi_thread>
-class logger : public pthread_lock_c<multi_thread> {
+// Any parameter change will have global impact
+class logger {
 public:
     static constexpr size_t max_log_memory = 1_mb;
     static constexpr std::chrono::milliseconds wait_for_free = std::chrono::milliseconds(1);
@@ -402,23 +429,15 @@ private:
 
     uint8_t mem_buffer[max_log_memory];
 
-    using pthread_lock_c<multi_thread>::lock;
-    using pthread_lock_c<multi_thread>::unlock;
-
 public:
     logger() : next_write(0), next_read(0), mem_buffer() {
-        logger_add(this);
+        logger::all.add(this);
     }
-    
-    static void flushall(const int filedescriptor) {
-        for(size_t index = 0; index < logger_count; ++index) {
-            logger_array[index]->flush(filedescriptor);
-        }
+    ~logger() {
+        logger::all.remove(this);
     }
 
     void flush(const int filedescriptor) {
-        lock();
-
         size_t new_next_write = next_write;
         
         if (new_next_write > next_read) {
@@ -460,7 +479,6 @@ public:
         }
 
         sync();
-        unlock();
     }
 
     template <log_t ID, typename... ARGS>
@@ -469,7 +487,6 @@ public:
         if (!enabled_log_module.is_enabled<ID>()) return;
         const int64_t nanosecond = std::chrono::system_clock::now().time_since_epoch().count();
         logger_logs_entry<ID, ARGS...> logs_entry(nanosecond, args...);
-        lock();
 
         if constexpr (config::log_with_check || config::debug) {
             while (true) {
@@ -524,9 +541,7 @@ public:
                 } else {
                     // Unlock required before sleep
                     // As thread that write to file
-                    unlock();
                     if (next_read != next_write) std::this_thread::sleep_for(wait_for_free);
-                    lock();
                 }
             }
         } else {
@@ -558,24 +573,19 @@ public:
                 next_write = new_next_write;
             }
         }
-
-        unlock();
     }
 
-    // Maximum 128 thread supported
-    static constexpr size_t max_logger = multi_thread ? 1 : 128+1;
-    static size_t logger_count;
-    static logger *logger_array[max_logger];
-
-    static void logger_add(logger *new_logger) {
-        assert(logger_count < max_logger);
-        logger_array[logger_count++] = new_logger;
-    }
+    static logger_list all;
 
 }; // class logger
 
 // This is multi threaded
-extern logger<true> glog;
+extern thread_local logger _log;
+
+template <log_t ID, typename... ARGS>
+void log(const ARGS&... args) {
+    _log.log<ID, ARGS...>(args...);
+}
 
 void init_log_thread(const char *filename);
 void destroy_log_thread();

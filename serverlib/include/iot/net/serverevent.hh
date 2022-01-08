@@ -38,14 +38,14 @@ public:
 
 
     void execute(thread_context &ctx) override {
-        ctx.log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id);
+        log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id);
         try {
             while(true) {
                 auto peer_id = socket_id.accept();
                 if (peer_id.is_null()) break;
                 const auto non_blocking = peer_id.set_non_blocking();
                 if (!non_blocking) {
-                    ctx.log<log_t::SOCKET_SET_NONBLOCKING_FAILED>((int)peer_id);
+                    log<log_t::SOCKET_SET_NONBLOCKING_FAILED>((int)peer_id);
                 }
                 peerevent *p_peerevent = new peerevent(peer_id);
                 p_peerevent->execute_protector(ctx);
@@ -56,11 +56,11 @@ public:
                 } else {
                     ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
                 }
-                ctx.log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+                log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
             }
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
-                ctx.log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);
+                log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);
             }
         }
     }
@@ -155,7 +155,7 @@ void serverpeerevent<use_ssl>::close(thread_context &ctx) {
     if (last_peer_id) {
         auto ret = peer_id.close();
         if (ret != err_t::SOCKET_RETRY) {
-            ctx.log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
+            log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
             client_state = state_t::SOCKET_PEER_CLOSED;
             ctx.delayed_free(this);
         } else {
@@ -185,7 +185,7 @@ void serverpeerevent<use_ssl>::write_all(thread_context &ctx) {
             client_state = state_t::SOCKET_PEER_WRITE;
             break;
         } else if (isFailure(err)) {
-            ctx.log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
+            log<log_t::IOT_EVENT_SERVER_WRITE_FAILED>(err);
             // Removing from write queue
             pop_write();
             delete[] write_buffer.buffer;

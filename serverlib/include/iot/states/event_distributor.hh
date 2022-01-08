@@ -24,7 +24,7 @@ protected:
 
     // This is pure virtual function can be called only from event_distributor
     // event is irreralevent as in our case we are following
-    // no read till all write is done and compulsary read after write
+    // no read till all write is done and compulsory read after write
     virtual void execute(thread_context &ctx) = 0;
 
     // Close is not thread safe
@@ -209,10 +209,10 @@ public:
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
 
         if (ret == -1) {
-            glog.log<log_t::EVENT_CREATE_FAILED>(errno);
+            log<log_t::EVENT_CREATE_FAILED>(errno);
             return err_t::EVENT_CREATE_FAILED;
         } else {
-            glog.log<log_t::EVENT_CREATE_SUCCESS>();
+            log<log_t::EVENT_CREATE_SUCCESS>();
             return err_t::SUCCESS;
         }
     }
@@ -220,10 +220,10 @@ public:
     inline err_t remove(const int fd) {
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
             if (ret == -1) {
-            glog.log<log_t::EVENT_REMOVE_FAILED>(errno);
+            log<log_t::EVENT_REMOVE_FAILED>(errno);
             return err_t::EVENT_REMOVE_FAILED;
         } else {
-            glog.log<log_t::EVENT_REMOVE_SUCCESS>();
+            log<log_t::EVENT_REMOVE_SUCCESS>();
             return err_t::SUCCESS;
         }
     }
@@ -241,16 +241,10 @@ public:
 
 class thread_context {
 private:
-    logger<false> cxtlog;
     event_distributor &evtdist;
 
 public:
     inline thread_context(event_distributor &evtdist) : evtdist(evtdist) {}
-
-    template<log_t ID, typename... ARGS>
-    constexpr void log(const ARGS&... args) {
-        cxtlog.log<ID, ARGS...>(args...);
-    }
 
     inline err_t remove_event(const int fd) {
         return evtdist.remove(fd);

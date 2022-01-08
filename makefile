@@ -3,9 +3,9 @@ CMAKE_BUILD_DIR := build
 CMAKE_SOURCE_DIR := .
 
 $(CMAKE_BUILD_DIR)/Makefile: $(CMAKE_SOURCE_DIR)/CMakeLists.txt
-	cmake -S $(<D) -B $(@D)
+	cmake -S $(<D) -B $(@D) -G Ninja
 
 .PHONY: build
 
 build:
-	make -C build
+	cmake --build build

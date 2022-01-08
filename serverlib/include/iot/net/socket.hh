@@ -33,11 +33,11 @@ constexpr ipv6_socket_addr_t::operator sockaddr_in6() const {
 inline int create_socket() {
     int socket_id = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
     if (socket_id < 0) {
-        glog.log<log_t::SOCKET_CREATE_FAILED>(errno);
+        log<log_t::SOCKET_CREATE_FAILED>(errno);
         throw exception_t(rohit::error_c::socket_create_ret());
     }
 
-    glog.log<log_t::SOCKET_CREATE_SUCCESS>(socket_id);
+    log<log_t::SOCKET_CREATE_SUCCESS>(socket_id);
     return socket_id;
 }
 
@@ -58,10 +58,10 @@ public:
         if (last_socket_id) {
             auto ret = ::close(last_socket_id);
             if (ret == -1) {
-                glog.log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
+                log<log_t::SOCKET_CLOSE_FAILED>(last_socket_id, errno);
                 return err_t::CLOSE_FAILURE;
             } else {
-                glog.log<log_t::SOCKET_CLOSE_SUCCESS>(last_socket_id);
+                log<log_t::SOCKET_CLOSE_SUCCESS>(last_socket_id);
             }
         }
         return err_t::SUCCESS;
@@ -200,15 +200,15 @@ public:
         if (ssl_ret <= 0) {
             auto ssl_error = SSL_get_error(ssl, ssl_ret);
             if (ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
-                glog.log<log_t::SOCKET_SSL_ACCEPT_RETRY>(socket_id);
+                log<log_t::SOCKET_SSL_ACCEPT_RETRY>(socket_id);
                 return error_c::ssl_error_ret(ssl_error);
             }
-            glog.log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id);
+            log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id);
             return error_c::ssl_error_ret(ssl_error);
         }
 
 
-        glog.log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id);
+        log<log_t::SOCKET_SSL_ACCEPT_SUCCESS>(socket_id);
         return err_t::SUCCESS;
     }
 
@@ -347,13 +347,13 @@ public:
             close();
             throw exception_t(err_t::BIND_FAILURE);
         }
-        glog.log<log_t::SOCKET_BIND_SUCCESS>(socket_id, port);
+        log<log_t::SOCKET_BIND_SUCCESS>(socket_id, port);
 
         if (listen(socket_id, config::socket_backlog) < 0) {
             close();
             throw exception_t(err_t::LISTEN_FAILURE);
         }
-        glog.log<log_t::SOCKET_LISTEN_SUCCESS>(socket_id, port);
+        log<log_t::SOCKET_LISTEN_SUCCESS>(socket_id, port);
     }
 
     inline socket_t accept() {
@@ -365,7 +365,7 @@ public:
             throw exception_t(err_t::ACCEPT_FAILURE);
         }
 
-        glog.log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
+        log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
         return client_id;
     }
 
@@ -383,18 +383,18 @@ public:
 
         if ( SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0 ) {
             ERR_print_errors_fp(stderr);
-            glog.log<log_t::SOCKET_SSL_CERT_LOAD_FAILED>();
+            log<log_t::SOCKET_SSL_CERT_LOAD_FAILED>();
             throw exception_t(err_t::SOCKET_SSL_CERTIFICATE_FAILED);
         } else {
-            glog.log<log_t::SOCKET_SSL_CERT_LOAD_SUCCESS>();
+            log<log_t::SOCKET_SSL_CERT_LOAD_SUCCESS>();
         }
 
         if (SSL_CTX_use_PrivateKey_file(ctx, prikey_file, SSL_FILETYPE_PEM) <= 0 ) {
             ERR_print_errors_fp(stderr);
-            glog.log<log_t::SOCKET_SSL_PRIKEY_LOAD_FAILED>();
+            log<log_t::SOCKET_SSL_PRIKEY_LOAD_FAILED>();
             throw exception_t(err_t::SOCKET_SSL_PRIKEY_FAILED);
         } else {
-            glog.log<log_t::SOCKET_SSL_PRIKEY_LOAD_SUCCESS>();
+            log<log_t::SOCKET_SSL_PRIKEY_LOAD_SUCCESS>();
         }
     }
 
@@ -414,7 +414,7 @@ public:
         auto ssl = SSL_new(socket_ssl_t::ctx);
         SSL_set_fd(ssl, client_id);
 
-        glog.log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
+        log<log_t::SOCKET_ACCEPT_SUCCESS>(socket_id, client_id);
         return {client_id, ssl};
     }
 

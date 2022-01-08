@@ -30,14 +30,14 @@ inline uint64_t get_etags(int fd) {
 void filemap::add_file(const std::string &relativepath) {
     size_t period_pos = relativepath.rfind('.');
     if (period_pos == std::string::npos) {
-        glog.log<log_t::WEB_SERVER_NO_EXTENSION>();
+        log<log_t::WEB_SERVER_NO_EXTENSION>();
         return;
     }
     const std::string extension = relativepath.substr(period_pos + 1);
 
     const auto content_type_iter = content_type_map.find(extension);
     if (content_type_iter == content_type_map.end()) {
-        glog.log<log_t::WEB_SERVER_UNSUPPORTED_EXTENSION>();
+        log<log_t::WEB_SERVER_UNSUPPORTED_EXTENSION>();
         return;
     }
 

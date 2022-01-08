@@ -139,7 +139,7 @@ void test_logs() try {
     using rohit::logger;
     using rohit::logger_level;
     using rohit::log_t;
-    using rohit::glog;
+    using rohit::log;
 
     std::cout << "Total type of logs count: " << rohit::log_t_count << std::endl;
     const char *log_filename = "/tmp/test_logs.bin";
@@ -149,12 +149,12 @@ void test_logs() try {
     rohit::init_log_thread(log_filename);
 
     std::cout << "Writing log" << std::endl;
-    glog.log<log_t::PTHREAD_JOIN_FAILED>(101);
-    glog.log<log_t::TEST_FLOAT_LOGS>(101.0f, 102.0);
+    log<log_t::PTHREAD_JOIN_FAILED>(101);
+    log<log_t::TEST_FLOAT_LOGS>(101.0f, 102.0);
 
     size_t log_count = 201;
     for (size_t count = 0; count < log_count; ++count) {
-        glog.log<log_t::TEST_INTEGER_LOGS>(101, 102l, 103ll,
+        log<log_t::TEST_INTEGER_LOGS>(101, 102l, 103ll,
             (int16_t)104, (int8_t)105, 201u, 202lu, 203llu, (uint16_t)204, (uint8_t)205);
     }
 
@@ -162,13 +162,13 @@ void test_logs() try {
     rohit::ipv6_addr_t ipv6addr = rohit::to_ipv6_addr_t("eb::1");
     rohit::ipv6_port_t ipv6port = 8080;
 
-    glog.log<log_t::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
-    glog.log<log_t::SYSTEM_ERROR>(EINVAL);
-    glog.log<log_t::IOT_ERROR>(rohit::err_t::GUID_BAD_STRING_FAILURE);
+    log<log_t::TEST_IPV6ADDR_LOGS>('v', ipv6sockaddr, ipv6sockaddr, ipv6addr, ipv6addr, ipv6port);
+    log<log_t::SYSTEM_ERROR>(EINVAL);
+    log<log_t::IOT_ERROR>(rohit::err_t::GUID_BAD_STRING_FAILURE);
 
     rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
-    glog.log<log_t::TEST_GUID_LOG>(guid, guid);
-    glog.log<log_t::TEST_STATE_LOG>(rohit::state_t::EVENT_DIST_NONE);
+    log<log_t::TEST_GUID_LOG>(guid, guid);
+    log<log_t::TEST_STATE_LOG>(rohit::state_t::EVENT_DIST_NONE);
 
     constexpr auto wait_time = std::chrono::milliseconds(rohit::config::log_thread_wait_in_millis*2);
     std::this_thread::sleep_for(wait_time);

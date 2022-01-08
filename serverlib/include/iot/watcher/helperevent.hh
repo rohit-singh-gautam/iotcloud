@@ -31,7 +31,7 @@ public:
                 : evtdist(evtdist), evtfd(eventfd(1, EFD_NONBLOCK))
     {
         if (evtfd == -1) {
-            glog.log<log_t::FILEWATCHER_EVENT_CREATE_FAILED>();
+            log<log_t::FILEWATCHER_EVENT_CREATE_FAILED>();
             throw exception_t(err_t::FILEWATCHER_EVENT_CREATE_FAILED);
         }
 
@@ -51,7 +51,7 @@ public:
     inline void write_event(const help_event event) {
         auto ret = write(evtfd, (void *)&event, sizeof(help_event));
         if (ret <= 0) {
-            glog.log<log_t::EVENT_SERVER_HELPER_WRITE_FAILED>(errno);
+            log<log_t::EVENT_SERVER_HELPER_WRITE_FAILED>(errno);
             return;
         }
     }
@@ -59,7 +59,7 @@ public:
     // This must be called from event_distributer loop
     // Returns true if pause from current thread
     inline bool pause_all_thread(thread_context &ctx) {
-        ctx.log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
+        log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
         auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
         if (last_pause_count == 0) { // This will protect from muliple thread calling this function
@@ -70,7 +70,7 @@ public:
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
             if (pause_count != thread_count) {
-                ctx.log<log_t::EVENT_DIST_PAUSED_THREAD_FAILED>();
+                log<log_t::EVENT_DIST_PAUSED_THREAD_FAILED>();
                 return false;
             }
             return true;
@@ -85,19 +85,19 @@ public:
     inline bool resume_all_thread(thread_context &ctx) {
         --pause_count;
         pthread_mutex_unlock(&pause_mutex);
-        ctx.log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
+        log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
 
         return true;
     }
 
 private:
     inline void pause(thread_context &ctx) {
-        ctx.log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
+        log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
         auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
         --pause_count; // This is already syncronized
         pthread_mutex_unlock(&pause_mutex);
-        ctx.log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
+        log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
     }
 
     inline void execute(thread_context &ctx) override {
@@ -106,7 +106,7 @@ private:
 
         len = read(evtfd, (void *)&message, sizeof(help_event));
         if (len == -1 && errno != EAGAIN) {
-            ctx.log<log_t::EVENT_SERVER_HELPER_READ_FAILED>(errno);
+            log<log_t::EVENT_SERVER_HELPER_READ_FAILED>(errno);
             return;
         }
 
@@ -116,7 +116,7 @@ private:
             break;
         }
         default:
-            ctx.log<log_t::EVENT_SERVER_HELPER_UNKNOWN>();
+            log<log_t::EVENT_SERVER_HELPER_UNKNOWN>();
             break;
         }
     }

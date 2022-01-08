@@ -25,7 +25,7 @@ bool parse_and_display(int argc, char *argv[]) {
         "Device server is designed to keep hold on all the IOT devices connected to internet. "
         "All devices share their state with this server and even devices are contolled by this server. ",
         {
-            {'l', "log_file", "file path", "Path to save log file", log_file, "/var/log/iotcloud/deviceserver.log"},
+            {'l', "log_file", "file path", "Path to save log file", log_file, "/tmp/log/iotcloud/deviceserver.log"},
             {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file iot.json and logmodule.json", config_folder, "/etc/iotcloud"},
             {'t', "thread_count", "number of thread", "Number of threads that listen to socket, 0 means number of CPU", thread_count, 0},
             {'v', "version", "Display version", display_version},
@@ -212,7 +212,7 @@ void destroy_app() {
 }
 
 void segv_app() {
-    rohit::glog.log<rohit::log_t::SEGMENTATION_FAULT>();
+    rohit::log<rohit::log_t::SEGMENTATION_FAULT>();
     rohit::segv_log_flush();
 }
 

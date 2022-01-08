@@ -16,11 +16,42 @@
 
 namespace rohit {
 
-logger<true> glog;
-template<> size_t logger<true>::logger_count = 0;
-template<> size_t logger<false>::logger_count = 0;
-template<> logger<true> *logger<true>::logger_array[logger<true>::max_logger] = {};
-template<> logger<false> *logger<false>::logger_array[logger<false>::max_logger] = {};
+thread_local logger _log;
+
+logger_list::~logger_list() {
+    logger_list::flush();
+    enabled = false;
+    close(fd);
+}
+
+void logger_list::add(logger *new_logger)
+{
+    if (enabled) {
+        std::lock_guard guard {mutex};
+        logger_store.insert(new_logger);
+    }
+}
+
+void logger_list::remove(logger *new_logger)
+{
+    if (enabled) {
+        std::lock_guard guard {mutex};
+        logger_store.erase(new_logger);
+    }
+}
+
+void logger_list::flush() {
+    if (enabled) {
+        std::lock_guard guard {mutex};
+        std::ranges::for_each(logger_store, [this](auto &logger) { logger->flush(this->fd); });
+    }
+}
+
+void logger_list::set_fd(const int fd) {
+    this->fd = fd;
+}
+
+logger_list logger::all { };
 
 active_module enabled_log_module;
 
@@ -188,18 +219,11 @@ void add_time_to_string_helper(
     pStr += count;
 }
 
-
-static inline void flush_all_logger(const int filedescriptor) {
-    logger<true>::flushall(filedescriptor);
-    logger<false>::flushall(filedescriptor);
-}
-
 pthread_t log_thread;
-int log_filedescriptor = 0;
 bool log_thread_running = false;
 
 void segv_log_flush() {
-    flush_all_logger(log_filedescriptor);
+    logger::all.flush();
 }
 
 static void *log_thread_function(void *) {
@@ -207,19 +231,21 @@ static void *log_thread_function(void *) {
     log_thread_running = true;
     while(log_thread_running) {
         std::this_thread::sleep_for(wait_time);
-        flush_all_logger(log_filedescriptor);
+        logger::all.flush();
     }
 
-    flush_all_logger(log_filedescriptor);
+    logger::all.flush();
 
     return nullptr;
 }
 
 void init_log_thread(const char *filename) {
-    log_filedescriptor = open(filename, O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+    int log_filedescriptor = open(filename, O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     if ( log_filedescriptor < 0 ) {
         std::cerr << "Failed to open file " << filename << ", error " << errno << ", " << strerror(errno) << std::endl;
     }
+
+    logger::all.set_fd(log_filedescriptor);
 
     auto ret = pthread_create(&log_thread, NULL, &log_thread_function, nullptr);
     if (ret != 0) {
@@ -234,8 +260,6 @@ void destroy_log_thread() {
     if (ret != 0) {
         std::cerr << "Failed to join log thread, error " << errno << ", " << strerror(errno) << std::endl;
     }
-    close(log_filedescriptor);
-    log_filedescriptor = 0;
 }
 
 

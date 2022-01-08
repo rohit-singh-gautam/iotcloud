@@ -194,7 +194,7 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
         return;
     }
     if (isFailure(err)) {
-        ctx.log<log_t::HTTP_EVENT_SERVER_READ_FAILED>(err);
+        log<log_t::HTTP_EVENT_SERVER_READ_FAILED>(err);
         return;
     }
 
@@ -396,7 +396,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx) {
         case state_t::SERVEREVENT_MOVED: {
             // This event is move to HTTP 2.0
             // We must never reach here
-            ctx.log<log_t::EVENT_SERVER_MOVED_ENTERED>();
+            log<log_t::EVENT_SERVER_MOVED_ENTERED>();
             break;
         }
 
@@ -406,7 +406,7 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx) {
 
         default:
             // We must never reach here
-            ctx.log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
+            log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
             break;
     }
 } // void iothttpevent<use_ssl>::execute(thread_context &ctx)
@@ -607,7 +607,7 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
         return;
     }
     if (isFailure(err)) {
-        ctx.log<log_t::HTTP2_EVENT_SERVER_READ_FAILED>(err);
+        log<log_t::HTTP2_EVENT_SERVER_READ_FAILED>(err);
         return;
     }
 
@@ -679,7 +679,7 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx) {
 
         default:
             // We must never reach here
-            ctx.log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
+            log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
             break;
     }
 }

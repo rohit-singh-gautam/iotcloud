@@ -72,7 +72,7 @@ int socket_ssl_t::alpn_negotiate_cb(SSL *ssl,
 void socket_ssl_t::init_openssl(bool isclient)
 {
     if (!initialize_ssl_count) {
-        glog.log<log_t::SOCKET_SSL_INITIALIZE>();
+        log<log_t::SOCKET_SSL_INITIALIZE>();
         if (isclient) SSL_library_init();
         SSL_load_error_strings();	
         OpenSSL_add_all_algorithms();
@@ -80,7 +80,7 @@ void socket_ssl_t::init_openssl(bool isclient)
         ++initialize_ssl_count;
     } else {
         ++initialize_ssl_count;
-        glog.log<log_t::SOCKET_SSL_INITIALIZE_ATTEMPT>(initialize_ssl_count);
+        log<log_t::SOCKET_SSL_INITIALIZE_ATTEMPT>(initialize_ssl_count);
     }
 }
 
@@ -89,12 +89,12 @@ void socket_ssl_t::cleanup_openssl()
     --initialize_ssl_count;
 
     if (initialize_ssl_count == 0) {
-        glog.log<log_t::SOCKET_SSL_CLEANUP>();
+        log<log_t::SOCKET_SSL_CLEANUP>();
         SSL_CTX_free(ctx);
         ctx = nullptr;
         EVP_cleanup();
     } else {
-        glog.log<log_t::SOCKET_SSL_CLEANUP_ATTEMPT>(initialize_ssl_count);
+        log<log_t::SOCKET_SSL_CLEANUP_ATTEMPT>(initialize_ssl_count);
     }
 
     assert(initialize_ssl_count >= 0);
