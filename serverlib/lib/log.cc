@@ -13,6 +13,7 @@
 #include <cstring>
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 namespace rohit {
 
@@ -277,14 +278,14 @@ void add_time_to_string_helper(
     pStr += count;
 }
 
-pthread_t log_thread;
+std::thread *plog_thread = nullptr;
 bool log_thread_running = false;
 
 void segv_log_flush() {
     logger::all.flush();
 }
 
-static void *log_thread_function(void *) {
+static void log_thread_function() {
     constexpr auto wait_time = std::chrono::milliseconds(config::log_thread_wait_in_millis);
     log_thread_running = true;
     while(log_thread_running) {
@@ -293,8 +294,6 @@ static void *log_thread_function(void *) {
     }
 
     logger::all.flush();
-
-    return nullptr;
 }
 
 void init_log_thread(const char *filename) {
@@ -305,19 +304,14 @@ void init_log_thread(const char *filename) {
 
     logger::all.set_fd(log_filedescriptor);
 
-    auto ret = pthread_create(&log_thread, NULL, &log_thread_function, nullptr);
-    if (ret != 0) {
-        std::cerr << "Failed to create thread, error " << ret << ", " << strerror(ret) << std::endl;
-    }
+    plog_thread = new std::thread { log_thread_function };
 }
 
 
 void destroy_log_thread() {
     log_thread_running = false;
-    auto ret = pthread_join(log_thread, nullptr);
-    if (ret != 0) {
-        std::cerr << "Failed to join log thread, error " << errno << ", " << strerror(errno) << std::endl;
-    }
+    plog_thread->join();
+    plog_thread = nullptr;
 }
 
 
