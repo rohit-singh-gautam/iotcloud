@@ -412,6 +412,7 @@ public:
     void remove(logger *new_logger);
 
     void flush();
+    void flush(logger *);
 
     void set_fd(const int fd);
 };
@@ -420,159 +421,48 @@ public:
 // Any parameter change will have global impact
 class logger {
 public:
+    static constexpr size_t init_log_memory = 1_mb;
     static constexpr size_t max_log_memory = 1_mb;
     static constexpr std::chrono::milliseconds wait_for_free = std::chrono::milliseconds(1);
 
 private:
-    size_t next_write; // Index were write will start
-    size_t next_read; // Index where read will start
+    uint8_t* next_write = nullptr;
+    uint8_t* next_read = nullptr;    
 
-    uint8_t mem_buffer[max_log_memory];
+    size_t buffer_size = 0;
+    uint8_t* buffer = nullptr;
+    uint8_t* buffer_end = nullptr;
+
+    std::mutex mutex;
 
 public:
-    logger() : next_write(0), next_read(0), mem_buffer() {
-        logger::all.add(this);
-    }
-    ~logger() {
-        logger::all.remove(this);
-    }
+    logger();
+    ~logger();
 
-    void flush(const int filedescriptor) {
-        size_t new_next_write = next_write;
-        
-        if (new_next_write > next_read) {
-            size_t data_size = new_next_write - next_read;
-            auto ret = ::write(
-                filedescriptor,
-                mem_buffer + next_read,
-                data_size);
-            if constexpr (config::debug) {
-                if (ret < 0) {
-                    // Log to console
-                    std::cerr << "Failed to write log with error: " << errno << "\n";
-                }
-            }
-            next_read = new_next_write;
-        } else if (new_next_write < next_read) {
-            size_t first_size = max_log_memory - next_read;
-            // second_size = new_next_write;
-            auto ret = ::write(
-                filedescriptor,
-                mem_buffer + next_read,
-                first_size);
-            if constexpr (config::debug) {
-                if (ret < 0) {
-                    // Log to console
-                    std::cerr << "Failed to write log with error: " << errno << "\n";
-                }
-            }
-
-            ret = ::write(filedescriptor, mem_buffer, new_next_write);
-            if constexpr (config::debug) {
-                if (ret < 0) {
-                    // Log to console
-                    std::cerr << "Failed to write log with error: " << errno << "\n";
-                }
-            }
-
-            next_read = new_next_write;
-        }
-
-        sync();
-    }
+    // This will flush only
+    // Will not reallocate memory
+    void flush(const int fd);
+    void replinish();
 
     template <log_t ID, typename... ARGS>
-    void log(const ARGS&... args)
+    inline void log(const ARGS&... args)
     {
         if (!enabled_log_module.is_enabled<ID>()) return;
         const int64_t nanosecond = std::chrono::system_clock::now().time_since_epoch().count();
         logger_logs_entry<ID, ARGS...> logs_entry(nanosecond, args...);
 
-        if constexpr (config::log_with_check || config::debug) {
-            while (true) {
-                size_t new_next_write = next_write + sizeof(logs_entry);
-                if (next_write >= next_read) {
-                    // ....ddddd....
-                    // Data is in between mem_buffer
-
-                    if (new_next_write < max_log_memory) {
-                        // Just write the data
-                        std::copy(
-                            (uint8_t *)&logs_entry,
-                            (uint8_t *)&logs_entry + sizeof(logs_entry),
-                            mem_buffer + next_write);
-                        next_write = new_next_write;
-                        break;
-                    } else {
-                        new_next_write -= max_log_memory;
-                        if (new_next_write < next_read) {
-                            size_t first_write = max_log_memory - next_write;
-                            // second_write = new_next_write;
-                            std::copy(
-                            (uint8_t *)&logs_entry,
-                            (uint8_t *)&logs_entry + first_write,
-                            mem_buffer + next_write);
-
-                            std::copy(
-                            (uint8_t *)&logs_entry + first_write,
-                            (uint8_t *)&logs_entry + sizeof(logs_entry),
-                            mem_buffer);
-
-                            next_write = new_next_write;
-                            break;
-                        }
-                    }
-
-                } else {
-                    // dd.......dddd
-                    // Data is at start and end of mem_buffer
-                    if (new_next_write < next_read) {
-                        std::copy(
-                            (uint8_t *)&logs_entry,
-                            (uint8_t *)&logs_entry + sizeof(logs_entry),
-                            mem_buffer + next_write);
-                        next_write = new_next_write;
-                        break;
-                    }
-                }
-
-                if constexpr (!config::log_with_check) {
-                    assert(true);
-                } else {
-                    // Unlock required before sleep
-                    // As thread that write to file
-                    if (next_read != next_write) std::this_thread::sleep_for(wait_for_free);
-                }
-            }
-        } else {
-            // There will be no check
-            // This is achieved by having huge memory for logs
-            // 1MB of memory can hold more that 60000 logs
-
-            size_t new_next_write = next_write + sizeof(logs_entry);
-            if (new_next_write < max_log_memory) {
-                std::copy(
-                        (uint8_t *)&logs_entry,
-                        (uint8_t *)&logs_entry + sizeof(logs_entry),
-                        mem_buffer + next_write);
-                    next_write = new_next_write;
-            } else {
-                size_t first_write = max_log_memory - next_write;
-                // second_write = new_next_write;
-
-                std::copy(
-                (uint8_t *)&logs_entry,
-                (uint8_t *)&logs_entry + first_write,
-                mem_buffer + next_write);
-
-                std::copy(
-                (uint8_t *)&logs_entry + first_write,
-                (uint8_t *)&logs_entry + sizeof(logs_entry),
-                mem_buffer);
-
-                next_write = new_next_write;
-            }
+        auto new_next_write = next_write + sizeof(logs_entry);
+        if (new_next_write >= buffer_end) [[unlikely]] {
+            replinish();
+            new_next_write = next_write + sizeof(logs_entry);
         }
+
+        std::copy(
+                (uint8_t *)&logs_entry,
+                (uint8_t *)&logs_entry + sizeof(logs_entry),
+                next_write);
+
+        next_write = new_next_write;        
     }
 
     static logger_list all;

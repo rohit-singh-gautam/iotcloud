@@ -8,7 +8,7 @@
 #include <string>
 #include <cstdlib>
 #include <cstring>
-#include <pthread.h>
+#include <thread>
 #include "socket.hh"
 #include <iot/core/log.hh>
 
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const socketserver<Execution> 
     return os << sockSrv.socket_id;
 }
 
-// This is simpliest execution.
+// This is simplest execution.
 template <class ClientExecution>
 class server_execution_simplest {
 public:
@@ -76,13 +76,10 @@ public:
 
 template <class ClientExecution>
 class server_execution_threaded {
-public:
-    static const constexpr size_t MAX_THREAD = 1000;
 private:
     // We are not expecting same client execution to run on multiple ports
     // Hence ClientExecution is static
-    pthread_t pthread[MAX_THREAD];
-    int next_index = 0;
+    std::vector<std::jthread> threads { };
 
     static void * execute_client(void *args) {
         socket_t &client_id = *(socket_t *)(args);
@@ -92,24 +89,11 @@ private:
     }
 
 public:
-    inline server_execution_threaded(const socketserver<server_execution_threaded<ClientExecution>> *) {
-        memset(pthread, '\0', sizeof(pthread));
-    }
+    inline server_execution_threaded(const socketserver<server_execution_threaded<ClientExecution>> *) { }
 
     inline void execute(socket_t client_id) {
-        if (pthread[next_index]) {
-            auto errJoin = pthread_join(pthread[next_index], NULL);
-            // We are just logging here
-            if (errJoin != 0)
-                log<log_t::PTHREAD_JOIN_FAILED>(errJoin);
-        }
-        auto ret = pthread_create(&pthread[next_index], NULL, execute_client, (void *)&client_id);
-
-        if (ret != 0) {
-            log<log_t::PTHREAD_CREATE_FAILED>(ret); 
-        } else {
-             ++next_index;
-        }
+        std::jthread newthread { execute_client, client_id };
+        threads.push_back(newthread);
     }
 };
 

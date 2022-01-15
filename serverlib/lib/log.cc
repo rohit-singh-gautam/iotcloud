@@ -19,7 +19,7 @@ namespace rohit {
 thread_local logger _log;
 
 logger_list::~logger_list() {
-    logger_list::flush();
+    flush();
     enabled = false;
     close(fd);
 }
@@ -45,6 +45,14 @@ void logger_list::flush() {
         std::lock_guard guard {mutex};
         std::ranges::for_each(logger_store, [this](auto &logger) { logger->flush(this->fd); });
     }
+    sync();
+}
+
+void logger_list::flush(logger *plogger) {
+    if (enabled) {
+        std::lock_guard guard {mutex};
+        plogger->flush(this->fd);
+    }
 }
 
 void logger_list::set_fd(const int fd) {
@@ -52,6 +60,56 @@ void logger_list::set_fd(const int fd) {
 }
 
 logger_list logger::all { };
+
+logger::logger() {
+    logger::all.add(this);
+}
+
+logger::~logger() {
+    logger::all.remove(this);
+}
+
+void logger::flush(const int fd) {
+    std::lock_guard guard { mutex };
+    assert(next_write >= next_read);
+    if (next_read == next_write) return;
+
+    auto current_write = next_write; 
+    size_t write_size = current_write - next_read;
+
+    auto ret = ::write(
+        fd,
+        next_read,
+        write_size);
+    if constexpr (config::debug) {
+        if (ret < 0) {
+            // Log to console
+            std::cerr << "Failed to write log with error: " << errno << "\n";
+        }
+    }
+
+    next_read = current_write;
+}
+
+void logger::replinish() {
+    if (buffer_size == 0) {
+        std::lock_guard guard { mutex };
+        buffer_size = init_log_memory;
+        buffer = next_read = next_write = new uint8_t[init_log_memory];
+        buffer_end = buffer + buffer_size;
+    } else {
+        // Make sure next_read == next_write
+        // This flush cannot be in lock_guard
+        // There will be deadlock if done so
+        logger::all.flush(this);
+        assert(next_read == next_write);
+        
+        //TODO: Dynamically increase buffer size
+
+        std::lock_guard guard { mutex };
+        next_read = next_write = buffer;
+    }
+}
 
 active_module enabled_log_module;
 

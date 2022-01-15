@@ -13,8 +13,9 @@ add_executable(ServerLibraryTestSocketClient client.cc)
 add_executable(ServerLibraryTestCrypto testcrypto.cc)
 
 set(include_common
+    ${CMAKE_BINARY_DIR}/httpparser
     ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/../../serverlib/include
+    ${CMAKE_SOURCE_DIR}/serverlib/include
     )
 
 set(lib_common ServerLibrary)
