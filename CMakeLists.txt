@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
+#sudo apt install libssl-dev
+#sudo apt install libpq-dev
+#sudo apt install flex
+#sudo apt install bison
+
 project(iotcloud)
 
 # Build Type must be one of: Debug Release RelWithDebInfo MinSizeRel
