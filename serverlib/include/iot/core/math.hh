@@ -13,14 +13,6 @@
 
 namespace rohit {
 
-template <byte_type BYTE_TYPE>
-constexpr void reverse(BYTE_TYPE *start, BYTE_TYPE *end) {
-    while(start < end) {
-        std::swap(*start, *end);
-        ++start; --end;
-    }
-}
-
 enum class number_case {
     lower,
     upper
