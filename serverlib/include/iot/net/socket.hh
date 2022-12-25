@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <string>
 #include <cstring>
+#include <filesystem>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -212,7 +213,7 @@ public:
                 log<log_t::SOCKET_SSL_ACCEPT_RETRY>(socket_id);
                 return error_c::ssl_error_ret(ssl_error);
             }
-            log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id);
+            log<log_t::SOCKET_SSL_ACCEPT_FAILED>(socket_id, ssl_error);
             return error_c::ssl_error_ret(ssl_error);
         }
 
@@ -389,6 +390,11 @@ public:
         socket_ssl_t::init_openssl(false);
 
         SSL_CTX_set_ecdh_auto(ctx, 1);
+
+        if (!std::filesystem::exists(cert_file)) {
+            log<log_t::SOCKET_SSL_CERT_LOAD_FAILED_FILE_NOT_FOUND>();
+            throw exception_t(err_t::SOCKET_SSL_CERTIFICATE_FILE_NOT_FOUND);
+        }
 
         if ( SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0 ) {
             ERR_print_errors_fp(stderr);

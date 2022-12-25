@@ -227,6 +227,15 @@ void state_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
+void to_string_ssl_error_helper(char *&pStr, const uint8_t *&data_args) {
+    auto &value = *reinterpret_cast<const std::int32_t *>(data_args);
+    data_args += sizeof(std::int32_t);
+    const auto errstr = ERR_error_string(value, nullptr);
+    auto count = strlen(errstr);
+    std::copy(errstr, errstr + count, pStr);
+    pStr += count;
+}
+
 template<std::size_t N>
 void to_string_helper(char *&pStr, const char (&disp_str)[N]) {
     // Skipping null
@@ -493,6 +502,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case 'G': guid_t_to_string_helper<number_case::upper>(pStr, data_args); break;
                 case 'v': epoll_event_to_string_helper(pStr, data_args); break;
                 case 's': state_t_to_string_helper(pStr, data_args); break;
+                case 'c': to_string_ssl_error_helper(pStr, data_args); break;
                 default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
             state = formatstring_state::COPY;

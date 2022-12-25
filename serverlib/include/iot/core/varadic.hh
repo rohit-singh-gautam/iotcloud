@@ -118,6 +118,7 @@ constexpr size_t formatstring_count(const char (&fmtstr)[size]) {
             case 'G':
             case 'v':
             case 's':
+            case 'c':
                 ++count;
                 state = formatstring_state::COPY;
                 break;
@@ -318,6 +319,10 @@ template <const size_t COUNT> struct formatstring_type_list {
                 case 's':
                     type_list[index++] = type_identifier::state_t;
                     length += type_length<type_identifier::state_t>::value;
+                    break;
+                case 'c':
+                    type_list[index++] = type_identifier::int32_t;
+                    length += type_length<type_identifier::int32_t>::value;
                     break;
                 default:
                         type_list[index++] = type_identifier::bad_type; break;
@@ -563,6 +568,9 @@ consteval size_t check_formatstring_helper(const char (&fmtstr)[fmtstr_size]) {
                     break;
                 case 's':
                     if (*type_itr != type_identifier::state_t) return check_args_error + count;
+                    break;
+                case 'c':
+                    if (*type_itr != type_identifier::int32_t) return check_args_error + count;
                     break;
                 default:
                     return check_fmtstr_error + count;

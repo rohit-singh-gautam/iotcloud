@@ -9,8 +9,8 @@
             "TYPE" : "ssl",
             "port" : 8081,
             "IP"   : "*",
-            "CertFile" : "/home/rohit/iotcloud/resources/key/testcert.pem",
-            "PrikeyFile" : "/home/rohit/iotcloud/resources/key/testcert.pem"
+            "CertFile" : "/home/rohit/src/iotcloud/resources/key/testcert.pem",
+            "PrikeyFile" : "/home/rohit/src/iotcloud/resources/key/testcert.pem"
         },
         {
             "name" : "Protected",
@@ -22,15 +22,15 @@
             "TYPE" : "http",
             "port" : 8060,
             "IP"   : "*",
-            "Folder"    : "/home/rohit/iotcloud/resources/www"
+            "Folder"    : "/home/rohit/src/iotcloud/resources/www"
         },
         {
             "TYPE" : "https",
             "port" : 8061,
             "IP"   : "*",
-            "CertFile" : "/home/rohit/iotcloud/resources/key/testcert.pem",
-            "PrikeyFile" : "/home/rohit/iotcloud/resources/key/testcert.pem",
-            "Folder"    : "/home/rohit/iotcloud/resources/www"
+            "CertFile" : "/home/rohit/src/iotcloud/resources/key/testcert.pem",
+            "PrikeyFile" : "/home/rohit/src/iotcloud/resources/key/testcert.pem",
+            "Folder"    : "/home/rohit/src/iotcloud/resources/www"
         }
     ],
     "Mappings" : [

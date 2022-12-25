@@ -50,6 +50,7 @@ namespace rohit {
     //      %vG: GUID upper case
     //      %vv: Epoll event
     //      %vs: State of an execution
+    //      %vc: SSL error
     // %% - %
     //
     // Supported format length
@@ -100,13 +101,14 @@ namespace rohit {
     LOGGER_ENTRY(SOCKET_SSL_INITIALIZE_ATTEMPT, DEBUG, SOCKET, "Socket initialize SSL attempt  %i") \
     LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_SUCCESS, INFO, SOCKET, "Loaded SSL certificate") \
     LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_FAILED, ERROR, SOCKET, "Unable to load SSL certificate, exiting") \
+    LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_FAILED_FILE_NOT_FOUND, ERROR, SOCKET, "Unable to load SSL certificate as file not found, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_SUCCESS, INFO, SOCKET, "Loaded Primary Key") \
     LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_FAILED, ERROR, SOCKET, "Unable to load Primary Key, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP, INFO, SOCKET, "Socket cleanup SSL") \
     LOGGER_ENTRY(SOCKET_SSL_CLEANUP_ATTEMPT, DEBUG, SOCKET, "Socket cleanup SSL left %i") \
     LOGGER_ENTRY(SOCKET_SSL_ACCEPT_RETRY, DEBUG, SOCKET, "SSL Socket %i accept retry SSL Accept") \
     LOGGER_ENTRY(SOCKET_SSL_ACCEPT_SUCCESS, VERBOSE, SOCKET, "SSL Socket %i accept success") \
-    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_FAILED, ERROR, SOCKET, "SSL Socket %i accept failed") \
+    LOGGER_ENTRY(SOCKET_SSL_ACCEPT_FAILED, ERROR, SOCKET, "SSL Socket %i accept failed, with %vc") \
     \
     LOGGER_ENTRY(EVENT_DIST_CREATING_THREAD, DEBUG, EVENT_DISTRIBUTOR, "Event distributor creating %llu threads") \
     LOGGER_ENTRY(EVENT_DIST_LOOP_CREATED, DEBUG, EVENT_DISTRIBUTOR, "Event distributor thread loop created") \

@@ -77,6 +77,7 @@ namespace rohit {
     \
     ERROR_T_ENTRY(SOCKET_SSL_CONTEXT_FAILED, "Creation on SSL context failed") \
     ERROR_T_ENTRY(SOCKET_SSL_CERTIFICATE_FAILED, "Failed to load SSL certificate") \
+    ERROR_T_ENTRY(SOCKET_SSL_CERTIFICATE_FILE_NOT_FOUND, "Failed to load SSL certificate, file not found") \
     ERROR_T_ENTRY(SOCKET_SSL_PRIKEY_FAILED, "Failed to load Primay Key") \
     \
     ERROR_T_ENTRY(SOCKET_SSL_WANT_READ, "Non blocking SSL, want to read more data") \
