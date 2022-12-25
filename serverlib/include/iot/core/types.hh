@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <bit>
 #include <algorithm>
+#include <functional>
 
 struct sockaddr_in6;
 namespace rohit {

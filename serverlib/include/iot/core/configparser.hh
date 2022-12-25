@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <string>
 #include <assert.h>
+#include <vector>
 
 namespace rohit {
 
