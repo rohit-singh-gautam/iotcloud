@@ -16,7 +16,6 @@
 
 #include <iot/states/statesentry.hh>
 #include <stdint.h>
-#include <stddef.h>
 #include <sys/types.h>
 #include <bit>
 #include <algorithm>

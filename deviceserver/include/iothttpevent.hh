@@ -650,7 +650,7 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
         process_read_buffer<state == state_t::HTTP2_FIRST_FRAME>(ctx, read_buffer, read_buffer_length);
     }
 
-    if constexpr (use_ssl) read_helper<state_t::SOCKET_PEER_READ>(ctx);
+    if constexpr (use_ssl) if (!peer_id.is_closed()) read_helper<state_t::SOCKET_PEER_READ>(ctx);
 }
 
 template <bool use_ssl>

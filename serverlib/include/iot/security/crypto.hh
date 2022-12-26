@@ -49,18 +49,18 @@ struct openssl_mem : public mem<void> {
 };
 
 struct openssl_ec_key_mem {
-    EC_KEY *key;
-    constexpr openssl_ec_key_mem(EC_KEY *key = nullptr) : key(key) {}
+    EVP_PKEY *key;
+    constexpr openssl_ec_key_mem(EVP_PKEY *key = nullptr) : key(key) {}
     inline ~openssl_ec_key_mem() {
-        if (key != nullptr) EC_KEY_free(key);
+        if (key != nullptr) EVP_PKEY_free(key);
     }
 
     void free() {
-        EC_KEY_free(key);
+        EVP_PKEY_free(key);
         key = nullptr;
     }
 
-    constexpr EC_KEY *operator=(EC_KEY *rhs) {
+    constexpr EVP_PKEY *operator=(EVP_PKEY *rhs) {
         if constexpr (config::debug) {
             if (key != nullptr) {
                 throw exception_t(err_t::CRYPTO_MEMORY_BAD_ASSIGNMENT);
@@ -69,7 +69,7 @@ struct openssl_ec_key_mem {
         return key = rhs;
     }
     constexpr bool operator==(void *rhs) const { return key == rhs; }
-    constexpr operator EC_KEY *() const { return key; }
+    constexpr operator EVP_PKEY *() const { return key; }
 };
 
 std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key);
@@ -117,31 +117,31 @@ err_t decrypt(const key_t &key, const mem<void> &encrypted_data, openssl_mem &de
 // Allocation of key must be done to contain id
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const int curve,
+    const char *curve,
     const mem<void> &private_ec_key,
     const mem<void> &peer_public_ec_key,
     key_t &key);
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const int curve,
+    const char *curve,
     const openssl_ec_key_mem &ec_private_key, // This is optimization
     const mem<void> &peer_public_ec_key,
     key_t &key);
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const int curve,
+    const char *curve,
     const openssl_ec_key_mem &private_ec_key,
     const openssl_ec_key_mem &peer_public_ec_key,
     key_t &key);
 
-err_t generate_ec_key(const int curve, openssl_ec_key_mem &ec_private_key);
+err_t generate_ec_key(const char *curve, openssl_ec_key_mem &ec_private_key);
 
 err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &private_ec_key);
 err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key);
 
-err_t ec_get_curve(const openssl_ec_key_mem &ec_key, int &curve);
+err_t ec_get_curve(const openssl_ec_key_mem &ec_key, std::string &curve);
 
 } // namespace crypto
 } // namespace rohit

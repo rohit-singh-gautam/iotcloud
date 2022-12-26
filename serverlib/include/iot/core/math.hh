@@ -16,7 +16,6 @@
 
 #include <iot/core/types.hh>
 #include <stdint.h>
-#include <stddef.h>
 #include <type_traits>
 #include <cmath>
 

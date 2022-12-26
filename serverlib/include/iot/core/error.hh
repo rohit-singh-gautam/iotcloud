@@ -120,6 +120,7 @@ namespace rohit {
     ERROR_T_ENTRY(CRYPTO_BAD_KEY, "Bad key provided") \
     ERROR_T_ENTRY(CRYPTO_BAD_PUBLIC_KEY, "Bad public key provided") \
     ERROR_T_ENTRY(CRYPTO_BAD_PRIVATE_KEY, "Bad private key provided") \
+    ERROR_T_ENTRY(CRYPTO_BAD_SYMETRIC_KEY, "Bad symetric key provided") \
     ERROR_T_ENTRY(CRYPTO_KEY_ENCODE_FAIL, "Failed to encode key to binary") \
     ERROR_T_ENTRY(CRYPTO_CURVE_NOT_FOUND, "Failed to find curve from key") \
     \

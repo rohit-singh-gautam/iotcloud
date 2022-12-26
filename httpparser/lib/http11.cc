@@ -13,7 +13,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <http11.hh>
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 #include <sstream>
 #include <iomanip>
 
@@ -106,13 +106,20 @@ std::ostream& operator<<(std::ostream& os, const http_response& responseContent)
 }
 
 void http_response::addMD5() {
-    unsigned char hash[MD5_DIGEST_LENGTH];    
-    MD5((const unsigned char*)body.c_str(), body.length(), hash);
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
+    const EVP_MD* md = EVP_md5();
+    EVP_DigestInit_ex2(context, md, NULL);
+    EVP_DigestUpdate(context, body.c_str(), body.length());
+
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hash_len;
+    EVP_DigestFinal_ex(context, hash, &hash_len);
+    EVP_MD_CTX_free(context);
 
     std::ostringstream md5Stream;
     md5Stream << std::hex << std::setfill('0');
 
-    for(long long c: hash) md5Stream << std::setw(2) << (long long)c;
+    for(unsigned int index = 0; index < hash_len; ++index) md5Stream << std::setw(2) << static_cast<long long>(hash[index]);
 
     fields.insert(std::make_pair<FIELD, std::string>(FIELD::Content_MD5, std::move(md5Stream.str())));
 }

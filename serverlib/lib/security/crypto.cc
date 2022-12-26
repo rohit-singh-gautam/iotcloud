@@ -16,18 +16,21 @@
 #include <iot/security/crypto.hh>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/core_names.h>
+#include <openssl/encoder.h>
+#include <memory>
 
 namespace rohit {
 namespace crypto {
 
 std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key) {
-    int curve;
+    std::string curve { };
     auto ret = ec_get_curve(key, curve);
     if (ret != err_t::SUCCESS) {
         return os << "Unable to find curve";
     }
     
-    os << "(curve:" << OBJ_nid2sn(curve);
+    os << "(curve:" << curve;
 
     openssl_mem public_ec_key;
     ret = get_public_key_binary(key, public_ec_key);
@@ -204,73 +207,32 @@ err_t decrypt_aes_256_gsm(
     return ret;
 }
 
-err_t ec_generate_private_key(const int curve, const mem<void> &prikey_bin, openssl_ec_key_mem &private_key) {
-    BIGNUM *pri_bn = BN_bin2bn((uint8_t *)prikey_bin.ptr, prikey_bin.size, nullptr);
-    if (pri_bn == nullptr) {
+err_t ec_generate_private_key(const char *curve, const mem<void> &prikey_bin, openssl_ec_key_mem &private_key) {
+    std::unique_ptr<BIO, decltype([](BIO *ptr) { BIO_free(ptr); })> prikey_bio { BIO_new_mem_buf(prikey_bin.ptr, prikey_bin.size) };
+    if (!prikey_bio) {
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
 
-    err_t ret = err_t::SUCCESS;
-    private_key = EC_KEY_new_by_curve_name(curve);
+    private_key = PEM_read_bio_PrivateKey(prikey_bio.get(), nullptr, nullptr, nullptr);
     if (private_key == nullptr) {
-        ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+        return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
 
-    if (ret == err_t::SUCCESS) {
-        if (!EC_KEY_set_private_key(private_key, pri_bn)) ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
-    }
-
-    BN_clear_free(pri_bn);
-    
-    if (ret != err_t::SUCCESS) {
-        EC_KEY_free(private_key);
-        private_key = nullptr;
-    }
-
-    return ret;
+    return err_t::SUCCESS;
 }
 
-err_t ec_generate_public_key(const int curve, const mem<void> &pubkey_bin, openssl_ec_key_mem &public_key) {
-    BIGNUM *pub_bn = BN_bin2bn((uint8_t *)pubkey_bin.ptr, pubkey_bin.size, nullptr);
-    if (pub_bn == nullptr) {
+err_t ec_generate_public_key(const char *curve, const mem<void> &pubkey_bin, openssl_ec_key_mem &public_key) {
+    std::unique_ptr<BIO, decltype([](BIO *ptr) { BIO_free(ptr); })> pubkey_bio { BIO_new_mem_buf(pubkey_bin.ptr, pubkey_bin.size) };
+    if (pubkey_bio == nullptr) {
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
 
-    err_t ret = err_t::SUCCESS;
-    public_key = EC_KEY_new_by_curve_name(curve);
+    public_key = PEM_read_bio_PUBKEY(pubkey_bio.get(), nullptr, nullptr, nullptr);
     if (public_key == nullptr) {
-        ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
+        return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
 
-    const EC_GROUP *ec_group = nullptr;
-    if (ret == err_t::SUCCESS) {
-        ec_group = EC_KEY_get0_group(public_key);
-        if (ec_group == nullptr) {
-            ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
-        }
-    }
-
-    EC_POINT *pubkey_point = nullptr;
-    if (ret == err_t::SUCCESS) {
-        pubkey_point = EC_POINT_bn2point(ec_group, pub_bn, nullptr, nullptr);
-        if (pubkey_point == nullptr) {
-            ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
-        }
-    }
-
-    if (ret == err_t::SUCCESS) {
-        if (!EC_KEY_set_public_key(public_key, pubkey_point)) ret = err_t::CRYPTO_KEY_GENERATION_FAILED;
-    }
-
-    BN_clear_free(pub_bn);
-    EC_POINT_free(pubkey_point);
-
-    if (ret != err_t::SUCCESS) {
-        EC_KEY_free(public_key);
-        public_key = nullptr;
-    }
-
-    return ret;
+    return err_t::SUCCESS;
 }
 
 err_t get_aes_256_gsm_key_from_ec(
@@ -278,32 +240,39 @@ err_t get_aes_256_gsm_key_from_ec(
     const openssl_ec_key_mem &peer_public_ec_key,
     key_aes_256_gsm_t &key)
 {
-    err_t ret = err_t::SUCCESS;
-
-    const EC_POINT *peer_pubkey_point = nullptr;
-    if (ret == err_t::SUCCESS) {
-        peer_pubkey_point = EC_KEY_get0_public_key(peer_public_ec_key);
-        if (peer_pubkey_point == nullptr) {
-            ret = err_t::CRYPTO_BAD_PUBLIC_KEY;
-        }
+    std::unique_ptr<EVP_PKEY_CTX, decltype([](EVP_PKEY_CTX *ptr) { EVP_PKEY_CTX_free(ptr); })>
+        ctx { EVP_PKEY_CTX_new(ec_private_key, nullptr) };
+    if (!ctx) {
+        return err_t::CRYPTO_BAD_PRIVATE_KEY;
     }
 
-    if (ret == err_t::SUCCESS) {
-        auto length = ECDH_compute_key(
-            key.symetric_key,
-            sizeof(key_aes_256_gsm_t::symetric_key),
-            peer_pubkey_point,
-            ec_private_key,
-            nullptr);
+    if (EVP_PKEY_keygen_init(ctx.get()) <= 0) {
+        return err_t::CRYPTO_BAD_PRIVATE_KEY;
     }
 
-    return ret;
+    if (EVP_PKEY_derive_set_peer(ctx.get(), peer_public_ec_key) <= 0) {
+        return err_t::CRYPTO_BAD_PUBLIC_KEY;
+    }
 
+    size_t symetric_key_len { };
+    if (EVP_PKEY_derive(ctx.get(), nullptr, &symetric_key_len) <= 0) {
+        return err_t::CRYPTO_BAD_SYMETRIC_KEY;
+    }
+
+    if (symetric_key_len != key_aes_256_gsm_t::key_size_in_bytes) {
+        return err_t::CRYPTO_BAD_SYMETRIC_KEY;
+    }
+
+    if (EVP_PKEY_derive(ctx.get(), key.symetric_key, &symetric_key_len) <= 0) {
+        return err_t::CRYPTO_BAD_SYMETRIC_KEY;
+    }
+
+    return err_t::SUCCESS;
 }
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const int curve,
+    const char *curve,
     const openssl_ec_key_mem &private_ec_key, // This is optimization
     const openssl_ec_key_mem &peer_public_ec_key,
     key_t &key)
@@ -321,7 +290,7 @@ err_t get_symmetric_key_from_ec(
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const int curve,
+    const char *curve,
     const mem<void> &private_ec_key,
     const mem<void> &peer_public_ec_key,
     key_t &key)
@@ -331,7 +300,7 @@ err_t get_symmetric_key_from_ec(
     if (ret != err_t::SUCCESS) return ret;
 
     openssl_ec_key_mem public_key;
-    ret = ec_generate_public_key(curve,peer_public_ec_key, public_key);
+    ret = ec_generate_public_key(curve, peer_public_ec_key, public_key);
     if (ret != err_t::SUCCESS) return ret;
 
     return get_symmetric_key_from_ec(id, curve, private_key, public_key, key);
@@ -340,7 +309,7 @@ err_t get_symmetric_key_from_ec(
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const int curve,
+    const char *curve,
     const openssl_ec_key_mem &private_ec_key, // This is optimization
     const mem<void> &peer_public_ec_key,
     key_t &key)
@@ -352,23 +321,19 @@ err_t get_symmetric_key_from_ec(
     return get_symmetric_key_from_ec(id, curve, private_ec_key, public_key, key);
 }
 
-err_t generate_ec_key(const int curve, openssl_ec_key_mem &ec_private_key) {
-    ec_private_key = EC_KEY_new_by_curve_name(curve);
+err_t generate_ec_key(const char *curve, openssl_ec_key_mem &ec_private_key) {
+    ec_private_key = EVP_EC_gen(curve);
     if (ec_private_key == nullptr) {
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
-    if (!EC_KEY_generate_key(ec_private_key)) {
-        EC_KEY_free(ec_private_key);
-        ec_private_key = nullptr;
-        return err_t::CRYPTO_KEY_GENERATION_FAILED;
-    }
+    
     return err_t::SUCCESS;
 }
 
 err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &private_ec_key)
 {
-    const BIGNUM * const prikey_num = EC_KEY_get0_private_key(ec_key);
-    if (prikey_num == nullptr) {
+    BIGNUM * prikey_num { nullptr };
+    if (!EVP_PKEY_get_bn_param(ec_key, OSSL_PKEY_PARAM_PRIV_KEY, &prikey_num) || prikey_num == nullptr) {
         return err_t::CRYPTO_BAD_PRIVATE_KEY;
     }
 
@@ -386,6 +351,8 @@ err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &priv
         }
     }
 
+    if (prikey_num != nullptr) BN_clear_free(prikey_num);
+
     if (ret != err_t::SUCCESS) {
         private_ec_key.free();
     }
@@ -394,55 +361,32 @@ err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &priv
 }
 
 err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key) {
-    const EC_GROUP *ec_group   = EC_KEY_get0_group(ec_key);
-    const EC_POINT *pub        = EC_KEY_get0_public_key(ec_key);
-
-    if (ec_group == nullptr || pub == nullptr) {
-        return err_t::CRYPTO_BAD_PUBLIC_KEY;
-    }
-
-    BN_CTX *pub_bn_ctx = BN_CTX_new();
-    if (pub_bn_ctx == nullptr) return err_t::CRYPTO_MEMORY_FAILURE;
+    const char *format = "PEM";
+    std::unique_ptr<OSSL_ENCODER_CTX, decltype([](OSSL_ENCODER_CTX *ptr) { OPENSSL_free(ptr); })>
+        ossl_ctx { OSSL_ENCODER_CTX_new_for_pkey(
+                        ec_key, EVP_PKEY_PUBLIC_KEY,
+                        format, nullptr, nullptr ) };
     
-    BN_CTX_start(pub_bn_ctx);
+    if (!ossl_ctx) return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
-    BIGNUM *pub_bn = EC_POINT_point2bn(ec_group, pub, POINT_CONVERSION_UNCOMPRESSED,
-                        nullptr, pub_bn_ctx);
+    if (!OSSL_ENCODER_to_data(
+            ossl_ctx.get(),
+            reinterpret_cast<unsigned char**>(&public_ec_key.ptr),
+            &public_ec_key.size))
+        return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
-    err_t ret = err_t::SUCCESS;
-    if (pub_bn == nullptr) ret = err_t::CRYPTO_MEMORY_FAILURE;
-
-    if (ret == err_t::SUCCESS) {
-        public_ec_key.size = BN_num_bytes(pub_bn);
-        public_ec_key = (uint8_t *)OPENSSL_malloc(public_ec_key.size);
-        if (public_ec_key == nullptr) ret = err_t::CRYPTO_MEMORY_FAILURE;
-    }
-
-    if (ret == err_t::SUCCESS) {
-        if (BN_bn2bin(pub_bn, public_ec_key) != public_ec_key.size) {
-            ret = err_t::CRYPTO_KEY_ENCODE_FAIL;
-        }
-    }
-
-    BN_CTX_end(pub_bn_ctx);
-    BN_CTX_free(pub_bn_ctx);
-    if (pub_bn != nullptr) BN_clear_free(pub_bn);
-
-    if (ret != err_t::SUCCESS) {
-        public_ec_key.free();
-    }
-
-    return ret;
+    return err_t::SUCCESS;
 }
 
-err_t ec_get_curve(const openssl_ec_key_mem &ec_key, int &curve) {
-    const EC_GROUP *ec_group   = EC_KEY_get0_group(ec_key);
-    if (ec_group == nullptr) {
+err_t ec_get_curve(const openssl_ec_key_mem &ec_key, std::string &curve) {
+    char curve_name[64];
+    size_t len { };
+    if (!EVP_PKEY_get_utf8_string_param(ec_key, OSSL_PKEY_PARAM_GROUP_NAME,
+                                    curve_name, sizeof(curve_name), &len)) {
         return err_t::CRYPTO_BAD_KEY;
     }
 
-    curve = EC_GROUP_get_curve_name(ec_group);
-    if (!curve) return err_t::CRYPTO_CURVE_NOT_FOUND;
+    curve.assign(curve_name, len);
 
     return err_t::SUCCESS;
 }
