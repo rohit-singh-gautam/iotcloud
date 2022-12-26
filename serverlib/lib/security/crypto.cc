@@ -295,12 +295,12 @@ err_t get_symmetric_key_from_ec(
     const mem<void> &peer_public_ec_key,
     key_t &key)
 {
-    openssl_ec_key_mem private_key;
-    err_t ret = ec_generate_private_key(curve, private_ec_key, private_key);
-    if (ret != err_t::SUCCESS) return ret;
-
     openssl_ec_key_mem public_key;
-    ret = ec_generate_public_key(curve, peer_public_ec_key, public_key);
+    err_t ret = ec_generate_public_key(curve, peer_public_ec_key, public_key);
+    if (ret != err_t::SUCCESS) return ret;
+    
+    openssl_ec_key_mem private_key;
+    ret = ec_generate_private_key(curve, private_ec_key, private_key);
     if (ret != err_t::SUCCESS) return ret;
 
     return get_symmetric_key_from_ec(id, curve, private_key, public_key, key);
@@ -361,33 +361,19 @@ err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &priv
 }
 
 err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key) {
-    BIGNUM * pubkey_num { nullptr };
-    if (!EVP_PKEY_get_bn_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, &pubkey_num) || pubkey_num == nullptr) {
+    size_t pub_key_size = 0;
+	if (!EVP_PKEY_get_octet_string_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, nullptr, 0, &public_ec_key.size)) {
+        return err_t::CRYPTO_BAD_PUBLIC_KEY;
+    }
+    public_ec_key = OPENSSL_malloc(public_ec_key.size);
+
+	if (!EVP_PKEY_get_octet_string_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, public_ec_key, public_ec_key.size,
+	                                     &pub_key_size))
+    {
         return err_t::CRYPTO_BAD_PUBLIC_KEY;
     }
 
-    public_ec_key.size = BN_num_bytes(pubkey_num);
-    public_ec_key = OPENSSL_malloc(public_ec_key.size);
-
-    err_t ret = err_t::SUCCESS;
-    if (public_ec_key == nullptr) {
-        ret = err_t::CRYPTO_MEMORY_FAILURE;
-    }
-
-    if (ret == err_t::SUCCESS) {
-        if (BN_bn2bin(pubkey_num, (uint8_t *)public_ec_key.ptr) != public_ec_key.size) {
-            ret = err_t::CRYPTO_KEY_ENCODE_FAIL;
-        }
-    }
-
-    if (pubkey_num != nullptr) BN_clear_free(pubkey_num);
-
-    if (ret != err_t::SUCCESS) {
-        public_ec_key.free();
-    }
-
-    return ret;
-    
+    return err_t::SUCCESS;    
 }
 
 err_t ec_get_curve(const openssl_ec_key_mem &ec_key, std::string &curve) {
