@@ -361,21 +361,33 @@ err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &priv
 }
 
 err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key) {
-    const char *format = "PEM";
-    std::unique_ptr<OSSL_ENCODER_CTX, decltype([](OSSL_ENCODER_CTX *ptr) { OPENSSL_free(ptr); })>
-        ossl_ctx { OSSL_ENCODER_CTX_new_for_pkey(
-                        ec_key, EVP_PKEY_PUBLIC_KEY,
-                        format, nullptr, nullptr ) };
-    
-    if (!ossl_ctx) return err_t::CRYPTO_BAD_PUBLIC_KEY;
-
-    if (!OSSL_ENCODER_to_data(
-            ossl_ctx.get(),
-            reinterpret_cast<unsigned char**>(&public_ec_key.ptr),
-            &public_ec_key.size))
+    BIGNUM * pubkey_num { nullptr };
+    if (!EVP_PKEY_get_bn_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, &pubkey_num) || pubkey_num == nullptr) {
         return err_t::CRYPTO_BAD_PUBLIC_KEY;
+    }
 
-    return err_t::SUCCESS;
+    public_ec_key.size = BN_num_bytes(pubkey_num);
+    public_ec_key = OPENSSL_malloc(public_ec_key.size);
+
+    err_t ret = err_t::SUCCESS;
+    if (public_ec_key == nullptr) {
+        ret = err_t::CRYPTO_MEMORY_FAILURE;
+    }
+
+    if (ret == err_t::SUCCESS) {
+        if (BN_bn2bin(pubkey_num, (uint8_t *)public_ec_key.ptr) != public_ec_key.size) {
+            ret = err_t::CRYPTO_KEY_ENCODE_FAIL;
+        }
+    }
+
+    if (pubkey_num != nullptr) BN_clear_free(pubkey_num);
+
+    if (ret != err_t::SUCCESS) {
+        public_ec_key.free();
+    }
+
+    return ret;
+    
 }
 
 err_t ec_get_curve(const openssl_ec_key_mem &ec_key, std::string &curve) {
