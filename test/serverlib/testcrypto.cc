@@ -61,20 +61,11 @@ void test_ec_aes_256_gsm() {
     using namespace rohit::crypto;
 
     constexpr char curve_name[] = "prime256v1";
-    //const int curve = EC_curve_nist2nid(curve_name);
-    const int curve = OBJ_txt2nid(curve_name);
 
-    if (curve == 0) {
-        ERR_print_errors_fp(stderr);
-        std::cout << "Failed to get curve" << std::endl;
-        ++failure;
-        return;
-    }
-
-    std::cout << "Curve:" << curve << std::endl;
+    std::cout << "Curve:" << curve_name << std::endl;
 
     openssl_ec_key_mem server_key;
-    auto ret = generate_ec_key(curve, server_key);
+    auto ret = generate_ec_key(curve_name, server_key);
     if (ret != err_t::SUCCESS) {
         std::cout << "Failed to create server key error: " << ret << std::endl;
         ++failure;
@@ -98,7 +89,7 @@ void test_ec_aes_256_gsm() {
     }
 
     openssl_ec_key_mem client_key;
-    ret = generate_ec_key(curve, client_key);
+    ret = generate_ec_key(curve_name, client_key);
     if (ret != err_t::SUCCESS) {
         std::cout << "Failed to create client key error: " << ret << std::endl;
         ++failure;
@@ -127,7 +118,7 @@ void test_ec_aes_256_gsm() {
     key_aes_256_gsm_t client_symmetric_key;
     ret = get_symmetric_key_from_ec(
         encryption_id_t::aes_256_gsm,
-        curve,
+        curve_name,
         client_private_key,
         server_public_key,
         client_symmetric_key
@@ -142,7 +133,7 @@ void test_ec_aes_256_gsm() {
     key_aes_256_gsm_t server_symmetric_key;
     ret = get_symmetric_key_from_ec(
         encryption_id_t::aes_256_gsm,
-        curve,
+        curve_name,
         server_private_key,
         client_public_key,
         server_symmetric_key
