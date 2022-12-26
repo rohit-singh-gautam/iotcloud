@@ -332,48 +332,39 @@ err_t generate_ec_key(const char *curve, openssl_ec_key_mem &ec_private_key) {
 
 err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &private_ec_key)
 {
-    BIGNUM * prikey_num { nullptr };
-    if (!EVP_PKEY_get_bn_param(ec_key, OSSL_PKEY_PARAM_PRIV_KEY, &prikey_num) || prikey_num == nullptr) {
-        return err_t::CRYPTO_BAD_PRIVATE_KEY;
-    }
+    const char *format = "PEM";
+    std::unique_ptr<OSSL_ENCODER_CTX, decltype([](OSSL_ENCODER_CTX *ptr) { OPENSSL_free(ptr); })>
+        ossl_ctx { OSSL_ENCODER_CTX_new_for_pkey(
+                        ec_key, EVP_PKEY_KEYPAIR,
+                        format, nullptr, nullptr ) };
+    
+    if (!ossl_ctx) return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
-    private_ec_key.size = BN_num_bytes(prikey_num);
-    private_ec_key = OPENSSL_malloc(private_ec_key.size);
+    if (!OSSL_ENCODER_to_data(
+            ossl_ctx.get(),
+            reinterpret_cast<unsigned char**>(&private_ec_key.ptr),
+            &private_ec_key.size))
+        return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
-    err_t ret = err_t::SUCCESS;
-    if (private_ec_key == nullptr) {
-        ret = err_t::CRYPTO_MEMORY_FAILURE;
-    }
-
-    if (ret == err_t::SUCCESS) {
-        if (BN_bn2bin(prikey_num, (uint8_t *)private_ec_key.ptr) != private_ec_key.size) {
-            ret = err_t::CRYPTO_KEY_ENCODE_FAIL;
-        }
-    }
-
-    if (prikey_num != nullptr) BN_clear_free(prikey_num);
-
-    if (ret != err_t::SUCCESS) {
-        private_ec_key.free();
-    }
-
-    return ret;
+    return err_t::SUCCESS;
 }
 
 err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key) {
-    size_t pub_key_size = 0;
-	if (!EVP_PKEY_get_octet_string_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, nullptr, 0, &public_ec_key.size)) {
-        return err_t::CRYPTO_BAD_PUBLIC_KEY;
-    }
-    public_ec_key = OPENSSL_malloc(public_ec_key.size);
+    const char *format = "PEM";
+    std::unique_ptr<OSSL_ENCODER_CTX, decltype([](OSSL_ENCODER_CTX *ptr) { OPENSSL_free(ptr); })>
+        ossl_ctx { OSSL_ENCODER_CTX_new_for_pkey(
+                        ec_key, EVP_PKEY_PUBLIC_KEY,
+                        format, nullptr, nullptr ) };
+    
+    if (!ossl_ctx) return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
-	if (!EVP_PKEY_get_octet_string_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, public_ec_key, public_ec_key.size,
-	                                     &pub_key_size))
-    {
+    if (!OSSL_ENCODER_to_data(
+            ossl_ctx.get(),
+            reinterpret_cast<unsigned char**>(&public_ec_key.ptr),
+            &public_ec_key.size))
         return err_t::CRYPTO_BAD_PUBLIC_KEY;
-    }
 
-    return err_t::SUCCESS;    
+    return err_t::SUCCESS;
 }
 
 err_t ec_get_curve(const openssl_ec_key_mem &ec_key, std::string &curve) {
