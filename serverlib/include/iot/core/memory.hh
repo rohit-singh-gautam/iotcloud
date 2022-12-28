@@ -163,10 +163,10 @@ public:
 
     template <typename T>
     inline void free_debug(T *value, const size_t alloc_size) {
-        const size_t new_alloc_size = (alloc_size + 7) & (~7);
+        [[maybe_unused]] const size_t new_alloc_size = (alloc_size + 7) & (~7);
         uint8_t *pheader = (uint8_t *)value - sizeof(fixed_memory_alloc_info);
         fixed_memory_alloc_info *pmeminfo = (fixed_memory_alloc_info *)pheader;
-        assert(new_alloc_size == pmeminfo->alloc_size);
+        assert(((alloc_size + 7) & (~7)) == pmeminfo->alloc_size);
         const size_t chunk_index = (pmeminfo->alloc_size >> 3) - 1;
         mem_array[chunk_index].free(pheader);
     }

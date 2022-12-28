@@ -65,7 +65,7 @@ void filemap::add_file(const std::string &relativepath) {
 
     int size = bufstat.st_size;
     char *buffer = new char[size];
-    read(fd, buffer, size);
+    [[maybe_unused]] auto read_size = read(fd, buffer, size);
 
     uint64_t etag = get_etags(fd);
     close(fd);

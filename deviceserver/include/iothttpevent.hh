@@ -194,7 +194,7 @@ template <bool use_ssl>
 void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
     constexpr size_t read_buffer_size = thread_context::buffer_size;
     auto read_buffer = ctx.read_buffer;
-    size_t read_buffer_length;
+    size_t read_buffer_length { };
 
     auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
 
@@ -606,7 +606,7 @@ template <state_t state>
 void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
     constexpr size_t read_buffer_size = ctx.buffer_size;
     uint8_t  *read_buffer = ctx.read_buffer;
-    size_t read_buffer_length;
+    size_t read_buffer_length { };
 
     auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
 

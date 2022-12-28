@@ -115,7 +115,7 @@ void test_deviceserver_ssl() {
         size_t read_buffer_size = sizeof(rohit::message_command_t);
         uint8_t read_buffer[read_buffer_size];
 
-        size_t read_buffer_length;
+        size_t read_buffer_length { };
         err = client_socket.read((void *)read_buffer, read_buffer_size, read_buffer_length);
         if (isFailure(err)) {
             ++read_failed;

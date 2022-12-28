@@ -52,7 +52,7 @@ template <bool use_ssl>
 void iotserverevent<use_ssl>::read_helper(thread_context &ctx) {
     size_t read_buffer_size = 1024;
     uint8_t read_buffer[read_buffer_size];
-    size_t read_buffer_length;
+    size_t read_buffer_length { };
 
     auto err = peer_id.read(read_buffer, read_buffer_size, read_buffer_length);
 

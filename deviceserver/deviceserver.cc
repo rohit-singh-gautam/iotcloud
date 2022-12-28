@@ -79,7 +79,7 @@ const std::string load_config_string(const char *const configfile) {
     int size = bufstat.st_size;
     char buffer[size];
 
-    read(fd, buffer, size);
+    [[maybe_unused]] auto read_size = read(fd, buffer, size);
     std::string buffer_str = std::string(buffer);
     
     return buffer_str;
