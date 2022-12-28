@@ -243,40 +243,6 @@ err_t get_aes_256_gsm_key_from_ec(
     const openssl_ec_key_mem &peer_public_ec_key,
     key_aes_256_gsm_t &key)
 {
-    evp_ctx_ptr pctx { EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL) };
-    if (!pctx) {
-        ERR_print_errors_fp(stdout);
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }
-
-    if (EVP_PKEY_paramgen_init(pctx.get()) <= 0) {
-        ERR_print_errors_fp(stdout);
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }
-
-    if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx.get(), NID_X9_62_prime256v1) <= 0) {
-        ERR_print_errors_fp(stdout);
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }
-
-    openssl_ec_key_mem params { nullptr };
-    if (!EVP_PKEY_paramgen(pctx.get(), &params.key)) {
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }
-
-    evp_ctx_ptr kctx { EVP_PKEY_CTX_new(params, NULL) };
-    if (!kctx) {
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }
-
-    if (EVP_PKEY_keygen_init(kctx.get()) <= 0) {
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }
-
-    /*if (EVP_PKEY_keygen(kctx.get(), &ec_private_key.key) <= 0) {
-        return err_t::CRYPTO_CONTEXT_CREATION_FAILED;
-    }*/
-
     evp_ctx_ptr ctx { EVP_PKEY_CTX_new(ec_private_key, nullptr) };
     if (!ctx) {
         ERR_print_errors_fp(stdout);
