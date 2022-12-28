@@ -131,11 +131,11 @@ constexpr size_t formatstring_count(const char (&fmtstr)[size]) {
 }
 
 template <const size_t COUNT> struct formatstring_type_list {
-    type_identifier type_list[COUNT];
-    size_t length;
+    type_identifier type_list[COUNT] {};
+    size_t length { 0 };
 
     template <size_t size>
-    consteval formatstring_type_list(const char (&fmtstr)[size]) : type_list(), length(0) {
+    consteval formatstring_type_list(const char (&fmtstr)[size]) {
         size_t index = 0;
         formatstring_state state = formatstring_state::COPY;
         formatstring_modifier modifier = formatstring_modifier::NONE;
@@ -166,6 +166,7 @@ template <const size_t COUNT> struct formatstring_type_list {
                             type_list[index++] = type_identifier::uint16_t;
                             length += type_length<type_identifier::uint16_t>::value;
                             break;
+                        default:;
                     }
                     state = formatstring_state::COPY;
                     break;
@@ -190,6 +191,7 @@ template <const size_t COUNT> struct formatstring_type_list {
                         type_list[index++] = type_identifier::int64_t;
                         length += type_length<type_identifier::int64_t>::value;
                         break;
+                    default:;
                     }
                     state = formatstring_state::COPY;
                     break;
@@ -216,6 +218,7 @@ template <const size_t COUNT> struct formatstring_type_list {
                         type_list[index++] = type_identifier::uint64_t;
                         length += type_length<type_identifier::uint64_t>::value;
                         break;
+                    default:;
                     }
                     state = formatstring_state::COPY;
                     break;
@@ -325,7 +328,8 @@ template <const size_t COUNT> struct formatstring_type_list {
                     length += type_length<type_identifier::int32_t>::value;
                     break;
                 default:
-                        type_list[index++] = type_identifier::bad_type; break;
+                    type_list[index++] = type_identifier::bad_type;
+                    break;
                 }
                 state = formatstring_state::COPY;
                 break; // case formatstring_state::MODIFIER_CUSTOM:
@@ -346,6 +350,14 @@ template <const size_t COUNT> struct formatstring_type_list {
     }
 
     constexpr type_identifier operator[] (size_t index) const { return type_list[index]; }
+};
+
+template <> struct formatstring_type_list<0> {
+    size_t length { 0 };
+    template <size_t size>
+    consteval formatstring_type_list(const char (&)[size]) {
+    }
+    constexpr bool type_list_check() const { return true; }
 };
 
 template <const size_t COUNT, formatstring_type_list<COUNT> fmt_list, typename T, typename... ARGS>

@@ -60,7 +60,7 @@ rohit::err_t rohit::http11driver::parse_internal(std::istream &textstream) {
     const int accept( 0 );
     if( parser->parse() != accept )
     {
-        rohit::err_t::HTTP11_PARSER_FAILURE;
+        return rohit::err_t::HTTP11_PARSER_FAILURE;
     }
     return rohit::err_t::SUCCESS;
 }

@@ -433,7 +433,6 @@ void iothttp2event<use_ssl>::upgrade(
     std::string setting = header.fields.at(http_header::FIELD::HTTP2_Settings);    
     peer_settings.parse_base64_frame((uint8_t *)setting.c_str(), setting.size());
 
-    constexpr size_t write_buffer_size = ctx.buffer_size;
     auto write_buffer = ctx.write_buffer;
     auto pwrite_end = write_buffer;
 

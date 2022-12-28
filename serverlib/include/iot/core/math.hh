@@ -147,6 +147,8 @@ constexpr T to_int(const char *src, size_t *len = nullptr) {
     switch(*psrc) {
     case '-':
         sign = -1;
+        ++psrc;
+        break;
     case '+':
         ++psrc;
         break;

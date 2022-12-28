@@ -92,7 +92,7 @@ err_t decrypt(const key_t &key, const mem<void> &encrypted_data, openssl_mem &de
 
 err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const guid_t &random, const mem<void> &data, openssl_mem &encrypted_data) {
     encrypted_data.size =
-        encrypted_data_aes_256_gsm_t::const_size + ((data.size + 0xf) & ~0xf);
+        sizeof(encrypted_data_aes_256_gsm_t) + ((data.size + 0xf) & ~0xf);
     encrypted_data.ptr = OPENSSL_malloc(encrypted_data.size);
 
     if (encrypted_data.ptr == nullptr) return err_t::CRYPTO_MEMORY_FAILURE;
@@ -122,14 +122,14 @@ err_t encrypt_aes_256_gsm(const key_aes_256_gsm_t &key, const guid_t &random, co
     }
 
     if (ret == err_t::SUCCESS) {
-        if (EVP_EncryptUpdate(ctx, encrypt_data->data, &length, (const uint8_t *)data.ptr, data.size) == 0)
+        if (EVP_EncryptUpdate(ctx, encrypt_data->get_data(), &length, (const uint8_t *)data.ptr, data.size) == 0)
             ret = err_t::CRYPTO_ENCRYPT_AES_FAILED;
     }
 
     if (ret == err_t::SUCCESS) {
         encrypt_data->data_size = length;
 
-        if (EVP_EncryptFinal_ex(ctx, (encrypt_data->data + length), &length) == 0)
+        if (EVP_EncryptFinal_ex(ctx, (encrypt_data->get_data() + length), &length) == 0)
             ret = err_t::CRYPTO_ENCRYPT_AES_FAILED;
     }
 
@@ -181,7 +181,7 @@ err_t decrypt_aes_256_gsm(
                 ctx,
                 (uint8_t *)decrypted_data.ptr,
                 &length,
-                (const uint8_t *)encrypted_data.data,
+                (const uint8_t *)encrypted_data.get_data(),
                 encrypted_data.data_size) == 0)
             ret = err_t::CRYPTO_DECRYPT_AES_FAILED;
     }
@@ -210,7 +210,7 @@ err_t decrypt_aes_256_gsm(
     return ret;
 }
 
-err_t ec_generate_private_key(const char *curve, const mem<void> &prikey_bin, openssl_ec_key_mem &private_key) {
+err_t ec_generate_private_key(const mem<void> &prikey_bin, openssl_ec_key_mem &private_key) {
     std::unique_ptr<BIO, decltype([](BIO *ptr) { BIO_free(ptr); })> prikey_bio { BIO_new_mem_buf(prikey_bin.ptr, prikey_bin.size) };
     if (!prikey_bio) {
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
@@ -224,7 +224,7 @@ err_t ec_generate_private_key(const char *curve, const mem<void> &prikey_bin, op
     return err_t::SUCCESS;
 }
 
-err_t ec_generate_public_key(const char *curve, const mem<void> &pubkey_bin, openssl_ec_key_mem &public_key) {
+err_t ec_generate_public_key(const mem<void> &pubkey_bin, openssl_ec_key_mem &public_key) {
     std::unique_ptr<BIO, decltype([](BIO *ptr) { BIO_free(ptr); })> pubkey_bio { BIO_new_mem_buf(pubkey_bin.ptr, pubkey_bin.size) };
     if (pubkey_bio == nullptr) {
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
@@ -275,7 +275,6 @@ err_t get_aes_256_gsm_key_from_ec(
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const char *curve,
     const openssl_ec_key_mem &private_ec_key, // This is optimization
     const openssl_ec_key_mem &peer_public_ec_key,
     key_t &key)
@@ -293,35 +292,33 @@ err_t get_symmetric_key_from_ec(
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const char *curve,
     const mem<void> &private_ec_key,
     const mem<void> &peer_public_ec_key,
     key_t &key)
 {
     openssl_ec_key_mem public_key;
-    err_t ret = ec_generate_public_key(curve, peer_public_ec_key, public_key);
+    err_t ret = ec_generate_public_key(peer_public_ec_key, public_key);
     if (ret != err_t::SUCCESS) return ret;
     
     openssl_ec_key_mem private_key;
-    ret = ec_generate_private_key(curve, private_ec_key, private_key);
+    ret = ec_generate_private_key(private_ec_key, private_key);
     if (ret != err_t::SUCCESS) return ret;
 
-    return get_symmetric_key_from_ec(id, curve, private_key, public_key, key);
+    return get_symmetric_key_from_ec(id, private_key, public_key, key);
 
 }
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const char *curve,
     const openssl_ec_key_mem &private_ec_key, // This is optimization
     const mem<void> &peer_public_ec_key,
     key_t &key)
 {
     openssl_ec_key_mem public_key;
-    err_t ret = ec_generate_public_key(curve, peer_public_ec_key, public_key);
+    err_t ret = ec_generate_public_key(peer_public_ec_key, public_key);
     if (ret != err_t::SUCCESS) return ret;
 
-    return get_symmetric_key_from_ec(id, curve, private_ec_key, public_key, key);
+    return get_symmetric_key_from_ec(id, private_ec_key, public_key, key);
 }
 
 err_t generate_ec_key(const char *curve, openssl_ec_key_mem &ec_private_key) {

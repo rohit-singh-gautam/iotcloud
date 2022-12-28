@@ -282,9 +282,8 @@ public:
 }; // class error_c
 
 inline std::ostream& operator<<(std::ostream& os, const err_t &error) {
-    char str[to_string_size(error)] = {};
-    to_string(error, str);
-    return os << str;
+    const error_c errdata { error };
+    return os << errdata.to_string();
 }
 
 class exception_t : public error_c {
@@ -294,9 +293,8 @@ public:
 };
 
 inline std::ostream& operator<<(std::ostream& os, const exception_t &error) {
-    char str[to_string_size(error)] = {};
-    to_string(error, str);
-    return os << str;
+    const error_c errdata { error };
+    return os << errdata.to_string();
 }
 
 

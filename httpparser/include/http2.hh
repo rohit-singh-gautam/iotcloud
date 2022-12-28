@@ -198,8 +198,8 @@ public:
             : length(changeEndian(length) >> 8),
               type(type),
               flags(flags),
-              reserved(0),
-              stream_identifier(changeEndian(stream_identifier)) {}
+              stream_identifier(changeEndian(stream_identifier)),
+              reserved(0) {}
 } __attribute__((packed)); // struct frame
 
 inline std::ostream& operator<<(std::ostream& os, const frame::type_t &http2frametype) {
@@ -697,10 +697,8 @@ public:
                 uint32_t stream_dependency;
                 if (pframe->contains(frame::flags_t::PRIORITY)) {
                     stream_dependency = changeEndian(*(uint32_t *)pstart_);
-                    bool exclusive = (stream_dependency & 0x80000000) == 0x80000000;
                     stream_dependency &= 0x7fffffff;
                     pstart_ += sizeof(uint32_t);
-                    uint8_t weight = *pstart_;
                     pstart_++;
                 } else {
                     stream_dependency = 0x00;
@@ -734,10 +732,8 @@ public:
                 const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 uint32_t stream_dependency = changeEndian(*(uint32_t *)pstart_);
-                bool exclusive = (stream_dependency & 0x80000000) == 0x80000000;
                 stream_dependency &= 0x7fffffff;
                 pstart_ += sizeof(uint32_t);
-                uint8_t weight = *pstart_;
                 pstart_++;
                 break;
             }
@@ -780,7 +776,6 @@ public:
                 break;
             }
             case frame::type_t::PUSH_PROMISE: {
-                const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 // Push promise is not supported we will ignore this
                 write_buffer = goaway::add_frame(
@@ -814,25 +809,21 @@ public:
                 }
                 const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
-                size_t write_buffer_size = sizeof(frame) + ping_payload_size;
                 frame *response_frame = (frame *)write_buffer;
                 response_frame->init_frame(ping_payload_size, frame::type_t::PING, frame::flags_t::ACK, 0x00);
                 write_buffer = std::copy(pstart_, pstart_ + ping_payload_size, write_buffer + sizeof(frame));
                 break;
             }
             case frame::type_t::GOAWAY: {
-                const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 return err_t::HTTP2_INITIATE_GOAWAY;
             }
             case frame::type_t::WINDOW_UPDATE: {
-                const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 // TODO: Implement Windows Update
                 break;
             }
             case frame::type_t::CONTINUATION: {
-                const uint8_t *pstart_ = pstart;
                 pstart += pframe->get_length();
                 // TODO: Implement Continuation, this is required only for POST call
                 // We may not choose to support ignoring this call

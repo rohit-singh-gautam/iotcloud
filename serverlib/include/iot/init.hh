@@ -16,7 +16,7 @@
 
 namespace rohit {
 
-void init_iot(const char *logfilename, const int thread_count = 0);
+void init_iot(const char *logfilename);
 void destroy_iot();
 
 } // namespace rohit

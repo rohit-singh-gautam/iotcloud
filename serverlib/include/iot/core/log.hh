@@ -514,7 +514,7 @@ private:
 
     uint64_t last_read_time = 0;
     static constexpr int64_t log_thread_wait_in_millis = 50;
-    static constexpr uint64_t buffer_time_in_nanos = config::log_thread_wait_in_millis * 4 * 1000000;
+    static constexpr int64_t buffer_time_in_nanos = config::log_thread_wait_in_millis * 4 * 1000000;
 
 public:
     logreader(const std::string &filename);

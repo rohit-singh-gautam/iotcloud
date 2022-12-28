@@ -160,7 +160,6 @@ class message_connect256_t : public message_base_t {
 private:
     uint8_t     ephemeral_public_key[256/8];
     uint8_t     iv[96/8];
-    uint8_t     encrypted_data[0];
 public:
     constexpr message_connect256_t() : message_base_t(message_code_t::CONNECT) { }
 } __attribute__((packed));

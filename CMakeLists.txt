@@ -11,7 +11,9 @@ project(iotcloud)
 set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
+set(COMPILE_WARNING_AS_ERROR true)
+add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-vla)
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z")
 
 add_subdirectory(serverlib)

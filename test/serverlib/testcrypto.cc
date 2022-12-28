@@ -118,7 +118,6 @@ void test_ec_aes_256_gsm() {
     key_aes_256_gsm_t client_symmetric_key;
     ret = get_symmetric_key_from_ec(
         encryption_id_t::aes_256_gsm,
-        curve_name,
         client_private_key,
         server_public_key,
         client_symmetric_key
@@ -133,7 +132,6 @@ void test_ec_aes_256_gsm() {
     key_aes_256_gsm_t server_symmetric_key;
     ret = get_symmetric_key_from_ec(
         encryption_id_t::aes_256_gsm,
-        curve_name,
         server_private_key,
         client_public_key,
         server_symmetric_key

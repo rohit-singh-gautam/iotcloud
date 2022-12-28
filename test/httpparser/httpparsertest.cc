@@ -18,7 +18,7 @@
 
 
 int main() {
-    const char header[] = 
+    const char header0[] = 
         "GET /images/rohit.jpg HTTP/1.1\r\n"
         "Host: 172.24.201.159:8061\r\n"
         "Connection: keep-alive\r\n"
@@ -45,13 +45,21 @@ int main() {
         "Connection: keep-alive\r\n"
         "Host: 172.24.201.159:8060\r\n\r\n";
 
-    std::string headerstr(header);
-    std::cout << "--- Original result \n" << headerstr << "\n --- Original end \n";
+    std::string headerstr0(header0);
+    std::cout << "--- Original result \n" << headerstr0 << "\n --- Original end \n";
 
-    rohit::http11driver driver;
-    driver.parse(headerstr);
+    rohit::http11driver driver0;
+    driver0.parse(headerstr0);
 
-    std::cout << "--- Parsed result \n" << driver << "\n --- Parsed end \n";
+    std::cout << "--- Parsed result \n" << driver0 << "\n --- Parsed end \n";
+
+    std::string headerstr1(header1);
+    std::cout << "--- Original result \n" << headerstr1 << "\n --- Original end \n";
+
+    rohit::http11driver driver1;
+    driver1.parse(headerstr1);
+
+    std::cout << "--- Parsed result \n" << driver1 << "\n --- Parsed end \n";
 
     return EXIT_SUCCESS;
 }

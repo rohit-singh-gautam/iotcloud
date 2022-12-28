@@ -22,7 +22,7 @@ namespace rohit {
 extern void init_openssl();
 extern void cleanup_openssl();
 
-void init_iot(const char *logfilename, const int thread_count) {
+void init_iot(const char *logfilename) {
     init_log_thread(logfilename);
     if constexpr (config::enable_ssl) socket_ssl_t::init_openssl();
 }

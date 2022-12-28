@@ -77,6 +77,7 @@ void iothttpsslevent::execute(thread_context &ctx) {
             // This event is move to HTTP 2.0
             break;
         }
+        default:;
     }
 }
 

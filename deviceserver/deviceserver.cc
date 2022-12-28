@@ -79,7 +79,7 @@ const std::string load_config_string(const char *const configfile) {
     int size = bufstat.st_size;
     char buffer[size];
 
-    auto read_size = read(fd, buffer, size);
+    read(fd, buffer, size);
     std::string buffer_str = std::string(buffer);
     
     return buffer_str;
@@ -295,13 +295,13 @@ rohit::err_t check_socket_limits() {
     return rohit::err_t::SUCCESS;
 }
 
-void signal_destroy_app(int signal, siginfo_t *siginfo, void *args) {
+void signal_destroy_app(int, siginfo_t *, void *) {
     destroy_app();
 
     exit(0);
 }
 
-void signal_segmentation_fault(int signal, siginfo_t *siginfo, void *args) {
+void signal_segmentation_fault(int, siginfo_t *, void *) {
     segv_app();
 
     std::cout << "Segmentation fault..." << std::endl;
@@ -309,7 +309,7 @@ void signal_segmentation_fault(int signal, siginfo_t *siginfo, void *args) {
 }
 
 void set_sigaction() {
-    struct sigaction sa = { 0 };
+    struct sigaction sa = { };
     sigemptyset(&sa.sa_mask);
     sa.sa_sigaction = signal_destroy_app;
     sa.sa_flags   = SA_SIGINFO;
@@ -317,7 +317,7 @@ void set_sigaction() {
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
 
-    struct sigaction sa_segv = { 0 };
+    struct sigaction sa_segv = { };
     sigemptyset(&sa_segv.sa_mask);
     sa_segv.sa_sigaction = signal_segmentation_fault;
     sa_segv.sa_flags   = SA_SIGINFO;

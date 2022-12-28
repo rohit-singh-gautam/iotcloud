@@ -372,7 +372,6 @@ inline uint8_t *add_header_string(uint8_t *pstart, const std::string &value) {
     if (size < value.size()) {
         // Encoded string is smaller hence we are encoded
         pstart = encode_integer<7>(pstart, (uint8_t)0x80, (uint32_t)size);
-        const auto pstart_ = pstart;
         pstart = add_huffman_string(pstart, pvalue_start, pvalue_end);
     } else {
         pstart = encode_integer<7>(pstart, (uint8_t)0x80, (uint32_t)value.size());

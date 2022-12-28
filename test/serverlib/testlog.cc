@@ -78,8 +78,12 @@ void test_types_helper() {
     using desc = rohit::log_description<ID>;
 
     std::cout << "Log: " << desc::id_str << ":" << desc::value << ", types: ";
-    for(size_t i = 0; i < desc::type_count; i++) {
-        std::cout << rohit::type_str[(size_t)(desc::type_list[i])] << "|";
+    if constexpr (desc::type_count == 0) {
+        std::cout << "no parameter";
+    } else {
+        for(size_t i = 0; i < desc::type_count; i++) {
+            std::cout << rohit::type_str[(size_t)(desc::type_list[i])] << "|";
+        }
     }
 
     std::cout << std::endl;
@@ -116,12 +120,15 @@ void test_types_what_type() {
     std::cout << "sizeof(long long)" << sizeof(long long) << std::endl;
 
     constexpr rohit::guid_t guid = rohit::to_guid("f81d4fae-7dec-11d0-a765-00a0c91e6bf6");
-
-
+    std::cout << "Test GUID: " << guid << '\n';
 
     rohit::ipv6_socket_addr_t ipv6sockaddr("::1", 8080);
     rohit::ipv6_addr_t ipv6addr = rohit::to_ipv6_addr_t("eb::1");
     rohit::ipv6_port_t ipv6port = 8080;
+
+    std::cout << "IPV6 Socket Address Test: " << ipv6sockaddr << '\n';
+    std::cout << "IPV6 Address Test: " << ipv6addr << '\n';
+    std::cout << "IPV6 Port Test: " << ipv6port << '\n';
 }
 
 void test_types() {

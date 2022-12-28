@@ -98,10 +98,13 @@ struct encrypted_data_aes_256_gsm_t {
     uint8_t tag[96/8];
     uint16_t data_size;
 
-    static constexpr size_t const_size =
-            sizeof(aad) + sizeof(initialization_vector) +
-            sizeof(tag) + sizeof(data_size);
-    uint8_t data[0];
+    uint8_t *get_data() {
+        return reinterpret_cast<uint8_t *>(this) + sizeof(*this);
+    }
+
+    const uint8_t *get_data() const {
+        return reinterpret_cast<const uint8_t *>(this) + sizeof(*this);
+    }
 } __attribute__((packed));
 
 // Parameters:
@@ -117,21 +120,18 @@ err_t decrypt(const key_t &key, const mem<void> &encrypted_data, openssl_mem &de
 // Allocation of key must be done to contain id
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const char *curve,
     const mem<void> &private_ec_key,
     const mem<void> &peer_public_ec_key,
     key_t &key);
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const char *curve,
     const openssl_ec_key_mem &ec_private_key, // This is optimization
     const mem<void> &peer_public_ec_key,
     key_t &key);
 
 err_t get_symmetric_key_from_ec(
     const encryption_id_t id,
-    const char *curve,
     const openssl_ec_key_mem &private_ec_key,
     const openssl_ec_key_mem &peer_public_ec_key,
     key_t &key);

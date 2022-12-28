@@ -32,7 +32,7 @@ private:
     event_distributor &evtdist;
     const int evtfd;
 
-    std::atomic<int> pause_count = 0;
+    std::atomic<size_t> pause_count = 0;
     pthread_mutex_t pause_mutex;
 
 public:
@@ -67,7 +67,7 @@ public:
 
     // This must be called from event_distributer loop
     // Returns true if pause from current thread
-    inline bool pause_all_thread(thread_context &ctx) {
+    inline bool pause_all_thread(thread_context &) {
         log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
         auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
@@ -91,7 +91,7 @@ public:
     }
 
 
-    inline bool resume_all_thread(thread_context &ctx) {
+    inline bool resume_all_thread(thread_context &) {
         --pause_count;
         pthread_mutex_unlock(&pause_mutex);
         log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
@@ -100,9 +100,8 @@ public:
     }
 
 private:
-    inline void pause(thread_context &ctx) {
+    inline void pause(thread_context &) {
         log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
-        auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
         --pause_count; // This is already syncronized
         pthread_mutex_unlock(&pause_mutex);

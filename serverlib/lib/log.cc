@@ -399,6 +399,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case formatstring_modifier::NONE: integerToStringHelper<int32_t>(pStr, data_args); break;
                 case formatstring_modifier::l:
                 case formatstring_modifier::ll: integerToStringHelper<int64_t>(pStr, data_args); break;
+                default:;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -411,6 +412,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case formatstring_modifier::hh: integerToStringHelper<uint8_t>(pStr, data_args); break;
                 case formatstring_modifier::l:
                 case formatstring_modifier::ll: integerToStringHelper<uint64_t>(pStr, data_args); break;
+                default:;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -423,6 +425,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case formatstring_modifier::hh: integerToStringHelper<uint8_t, 8>(pStr, data_args); break;
                 case formatstring_modifier::l:
                 case formatstring_modifier::ll: integerToStringHelper<uint64_t, 8>(pStr, data_args); break;
+                default:;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -435,6 +438,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case formatstring_modifier::hh: integerToStringHelper<uint8_t, 16>(pStr, data_args); break;
                 case formatstring_modifier::l:
                 case formatstring_modifier::ll: integerToStringHelper<uint64_t, 16>(pStr, data_args); break;
+                default:;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -447,6 +451,7 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case formatstring_modifier::hh: integerToStringHelper<uint8_t, 16, number_case::upper>(pStr, data_args); break;
                 case formatstring_modifier::l:
                 case formatstring_modifier::ll: integerToStringHelper<uint64_t, 16, number_case::upper>(pStr, data_args); break;
+                default:;
                 };
                 state = formatstring_state::COPY;
                 break;
@@ -521,7 +526,7 @@ ssize_t log_read_helper(int fd, void *buf, size_t n, bool bwait = false) {
         read_size = read(fd, (void *)buf, n);
     }
 
-    if (read_size != n) {
+    if (static_cast<size_t>(read_size) != n) {
         std::cerr << "Read failure error: " << errno 
             << ", read_size: " << read_size 
             << ", requested_size" << n

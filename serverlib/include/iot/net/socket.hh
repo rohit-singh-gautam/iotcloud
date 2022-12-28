@@ -190,7 +190,7 @@ protected:
                                 unsigned int *outlen,
                                 void *arg);
 
-    friend void init_iot(const char *logfilename, const int thread_count);
+    friend void init_iot(const char *logfilename);
     friend void destroy_iot();
 
     friend class server_socket_ssl_t;

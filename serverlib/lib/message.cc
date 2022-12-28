@@ -53,9 +53,13 @@ std::ostream& operator<<(std::ostream& os, const message_base_t &message) {
         os << message.to_string() << std::endl;
         break;
 
-    case message_code_t::COMMAND:
+    case message_code_t::COMMAND: {
         message_command_t &commandMessage = (message_command_t &)message;
         os << commandMessage;
+        break;
+    }
+    
+    default:
         break;
     }
     

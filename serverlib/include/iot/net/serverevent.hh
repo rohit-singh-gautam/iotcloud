@@ -150,7 +150,7 @@ public:
         peerevent.client_state = state_t::SERVEREVENT_MOVED;
     }
 
-    constexpr const state_t get_client_state() const { return client_state; }
+    constexpr state_t get_client_state() const { return client_state; }
 
     void write_all(thread_context &ctx);
 
@@ -174,7 +174,7 @@ void serverpeerevent<use_ssl>::close(thread_context &ctx) {
 }
 
 template <bool use_ssl>
-void serverpeerevent<use_ssl>::write_all(thread_context &ctx) {
+void serverpeerevent<use_ssl>::write_all(thread_context &) {
     err_t err = err_t::SUCCESS;
     client_state = state_t::SOCKET_PEER_EVENT;
     while (is_write_left()) {

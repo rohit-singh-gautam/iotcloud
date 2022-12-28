@@ -54,8 +54,8 @@ SSL_CTX *socket_ssl_t::create_context(bool isclient)
 }
 
 int socket_ssl_t::alpn_cb(
-            SSL *s, const unsigned char **out, unsigned char *outlen,
-            const unsigned char *in, unsigned int inlen, void *arg)
+            SSL *, const unsigned char **out, unsigned char *outlen,
+            const unsigned char *in, unsigned int inlen, void *)
 {
     // TODO: Check input syntax
 
@@ -68,10 +68,10 @@ int socket_ssl_t::alpn_cb(
     return SSL_TLSEXT_ERR_OK;
 }
 
-int socket_ssl_t::alpn_negotiate_cb(SSL *ssl,
+int socket_ssl_t::alpn_negotiate_cb(SSL *,
                                 const unsigned char **out,
                                 unsigned int *outlen,
-                                void *arg)
+                                void *)
 {
     *out = proto_list;
     *outlen = sizeof(proto_list);

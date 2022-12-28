@@ -82,11 +82,9 @@ void iotserverevent<use_ssl>::read_helper(thread_context &ctx) {
     if (*base != rohit::message_code_t::COMMAND) {
         write_buffer_size = sizeof(rohit::message_unknown_t);
         write_buffer = new uint8_t[write_buffer_size];
-        rohit::message_unknown_t *punknownMessage = new (write_buffer) rohit::message_unknown_t();
     } else {
         write_buffer_size = sizeof(rohit::message_success_t);
         write_buffer = new uint8_t[write_buffer_size];
-        rohit::message_success_t *psuccessMessage = new (write_buffer) rohit::message_success_t();
     }
 
     if constexpr (config::debug) {
@@ -128,6 +126,7 @@ void iotserverevent<use_ssl>::execute(thread_context &ctx) {
             read_helper(ctx);
             break;
         }
+        default:;
 
     }
 }

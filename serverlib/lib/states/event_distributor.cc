@@ -112,7 +112,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
             continue;
         }
 
-        for(size_t index = 0; index < ret; ++index) {
+        for(decltype(ret) index = 0; index < ret; ++index) {
             thread_entry.set_state(state_t::EVENT_DIST_EPOLL_PROCESSING);
 
             epoll_event &event = events[index];
@@ -189,7 +189,7 @@ public:
     }
 
 private:
-    void execute(thread_context &ctx) override {
+    void execute(thread_context &) override {
         pthread_exit(nullptr);
     }
 
@@ -202,7 +202,7 @@ void event_distributor::terminate() {
     log<log_t::EVENT_DIST_TERMINATING>();
     is_terminate = true;
 
-    for(int thread_index = 0; thread_index < thread_count; ++thread_index) {
+    for(decltype(thread_count) thread_index = 0; thread_index < thread_count; ++thread_index) {
         auto tempfd = eventfd(1, EFD_SEMAPHORE);
         terminate_executor termateexecutor(*this, tempfd);
         add(tempfd, EPOLLIN, &termateexecutor);

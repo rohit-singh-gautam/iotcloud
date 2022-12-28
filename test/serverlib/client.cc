@@ -40,7 +40,6 @@ int calls = 0;
 int connect_count = 0;
 
 void test_deviceserver() {
-    const char sourceGuid[] = "86512592-6b7b-48c4-8bf3-468501c3d9fa";
     const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
     rohit::message_command_t messageCommand;
     messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
@@ -77,7 +76,7 @@ void test_deviceserver() {
         }
 
         std::cout << "Read buffer hex: ";
-        for(int temp = 0; temp < read_buffer_length; ++temp) {
+        for(decltype(read_buffer_length) temp = 0; temp < read_buffer_length; ++temp) {
             uint8_t value = read_buffer[temp];
             std::cout << rohit::upper_case_numbers[value/16] << rohit::upper_case_numbers[value%16];
         }
@@ -93,7 +92,6 @@ void test_deviceserver() {
 }
 
 void test_deviceserver_ssl() {
-    const char sourceGuid[] = "86512592-6b7b-48c4-8bf3-468501c3d9fa";
     const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
     rohit::message_command_t messageCommand;
     messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
@@ -128,7 +126,7 @@ void test_deviceserver_ssl() {
 
         rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
         std::cout << "Read buffer hex: ";
-        for(int temp = 0; temp < read_buffer_length; ++temp) {
+        for(decltype(read_buffer_length) temp = 0; temp < read_buffer_length; ++temp) {
             uint8_t value = read_buffer[temp];
             std::cout << rohit::upper_case_numbers[value/16] << rohit::upper_case_numbers[value%16];
         }

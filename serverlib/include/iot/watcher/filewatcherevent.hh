@@ -185,7 +185,7 @@ private:
                 }
 
                 std::string childfolder = watchfolder + "/";
-                if (event->name) childfolder += event->name;
+                childfolder += event->name;
                 if (event->mask & IN_ISDIR) {
                     if (event->mask & (IN_CREATE | IN_MOVED_TO))
                         add_folder(watchfolder + "/" + event->name);
