@@ -117,6 +117,7 @@ namespace rohit {
     ERROR_T_ENTRY(CRYPTO_ENCRYPT_AES_FAILED, "Failed OpenSSL AES encryption") \
     ERROR_T_ENTRY(CRYPTO_DECRYPT_AES_FAILED, "Failed OpenSSL AES decryption") \
     ERROR_T_ENTRY(CRYPTO_KEY_GENERATION_FAILED, "Failed OpenSSL to generate key") \
+    ERROR_T_ENTRY(CRYPTO_CONTEXT_CREATION_FAILED, "Context creation failed in OpenSSL") \
     ERROR_T_ENTRY(CRYPTO_BAD_KEY, "Bad key provided") \
     ERROR_T_ENTRY(CRYPTO_BAD_PUBLIC_KEY, "Bad public key provided") \
     ERROR_T_ENTRY(CRYPTO_BAD_PRIVATE_KEY, "Bad private key provided") \

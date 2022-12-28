@@ -171,7 +171,6 @@ void test_ec_aes_256_gsm() {
     }
 
     std::cout << "Decrypted data: " << (char *)decrypted_data.ptr << std::endl;
-
     
     ++success;
 }
