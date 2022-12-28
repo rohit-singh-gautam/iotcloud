@@ -16,9 +16,28 @@
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>
 #include <iostream>
+#include <filesystem>
+#include <thread>
+#include <chrono>
+
+void delete_log_file(const char *filename) {
+    std::filesystem::path path { filename };
+    std::filesystem::remove(path);
+}
+
+void wait_for_creation(const char *filename) {
+    std::filesystem::path path { filename };
+
+    while(!std::filesystem::exists(path)) {
+        // Wait for one second
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(1s);
+    }
+}
 
 int main(int argc, char *argv[]) {
     bool live;
+    bool clean;
     bool display_version;
     const char *log_file;
     rohit::commandline param_parser(
@@ -27,6 +46,7 @@ int main(int argc, char *argv[]) {
         {
             {'l', "log_file", "file path", "Path to save log file", log_file, "/tmp/log/iotcloud/deviceserver.log"},
             {'w', "wait", "Wait mode will wait for more logs", live},
+            {'c', "clean", "Delete log file", clean},
             {'v', "version", "Display version", display_version}
         }
     );
@@ -40,6 +60,10 @@ int main(int argc, char *argv[]) {
         std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
         return EXIT_SUCCESS;
     }
+
+    if (clean) delete_log_file(log_file);
+
+    if (live) wait_for_creation(log_file);
 
     rohit::logreader log_reader(log_file);
 
