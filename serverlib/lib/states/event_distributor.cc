@@ -75,11 +75,11 @@ void event_distributor::init() {
     helperevent->init();
 }
 
+thread_local thread_context ctx {};
+
 void *event_distributor::loop(void *pvoid_evtdist) {
     event_distributor *pevtdist = static_cast<event_distributor *>(pvoid_evtdist);
-    pthread_mutex_lock(&pevtdist->eventdist_lock);
-    thread_context ctx(*pevtdist);
-    pthread_mutex_unlock(&pevtdist->eventdist_lock);
+    ctx.evtdist = pevtdist;
 
     while(pevtdist->thread_entry_map.find(pthread_self()) == pevtdist->thread_entry_map.end()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(config::event_dist_loop_wait_in_millis));
@@ -123,10 +123,10 @@ void *event_distributor::loop(void *pvoid_evtdist) {
 
             if ((event.events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
                 // Responsiblity of close is to free
-                executor->mark_closed(ctx);
+                executor->mark_closed();
                 thread_entry.set_state(state_t::EVENT_DIST_EPOLL_CLOSE);
             } else {
-                executor->execute_protector(ctx);
+                executor->execute_protector();
             }
         }
     }
@@ -136,7 +136,7 @@ void *event_distributor::loop(void *pvoid_evtdist) {
 
 void *event_distributor::cleanup(void *pvoid_evtdist) {
     event_distributor *pevtdist = static_cast<event_distributor *>(pvoid_evtdist);
-    thread_context ctx(*pevtdist);
+    ctx.evtdist = pevtdist;
 
     while(!pevtdist->is_terminate) {
         // Cleaning up logs
@@ -189,11 +189,11 @@ public:
     }
 
 private:
-    void execute(thread_context &) override {
+    void execute() override {
         pthread_exit(nullptr);
     }
 
-    void close(thread_context &ctx) override {
+    void close() override {
         ctx.delayed_free(this);
     }
 };
@@ -216,12 +216,12 @@ void event_distributor::terminate() {
     }
 }
 
-bool event_distributor::pause(thread_context &ctx) {
-    return helperevent->pause_all_thread(ctx);
+bool event_distributor::pause() {
+    return helperevent->pause_all_thread();
 }
 
-bool event_distributor::resume(thread_context &ctx) {
-    return helperevent->resume_all_thread(ctx);
+bool event_distributor::resume() {
+    return helperevent->resume_all_thread();
 }
 
 } // namespace rohit

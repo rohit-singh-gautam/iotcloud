@@ -25,6 +25,7 @@
 namespace rohit {
 
 class thread_context;
+extern thread_local thread_context ctx;
 
 class event_executor {
 protected:
@@ -34,13 +35,13 @@ protected:
     // This is pure virtual function can be called only from event_distributor
     // event is irreralevent as in our case we are following
     // no read till all write is done and compulsory read after write
-    virtual void execute(thread_context &ctx) = 0;
+    virtual void execute() = 0;
 
     // Close is not thread safe
     // Implementation requires to care about it
     // close also require to free itself
     // ctx.delayed_free(this); is recommended method to free
-    virtual void close(thread_context &ctx) = 0;
+    virtual void close() = 0;
 
     friend class event_distributor;
 
@@ -48,40 +49,40 @@ public:
     virtual ~event_executor() = default;
 
     // Make sure to call enter loop before making this call
-    inline void execute_protector_noenter(thread_context &ctx) {
+    inline void execute_protector_noenter() {
         assert(executor_count >= 1);
         auto loop = true;
 
         while(loop) {
             if (closed) {
-                close(ctx);
+                close();
 
                 // No need to exit loop
                 // This will prevent other thread to enter
                 break;
             }
-            execute(ctx);
+            execute();
             loop = !exit_loop();
         }
     }
 
-    inline void execute_protector(thread_context &ctx) {
+    inline void execute_protector() {
         auto loop = enter_loop();
 
         while(loop) {
             if (closed) {
-                close(ctx);
+                close();
 
                 // No need to exit loop
                 // This will prevent other thread to enter
                 break;
             }
-            execute(ctx);
+            execute();
             loop = !exit_loop();
         }
     }
 
-    inline void mark_closed(thread_context &ctx) {
+    inline void mark_closed() {
         closed = true;
         auto loop = enter_loop();
 
@@ -89,7 +90,7 @@ public:
         // it is task of existing thread to close
         if (loop) {
             // No need to exit loop
-            close(ctx);
+            close();
         }
     }
 
@@ -243,28 +244,29 @@ public:
 
     void terminate();
 
-    bool pause(thread_context &ctx);
-    bool resume(thread_context &ctx);
+    bool pause();
+    bool resume();
     
 }; // class event_distributor
 
 class thread_context {
 private:
-    event_distributor &evtdist;
+    event_distributor *evtdist { nullptr };
 
+    friend event_distributor;
 public:
-    inline thread_context(event_distributor &evtdist) : evtdist(evtdist) {}
+    inline thread_context() {}
 
     inline err_t remove_event(const int fd) {
-        return evtdist.remove(fd);
+        return evtdist->remove(fd);
     }
 
     inline bool delayed_free(event_executor *executor) {
-        return evtdist.delayed_free(executor);
+        return evtdist->delayed_free(executor);
     }
 
     inline err_t add_event(const int fd, const uint32_t event, event_executor *pexecutor) {
-        return evtdist.add(fd, event, pexecutor);
+        return evtdist->add(fd, event, pexecutor);
     }
 
     static constexpr size_t buffer_size = 16384;

@@ -17,7 +17,7 @@
 
 namespace rohit {
 
-void iothttpsslevent::execute(thread_context &ctx) {
+void iothttpsslevent::execute() {
     switch (client_state) {
         case state_t::SOCKET_PEER_ACCEPT: {
             // https://www.openssl.org/docs/man3.0/man3/SSL_set_alpn_protos.html
@@ -41,7 +41,7 @@ void iothttpsslevent::execute(thread_context &ctx) {
                     // Add http2executor to epoll
                     ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);
 
-                    http2executor->execute(ctx);
+                    http2executor->execute();
 
                     ctx.delayed_free(this);
                     return;
@@ -53,24 +53,24 @@ void iothttpsslevent::execute(thread_context &ctx) {
                     // Add http2executor to epoll
                     ctx.add_event(httpexecutor->peer_id, EPOLLIN | EPOLLOUT, httpexecutor);
 
-                    httpexecutor->execute(ctx);
+                    httpexecutor->execute();
 
                     ctx.delayed_free(this);
                 } else {
-                    close(ctx);
+                    close();
                 }
 
             } else if (err != err_t::SOCKET_RETRY) {
-                close(ctx);
+                close();
             }
             break;
         }
         case state_t::SOCKET_PEER_CLOSE: {
-            close(ctx);
+            close();
             break;
         }
         case state_t::SOCKET_PEER_WRITE: {
-            write_all(ctx);
+            write_all();
             break;
         }
         case state_t::SERVEREVENT_MOVED: {

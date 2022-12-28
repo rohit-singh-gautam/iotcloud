@@ -41,15 +41,15 @@ public:
     
     using serverpeerevent<use_ssl>::write_all;
 
-    void read_helper(thread_context &ctx);
+    void read_helper();
 
-    void execute(thread_context &ctx) override;
+    void execute() override;
 
     using serverpeerevent<use_ssl>::close;
 };
 
 template <bool use_ssl>
-void iotserverevent<use_ssl>::read_helper(thread_context &ctx) {
+void iotserverevent<use_ssl>::read_helper() {
     size_t read_buffer_size = 1024;
     uint8_t read_buffer[read_buffer_size];
     size_t read_buffer_length { };
@@ -94,36 +94,36 @@ void iotserverevent<use_ssl>::read_helper(thread_context &ctx) {
 
     push_write(write_buffer, write_buffer_size);
 
-    write_all(ctx);
+    write_all();
 
     // Tail recurssion
-    read_helper(ctx);
+    read_helper();
 }
 
 template <bool use_ssl>
-void iotserverevent<use_ssl>::execute(thread_context &ctx) {
+void iotserverevent<use_ssl>::execute() {
     switch (client_state) {
         case state_t::SOCKET_PEER_ACCEPT: {
             auto err = peer_id.accept();
             if (err == err_t::SUCCESS) {
                 client_state = state_t::SOCKET_PEER_EVENT;
             } else {
-                close(ctx);
+                close();
             }
             break;
         }
         case state_t::SOCKET_PEER_CLOSE: {
-            close(ctx);
+            close();
             break;
         }
         case state_t::SOCKET_PEER_EVENT:
         case state_t::SOCKET_PEER_READ: {
-            read_helper(ctx);
+            read_helper();
             break;
         }
         case state_t::SOCKET_PEER_WRITE: {
-            write_all(ctx);
-            read_helper(ctx);
+            write_all();
+            read_helper();
             break;
         }
         default:;

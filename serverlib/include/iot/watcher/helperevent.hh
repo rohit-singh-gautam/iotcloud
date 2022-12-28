@@ -67,7 +67,7 @@ public:
 
     // This must be called from event_distributer loop
     // Returns true if pause from current thread
-    inline bool pause_all_thread(thread_context &) {
+    inline bool pause_all_thread() {
         log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
         auto last_pause_count = pause_count++;
         pthread_mutex_lock(&pause_mutex);
@@ -91,7 +91,7 @@ public:
     }
 
 
-    inline bool resume_all_thread(thread_context &) {
+    inline bool resume_all_thread() {
         --pause_count;
         pthread_mutex_unlock(&pause_mutex);
         log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
@@ -100,7 +100,7 @@ public:
     }
 
 private:
-    inline void pause(thread_context &) {
+    inline void pause() {
         log<log_t::EVENT_DIST_PAUSED_THREAD>((uint64_t)pthread_self());
         pthread_mutex_lock(&pause_mutex);
         --pause_count; // This is already syncronized
@@ -108,7 +108,7 @@ private:
         log<log_t::EVENT_DIST_RESUMED_THREAD>((uint64_t)pthread_self());
     }
 
-    inline void execute(thread_context &ctx) override {
+    inline void execute() override {
         help_event message;
         int len;
 
@@ -120,7 +120,7 @@ private:
 
         switch(message) {
         case PAUSE_ON_LOCK: {
-            pause(ctx);
+            pause();
             break;
         }
         default:
@@ -129,7 +129,7 @@ private:
         }
     }
 
-    void close(thread_context &ctx) override {
+    void close() override {
         ctx.delayed_free(this);
     }
 };

@@ -118,8 +118,8 @@ public:
     }
 
 private:
-    inline void execute(thread_context &ctx) override {
-        if ( !evtdist.pause(ctx) ) {
+    inline void execute() override {
+        if ( !evtdist.pause() ) {
             return;
         }
 
@@ -211,10 +211,10 @@ private:
             foldermap.erase(folder);
         }
 
-        evtdist.resume(ctx);
+        evtdist.resume();
     } // execute
 
-    void close(thread_context &ctx) override {
+    void close() override {
         ctx.delayed_free(this);
     }
 };

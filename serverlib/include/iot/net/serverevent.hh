@@ -46,7 +46,7 @@ public:
     }
 
 
-    void execute(thread_context &ctx) override {
+    void execute() override {
         log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id);
         try {
             while(true) {
@@ -57,7 +57,7 @@ public:
                     log<log_t::SOCKET_SET_NONBLOCKING_FAILED>((int)peer_id);
                 }
                 peerevent *p_peerevent = new peerevent(peer_id);
-                p_peerevent->execute_protector(ctx);
+                p_peerevent->execute_protector();
                 if constexpr (peerevent::movable) {
                     if (p_peerevent->get_client_state() != state_t::SERVEREVENT_MOVED) {
                         ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
@@ -74,11 +74,7 @@ public:
         }
     }
 
-    void close() {
-        socket_id.close();
-    }
-
-    void close(thread_context &ctx) override {
+    void close() override {
         socket_id.close();
         ctx.delayed_free(this);
     }
@@ -152,14 +148,14 @@ public:
 
     constexpr state_t get_client_state() const { return client_state; }
 
-    void write_all(thread_context &ctx);
+    void write_all();
 
-    void close(thread_context &ctx) override;
+    void close() override;
 
 }; // class serverpeerevent
 
 template <bool use_ssl>
-void serverpeerevent<use_ssl>::close(thread_context &ctx) {
+void serverpeerevent<use_ssl>::close() {
     int last_peer_id = peer_id;
     if (last_peer_id) {
         auto ret = peer_id.close();
@@ -174,7 +170,7 @@ void serverpeerevent<use_ssl>::close(thread_context &ctx) {
 }
 
 template <bool use_ssl>
-void serverpeerevent<use_ssl>::write_all(thread_context &) {
+void serverpeerevent<use_ssl>::write_all() {
     err_t err = err_t::SUCCESS;
     client_state = state_t::SOCKET_PEER_EVENT;
     while (is_write_left()) {

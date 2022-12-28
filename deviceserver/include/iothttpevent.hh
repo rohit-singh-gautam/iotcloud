@@ -41,7 +41,7 @@ private:
 public:
     inline iothttpsslevent(socket_ssl_t &peer_id) : serverpeerevent<true>(peer_id) { }
 
-    void execute(thread_context &ctx) override;
+    void execute() override;
 
     using serverpeerevent<true>::write_all;
 
@@ -76,9 +76,9 @@ public:
 
     using serverpeerevent<use_ssl>::write_all;
 
-    void read_helper(thread_context &ctx);
+    void read_helper();
 
-    void execute(thread_context &ctx) override;
+    void execute() override;
 
     using serverpeerevent<use_ssl>::close;
 };
@@ -113,19 +113,17 @@ public:
 
     using serverpeerevent<use_ssl>::write_all;
 
-    void process_request(
-                thread_context &ctx,
-                rohit::http::v2::request &request);
+    void process_request(rohit::http::v2::request &request);
 
     template <bool moved>
-    void process_read_buffer(thread_context &ctx, uint8_t *read_buffer, const size_t read_buffer_size);
+    void process_read_buffer(uint8_t *read_buffer, const size_t read_buffer_size);
 
-    void upgrade(thread_context &ctx, http_header_request &header);
+    void upgrade(http_header_request &header);
 
     template <state_t state>
-    void read_helper(thread_context &ctx);
+    void read_helper();
 
-    void execute(thread_context &ctx) override;
+    void execute() override;
 
     using serverpeerevent<use_ssl>::close;
 };
@@ -135,8 +133,7 @@ public:
 // read_buffer will  not contain connection_preface
 template <bool use_ssl>
 template <bool first_frame>
-void iothttp2event<use_ssl>::process_read_buffer(
-            thread_context &ctx, uint8_t *read_buffer, const size_t read_buffer_size) {
+void iothttp2event<use_ssl>::process_read_buffer(uint8_t *read_buffer, const size_t read_buffer_size) {
     // HTTP2 on TLS require ALPN support
     // This function is not valid for TLS
     rohit::http::v2::request request(dynamic_table, peer_settings);
@@ -157,8 +154,8 @@ void iothttp2event<use_ssl>::process_read_buffer(
             uint8_t *_write_buffer = new uint8_t[write_size];
             std::copy(write_buffer, pwrite_end, _write_buffer);
             push_write(_write_buffer, write_size);
-            write_all(ctx);
-            close(ctx);
+            write_all();
+            close();
             return;
         }
 
@@ -183,15 +180,15 @@ void iothttp2event<use_ssl>::process_read_buffer(
     }
 
     if (ret != err_t::HTTP2_INITIATE_GOAWAY) {
-        process_request(ctx, request);
-        write_all(ctx);
+        process_request(request);
+        write_all();
     } else {
-        close(ctx);
+        close();
     }
 }
 
 template <bool use_ssl>
-void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
+void iothttpevent<use_ssl>::read_helper() {
     constexpr size_t read_buffer_size = thread_context::buffer_size;
     auto read_buffer = ctx.read_buffer;
     size_t read_buffer_length { };
@@ -255,11 +252,11 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                 if (new_read_buffer_length == 0) {
                     http2executor->client_state = state_t::HTTP2_FIRST_FRAME;
                 } else {
-                    http2executor->template process_read_buffer<true>(ctx, new_read_buffer, new_read_buffer_length);
+                    http2executor->template process_read_buffer<true>(new_read_buffer, new_read_buffer_length);
                 }
 
                 // This is important as we may have missed few events
-                http2executor->execute_protector_noenter(ctx);
+                http2executor->execute_protector_noenter();
 
                 ctx.delayed_free(this);
                 // No need to exit loop this will be freed anyway
@@ -291,10 +288,10 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
                 ctx.add_event(http2executor->peer_id, EPOLLIN | EPOLLOUT, http2executor);   
 
                 // Execute all read and write
-                http2executor->upgrade(ctx, driver.header);
+                http2executor->upgrade(driver.header);
 
                 // This is important as we may have missed few events
-                http2executor->execute_protector_noenter(ctx);
+                http2executor->execute_protector_noenter();
 
                 ctx.delayed_free(this);
                 return;
@@ -373,32 +370,32 @@ void iothttpevent<use_ssl>::read_helper(thread_context &ctx) {
         std::copy(write_buffer, write_buffer + write_size, _write_buffer);
         push_write(_write_buffer, write_size);
     }
-    write_all(ctx);
+    write_all();
 
     // Tail recurssion
-    read_helper(ctx);
+    read_helper();
 }
 
 template <bool use_ssl>
-void iothttpevent<use_ssl>::execute(thread_context &ctx) {
+void iothttpevent<use_ssl>::execute() {
     switch (client_state) {
         case state_t::SOCKET_PEER_CLOSE: {
             // This is server initiated close
             // Socket has to be closed by server
             // SSL may require it to call again
-            close(ctx);
+            close();
             break;
         }
 
         case state_t::SOCKET_PEER_EVENT:
         case state_t::SOCKET_PEER_READ: {
-            read_helper(ctx);
+            read_helper();
             break;
         }
 
         case state_t::SOCKET_PEER_WRITE: {
-            write_all(ctx);
-            read_helper(ctx);
+            write_all();
+            read_helper();
             break;
         }
 
@@ -418,13 +415,12 @@ void iothttpevent<use_ssl>::execute(thread_context &ctx) {
             log<log_t::EVENT_SERVER_UNKNOWN_STATE>(client_state);
             break;
     }
-} // void iothttpevent<use_ssl>::execute(thread_context &ctx)
+} // void iothttpevent<use_ssl>::execute()
 
 // Upgrade is for non TLS only
 // HTTP 1.1 for connection without prior knowledge will call this
 template <bool use_ssl>
-void iothttp2event<use_ssl>::upgrade(
-            thread_context &ctx, http_header_request &header) {
+void iothttp2event<use_ssl>::upgrade(http_header_request &header) {
     // HTTP2 on TLS require ALPN support
     // Hence this function will never be called for TLS
 
@@ -467,16 +463,14 @@ void iothttp2event<use_ssl>::upgrade(
     push_write(_write_buffer, write_size);
 
     rohit::http::v2::request request(dynamic_table, peer_settings, std::move(header));
-    process_request(ctx, request);
-    write_all(ctx);
+    process_request(request);
+    write_all();
 
     client_state = state_t::HTTP2_NEXT_MAGIC;
 }
 
 template <bool use_ssl>
-void iothttp2event<use_ssl>::process_request(
-            thread_context &ctx,
-            rohit::http::v2::request &request) {
+void iothttp2event<use_ssl>::process_request(rohit::http::v2::request &request) {
     // Process request
     // Date is used by all hence it is created here
     std::time_t now_time = std::time(0);   // get time now
@@ -541,7 +535,7 @@ void iothttp2event<use_ssl>::process_request(
 
                     const uint8_t *data_ptr = (uint8_t *)file_details->content.ptr;
                     size_t data_size = file_details->content.size;
-                    constexpr size_t frame_size = ctx.buffer_size; // 16 KB
+                    const size_t frame_size = ctx.buffer_size; // 16 KB
                     size_t write_size;
                     uint8_t *_write_buffer;
                     while(data_size + sizeof(rohit::http::v2::frame) > frame_size) {
@@ -603,8 +597,8 @@ void iothttp2event<use_ssl>::process_request(
 
 template <bool use_ssl>
 template <state_t state>
-void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
-    constexpr size_t read_buffer_size = ctx.buffer_size;
+void iothttp2event<use_ssl>::read_helper() {
+    const size_t read_buffer_size = ctx.buffer_size;
     uint8_t  *read_buffer = ctx.read_buffer;
     size_t read_buffer_length { };
 
@@ -631,7 +625,7 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
             strncmp((char *)read_buffer, rohit::http::v2::connection_preface, rohit::http::v2::connection_preface_size))
         {
             // This is bad request
-            close(ctx);
+            close();
             return;
         }
         
@@ -643,36 +637,36 @@ void iothttp2event<use_ssl>::read_helper(thread_context &ctx) {
             return;
         } else {
             client_state = state_t::SOCKET_PEER_EVENT;
-            process_read_buffer<true>(ctx, new_read_buffer, new_read_buffer_length);
+            process_read_buffer<true>(new_read_buffer, new_read_buffer_length);
         }
     } else {
-        process_read_buffer<state == state_t::HTTP2_FIRST_FRAME>(ctx, read_buffer, read_buffer_length);
+        process_read_buffer<state == state_t::HTTP2_FIRST_FRAME>(read_buffer, read_buffer_length);
     }
 
-    if constexpr (use_ssl) if (!peer_id.is_closed()) read_helper<state_t::SOCKET_PEER_READ>(ctx);
+    if constexpr (use_ssl) if (!peer_id.is_closed()) read_helper<state_t::SOCKET_PEER_READ>();
 }
 
 template <bool use_ssl>
-void iothttp2event<use_ssl>::execute(thread_context &ctx) {
+void iothttp2event<use_ssl>::execute() {
     switch (client_state) {
         case state_t::HTTP2_NEXT_MAGIC: {
-            read_helper<state_t::HTTP2_NEXT_MAGIC>(ctx);
+            read_helper<state_t::HTTP2_NEXT_MAGIC>();
             break;
         }
 
         case state_t::HTTP2_FIRST_FRAME: {
-            read_helper<state_t::HTTP2_FIRST_FRAME>(ctx);
+            read_helper<state_t::HTTP2_FIRST_FRAME>();
             break;
         }
 
         case state_t::SOCKET_PEER_EVENT:
         case state_t::SOCKET_PEER_READ: {
-            read_helper<state_t::SOCKET_PEER_READ>(ctx);
+            read_helper<state_t::SOCKET_PEER_READ>();
             break;
         }
 
         case state_t::SOCKET_PEER_CLOSE: {
-            close(ctx);
+            close();
             break;
         }
         case state_t::SOCKET_PEER_CLOSED:
@@ -680,8 +674,8 @@ void iothttp2event<use_ssl>::execute(thread_context &ctx) {
             break;
 
         case state_t::SOCKET_PEER_WRITE: {
-            write_all(ctx);
-            read_helper<state_t::SOCKET_PEER_READ>(ctx);
+            write_all();
+            read_helper<state_t::SOCKET_PEER_READ>();
             break;
         }
 
