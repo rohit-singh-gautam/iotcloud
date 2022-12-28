@@ -20,31 +20,40 @@
 #include <thread>
 #include <chrono>
 
-void delete_log_file(const char *filename) {
-    std::filesystem::path path { filename };
-    std::filesystem::remove(path);
+void delete_log_file(const std::filesystem::path &path) {
+    if (std::filesystem::exists(path)) {
+        std::cout << "Deleting log file.\n";
+        std::cout << "Remove '-c' option if you do not what to delete log file in future.\n";
+        std::filesystem::remove(path);
+    }
 }
 
-void wait_for_creation(const char *filename) {
-    std::filesystem::path path { filename };
-
+void wait_for_creation(const std::filesystem::path &path) {
+    if (std::filesystem::exists(path)) return;
+    std::cout << "Waiting till log file is created. \n";
+    size_t count { 0 };
     while(!std::filesystem::exists(path)) {
         // Wait for one second
         using namespace std::chrono_literals;
+        if (count >= 1) {
+            std::cout << '.' << std::flush;
+            count = 0;
+        } else ++count;
         std::this_thread::sleep_for(1s);
     }
+    std::cout << '\n';
 }
 
 int main(int argc, char *argv[]) {
     bool live;
     bool clean;
     bool display_version;
-    const char *log_file;
+    std::filesystem::path log_file;
     rohit::commandline param_parser(
         "Parse and display logs",
         "Parse and display logs in sorted format",
         {
-            {'l', "log_file", "file path", "Path to save log file", log_file, "/tmp/log/iotcloud/deviceserver.log"},
+            {'l', "log_file", "file path", "Path to save log file", log_file, std::filesystem::path("/tmp/log/iotcloud/deviceserver.log")},
             {'w', "wait", "Wait mode will wait for more logs", live},
             {'c', "clean", "Delete log file", clean},
             {'v', "version", "Display version", display_version}
@@ -60,6 +69,8 @@ int main(int argc, char *argv[]) {
         std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
         return EXIT_SUCCESS;
     }
+
+    std::cout << "Log file path: " << log_file << '\n';
 
     if (clean) delete_log_file(log_file);
 

@@ -20,6 +20,7 @@
 #include <bit>
 #include <algorithm>
 #include <functional>
+#include <filesystem>
 
 struct sockaddr_in6;
 namespace rohit {
@@ -155,6 +156,7 @@ typedef char * string_t;
 typedef float float_t;
 typedef double double_t;
 typedef long double longdouble_t;
+typedef std::filesystem::path filepath_t;
 
 #define LIST_DEFINITION_END
 
@@ -178,6 +180,7 @@ typedef long double longdouble_t;
     TYPE_LIST_ENTRY(ipv6_addr_t) \
     TYPE_LIST_ENTRY(ipv6_port_t) \
     TYPE_LIST_ENTRY(ipv6_socket_addr_t) \
+    TYPE_LIST_ENTRY(filepath_t) \
     LIST_DEFINITION_END
 
 

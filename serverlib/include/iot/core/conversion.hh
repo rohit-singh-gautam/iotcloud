@@ -87,6 +87,12 @@ constexpr bool to_type(const type_identifier id, void *store, const char *value)
             copyvaradic((uint8_t *)store, ipv6_socket_val);
             break;
         }
+
+    case type_identifier::filepath_t: {
+        
+        *(std::filesystem::path *)store = std::filesystem::path(value);
+        break;
+    }
         
     default:
         return false;
