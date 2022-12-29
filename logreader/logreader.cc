@@ -75,6 +75,10 @@ int main(int argc, char *argv[]) {
     if (clean) delete_log_file(log_file);
 
     if (live) wait_for_creation(log_file);
+    else if (!std::filesystem::exists(log_file)) {
+        std::cout << "Log file does not exists consider adding '-w' option if you want to wait for log file creation.\n";
+        return 0;
+    }
 
     rohit::logreader log_reader(log_file);
 
