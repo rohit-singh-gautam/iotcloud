@@ -121,9 +121,12 @@ void *event_distributor::loop(void *pvoid_evtdist) {
             event_executor *executor = (event_executor *)(event.data.ptr);
             thread_entry.set_state(state_t::EVENT_DIST_EPOLL_EXECUTE);
 
-            if ((event.events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) != 0) {
+            if ((event.events & (EPOLLHUP | EPOLLERR)) != 0) {
                 // Responsiblity of close is to free
-                executor->mark_closed();
+                executor->mark_closed(false);
+                thread_entry.set_state(state_t::EVENT_DIST_EPOLL_CLOSE);
+            } else if ((event.events & EPOLLRDHUP) != 0) {
+                executor->mark_closed(true);
                 thread_entry.set_state(state_t::EVENT_DIST_EPOLL_CLOSE);
             } else {
                 executor->execute_protector();
@@ -192,6 +195,8 @@ private:
     void execute() override {
         pthread_exit(nullptr);
     }
+
+    void flush() override { }
 
     void close() override {
         ctx.delayed_free(this);

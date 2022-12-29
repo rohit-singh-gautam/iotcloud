@@ -102,7 +102,6 @@ namespace rohit {
     ERROR_T_ENTRY(EVENT_CREATE_FAILED, "Event creation failed") \
     ERROR_T_ENTRY(EVENT_CREATE_FAILED_ZERO, "Event creation failed for 0 file descriptor value") \
     ERROR_T_ENTRY(EVENT_REMOVE_FAILED, "Event remove failed") \
-    ERROR_T_ENTRY(EVENT_SERVER_HELPER_CREATE_FAILED, "Event server helper create failed") \
     \
     ERROR_T_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, "FILEWATCHER failed to add folder for watch") \
     ERROR_T_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, "FILEWATCHER event create failed") \

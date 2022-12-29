@@ -214,6 +214,9 @@ private:
         evtdist.resume();
     } // execute
 
+
+    void flush() override { }
+
     void close() override {
         ctx.delayed_free(this);
     }

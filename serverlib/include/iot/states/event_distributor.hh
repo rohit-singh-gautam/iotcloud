@@ -42,6 +42,7 @@ protected:
     // close also require to free itself
     // ctx.delayed_free(this); is recommended method to free
     virtual void close() = 0;
+    virtual void flush() = 0;
 
     friend class event_distributor;
 
@@ -82,7 +83,7 @@ public:
         }
     }
 
-    inline void mark_closed() {
+    inline void mark_closed(bool readclose) {
         closed = true;
         auto loop = enter_loop();
 
@@ -90,18 +91,18 @@ public:
         // it is task of existing thread to close
         if (loop) {
             // No need to exit loop
+            if (readclose) flush();
             close();
         }
     }
 
-    bool enter_loop() {
+    inline bool enter_loop() {
         auto value = executor_count++;
         return value == 0;
     }
     
-    bool exit_loop() {
-        auto value = --executor_count;
-        return value == 0;
+    inline bool exit_loop() {
+        return --executor_count == 0;
     }
 
 }; // class event_executor
@@ -219,10 +220,10 @@ public:
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &epoll_data);
 
         if (ret == -1) {
-            log<log_t::EVENT_CREATE_FAILED>(errno);
+            log<log_t::EVENT_CREATE_FAILED>(fd, errno);
             return err_t::EVENT_CREATE_FAILED;
         } else {
-            log<log_t::EVENT_CREATE_SUCCESS>();
+            log<log_t::EVENT_CREATE_SUCCESS>(fd);
             return err_t::SUCCESS;
         }
     }
@@ -230,10 +231,10 @@ public:
     inline err_t remove(const int fd) {
         auto ret = epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr);
             if (ret == -1) {
-            log<log_t::EVENT_REMOVE_FAILED>(errno);
+            log<log_t::EVENT_REMOVE_FAILED>(fd, errno);
             return err_t::EVENT_REMOVE_FAILED;
         } else {
-            log<log_t::EVENT_REMOVE_SUCCESS>();
+            log<log_t::EVENT_REMOVE_SUCCESS>(fd);
             return err_t::SUCCESS;
         }
     }

@@ -153,7 +153,7 @@ public:
         return get_local_ipv6_addr();
     }
 
-    inline bool is_null() { return socket_id == 0; }
+    inline bool is_null() const { return socket_id == 0; }
 
     inline bool set_non_blocking() {
         int flags = fcntl(socket_id, F_GETFL, 0);
@@ -165,6 +165,7 @@ public:
         return flags != -1;
     }
 
+    inline bool is_closed() const { return socket_id == 0; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const socket_t &client_id) {
@@ -201,6 +202,8 @@ public:
     inline socket_ssl_t(const int socket_id, SSL *ssl) : socket_t(socket_id), ssl(ssl) { }
     inline socket_ssl_t(socket_ssl_t &sock) : socket_t(sock), ssl(sock.ssl) { }
     inline socket_ssl_t(socket_ssl_t &&sock) : socket_t(std::move(sock)), ssl(sock.ssl) { sock.ssl = nullptr; }
+
+    inline operator int() const { return socket_id; }
 
     inline err_t accept() {
         if (ssl == nullptr) {
@@ -334,7 +337,7 @@ public:
         return socket_t::close();
     }
 
-    inline bool is_closed() { return socket_id == 0; }
+    inline bool isSSLInitialized() const { return ssl != nullptr; };
 
 };
 
@@ -366,6 +369,8 @@ public:
         log<log_t::SOCKET_LISTEN_SUCCESS>(socket_id, port);
     }
 
+    inline operator int() const { return socket_id; }
+
     inline socket_t accept() {
         auto client_id = ::accept(socket_id, NULL, NULL);
         if (client_id == -1) {
@@ -392,7 +397,7 @@ public:
         SSL_CTX_set_ecdh_auto(ctx, 1);
 
         if (!std::filesystem::exists(cert_file)) {
-            log<log_t::SOCKET_SSL_CERT_LOAD_FAILED_FILE_NOT_FOUND>();
+            log<log_t::SOCKET_SSL_CERT_LOAD_FAILED_FILE_NOT_FOUND>(socket_id);
             throw exception_t(err_t::SOCKET_SSL_CERTIFICATE_FILE_NOT_FOUND);
         }
 
@@ -401,17 +406,19 @@ public:
             log<log_t::SOCKET_SSL_CERT_LOAD_FAILED>();
             throw exception_t(err_t::SOCKET_SSL_CERTIFICATE_FAILED);
         } else {
-            log<log_t::SOCKET_SSL_CERT_LOAD_SUCCESS>();
+            log<log_t::SOCKET_SSL_CERT_LOAD_SUCCESS>(socket_id);
         }
 
         if (SSL_CTX_use_PrivateKey_file(ctx, prikey_file, SSL_FILETYPE_PEM) <= 0 ) {
             ERR_print_errors_fp(stderr);
-            log<log_t::SOCKET_SSL_PRIKEY_LOAD_FAILED>();
+            log<log_t::SOCKET_SSL_PRIKEY_LOAD_FAILED>(socket_id);
             throw exception_t(err_t::SOCKET_SSL_PRIKEY_FAILED);
         } else {
-            log<log_t::SOCKET_SSL_PRIKEY_LOAD_SUCCESS>();
+            log<log_t::SOCKET_SSL_PRIKEY_LOAD_SUCCESS>(socket_id);
         }
     }
+
+    inline operator int() const { return socket_id; }
 
     inline ~server_socket_ssl_t() {
         socket_ssl_t::cleanup_openssl();
@@ -450,6 +457,8 @@ public:
         err_t err = connect(ipv6addr);
         if (isFailure(err)) throw exception_t(err);
     }
+
+    inline operator int() const { return socket_id; }
 };
 
 class client_socket_ssl_t : public socket_ssl_t {
@@ -477,6 +486,8 @@ public:
             throw exception_t(err_t::SSL_CONNECT_FAILED);
         }
     }
+
+    inline operator int() const { return socket_id; }
 
     inline ~client_socket_ssl_t() {
         socket_ssl_t::cleanup_openssl();

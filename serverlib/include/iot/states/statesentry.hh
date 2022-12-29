@@ -34,6 +34,7 @@ namespace rohit {
     STATE_ENTRY(SOCKET_PEER_READ, "Next operation is READ") \
     STATE_ENTRY(SOCKET_PEER_WRITE, "Next operation is WRITE") \
     STATE_ENTRY(SOCKET_PEER_CLOSE, "Next operation is CLOSE") \
+    STATE_ENTRY(SOCKET_PEER_READ_CLOSE, "Next operation is READ CLOSE") \
     STATE_ENTRY(SOCKET_PEER_CLOSED, "Socket is close no further operation must be performed on this") \
     STATE_ENTRY(HTTP2_SETTINGS_WRITE, "HTTP2 write settings as this is first packet") \
     STATE_ENTRY(HTTP2_NEXT_MAGIC, "HTTP2 next frame is a magic frame") \

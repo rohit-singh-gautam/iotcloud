@@ -47,7 +47,7 @@ public:
 
 
     void execute() override {
-        log<log_t::EVENT_SERVER_RECEIVED_EVENT>((int)socket_id);
+        log<log_t::EVENT_SERVER_RECEIVED_EVENT>(static_cast<int>(socket_id));
         try {
             while(true) {
                 auto peer_id = socket_id.accept();
@@ -65,14 +65,16 @@ public:
                 } else {
                     ctx.add_event(peer_id, EPOLLIN | EPOLLOUT, p_peerevent);
                 }
-                log<log_t::EVENT_SERVER_PEER_CREATED>(peer_id.get_peer_ipv6_addr());
+                log<log_t::EVENT_SERVER_PEER_CREATED>(static_cast<int>(socket_id), static_cast<int>(peer_id), peer_id.get_peer_ipv6_addr());
             }
         } catch (const exception_t e) {
             if (e == err_t::ACCEPT_FAILURE) {
-                log<log_t::EVENT_SERVER_ACCEPT_FAILED>(errno);
+                log<log_t::EVENT_SERVER_ACCEPT_FAILED>(static_cast<int>(socket_id), errno);
             }
         }
     }
+
+    void flush() override { /* Do nothing */ }
 
     void close() override {
         socket_id.close();
@@ -126,6 +128,8 @@ public:
 
     inline bool is_write_left() { return !write_queue.empty(); }
 
+    inline void clear() { std::queue<write_entry>().swap(write_queue);}
+
 };
 
 template <bool use_ssl>
@@ -149,6 +153,11 @@ public:
     constexpr state_t get_client_state() const { return client_state; }
 
     void write_all();
+
+    void flush() override {
+        write_all();
+        clear();
+    }
 
     void close() override;
 
@@ -174,6 +183,13 @@ void serverpeerevent<use_ssl>::write_all() {
     err_t err = err_t::SUCCESS;
     client_state = state_t::SOCKET_PEER_EVENT;
     while (is_write_left()) {
+        if constexpr (rohit::config::debug && use_ssl) {
+            if (!peer_id.isSSLInitialized() || peer_id.is_closed()) {
+                const int socket_id { peer_id };
+                log<log_t::EVENT_SERVER_SSL_CLOSED_WRITE>(socket_id);
+            }
+        }
+
         auto &write_buffer = get_write_buffer();
 
         size_t written_length;
