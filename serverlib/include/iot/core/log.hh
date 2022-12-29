@@ -174,6 +174,28 @@ enum class logger_level {
     LOGGER_LEVEL_LIST
 #undef LOGGER_LEVEL_ENTRY
 };
+
+constexpr const char *logger_level_string[] = {
+#define LOGGER_LEVEL_ENTRY(x) {#x},
+    LOGGER_LEVEL_LIST
+#undef LOGGER_LEVEL_ENTRY
+};
+
+inline logger_level to_logger_level(const std::string level_name) {
+    static std::unordered_map<std::string, logger_level> logger_level_enum = {
+#define LOGGER_LEVEL_ENTRY(x) {#x, logger_level::x},
+        LOGGER_LEVEL_LIST
+#undef LOGGER_LEVEL_ENTRY
+    };
+
+    auto level_itr = logger_level_enum.find(level_name);
+    if (level_itr == logger_level_enum.end()) {
+        return static_cast<logger_level>(0xff);
+    }
+
+    return level_itr->second;
+}
+
 class logger_level_operators {
 private:
     const logger_level value;
@@ -192,6 +214,12 @@ public:
 
 enum class module_t {
 #define LOGGER_MODULE_ENTRY(x) x,
+    LOGGER_MODULE_LIST
+#undef LOGGER_MODULE_ENTRY
+};
+
+constexpr const char *module_t_string[] = {
+#define LOGGER_MODULE_ENTRY(x) {#x},
     LOGGER_MODULE_LIST
 #undef LOGGER_MODULE_ENTRY
 };

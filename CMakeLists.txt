@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22)
 
 #sudo apt install libssl-dev
 #sudo apt install libpq-dev
@@ -20,5 +20,6 @@ add_subdirectory(serverlib)
 add_subdirectory(httpparser)
 add_subdirectory(deviceserver)
 add_subdirectory(logreader)
+add_subdirectory(serverconfig)
 add_subdirectory(test/serverlib)
 add_subdirectory(test/httpparser)
