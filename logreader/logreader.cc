@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
         "Parse and display logs",
         "Parse and display logs in sorted format",
         {
-            {'l', "log_file", "file path", "Path to save log file", log_file, std::filesystem::path("/tmp/log/iotcloud/deviceserver.log")},
+            {'l', "log_file", "file path", "Path to save log file", log_file, std::filesystem::path("/tmp/iotcloud/log/deviceserver.log")},
             {'w', "wait", "Wait mode will wait for more logs", live},
             {'c', "clean", "Delete log file", clean},
             {'v', "version", "Display version", display_version}
