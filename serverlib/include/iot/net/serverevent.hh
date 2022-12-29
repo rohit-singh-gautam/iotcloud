@@ -54,7 +54,7 @@ public:
                 if (peer_id.is_null()) break;
                 const auto non_blocking = peer_id.set_non_blocking();
                 if (!non_blocking) {
-                    log<log_t::SOCKET_SET_NONBLOCKING_FAILED>((int)peer_id);
+                    log<log_t::SOCKET_SET_NONBLOCKING_FAILED>(static_cast<int>(peer_id));
                 }
                 peerevent *p_peerevent = new peerevent(peer_id);
                 p_peerevent->execute_protector();
@@ -169,7 +169,7 @@ void serverpeerevent<use_ssl>::close() {
     if (last_peer_id) {
         auto ret = peer_id.close();
         if (ret != err_t::SOCKET_RETRY) {
-            log<log_t::IOT_EVENT_SERVER_CONNECTION_CLOSED>((int)last_peer_id);
+            log<log_t::EVENT_SERVER_CONNECTION_CLOSED>(static_cast<int>(last_peer_id));
             client_state = state_t::SOCKET_PEER_CLOSED;
             ctx.delayed_free(this);
         } else {

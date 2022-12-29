@@ -403,7 +403,7 @@ public:
 
         if ( SSL_CTX_use_certificate_file(ctx, cert_file, SSL_FILETYPE_PEM) <= 0 ) {
             ERR_print_errors_fp(stderr);
-            log<log_t::SOCKET_SSL_CERT_LOAD_FAILED>();
+            log<log_t::SOCKET_SSL_CERT_LOAD_FAILED>(socket_id);
             throw exception_t(err_t::SOCKET_SSL_CERTIFICATE_FAILED);
         } else {
             log<log_t::SOCKET_SSL_CERT_LOAD_SUCCESS>(socket_id);

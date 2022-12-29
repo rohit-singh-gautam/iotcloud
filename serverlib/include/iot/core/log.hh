@@ -100,7 +100,7 @@ namespace rohit {
     LOGGER_ENTRY(SOCKET_SSL_INITIALIZE, INFO, SOCKET, "Socket initialize SSL") \
     LOGGER_ENTRY(SOCKET_SSL_INITIALIZE_ATTEMPT, DEBUG, SOCKET, "Socket initialize SSL attempt  %i") \
     LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_SUCCESS, INFO, SOCKET, "FD %i: Loaded SSL certificate") \
-    LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_FAILED, ERROR, SOCKET, "Unable to load SSL certificate, exiting") \
+    LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_FAILED, ERROR, SOCKET, "FD %i: Unable to load SSL certificate, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_CERT_LOAD_FAILED_FILE_NOT_FOUND, ERROR, SOCKET, "FD %i: Unable to load SSL certificate as file not found, exiting") \
     LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_SUCCESS, INFO, SOCKET, "FD %i: Loaded Primary Key") \
     LOGGER_ENTRY(SOCKET_SSL_PRIKEY_LOAD_FAILED, ERROR, SOCKET, "FD %i: Unable to load Primary Key, exiting") \
@@ -143,12 +143,10 @@ namespace rohit {
     LOGGER_ENTRY(EVENT_SERVER_MOVED_ENTERED, WARNING, EVENT_SERVER, "FD %i: Entered event server after move, must not happen") \
     LOGGER_ENTRY(EVENT_SERVER_SSL_CLOSED_WRITE, INFO, EVENT_SERVER, "FD %i: SSL Event failed to write as socket is closed") \
     LOGGER_ENTRY(EVENT_SERVER_UNKNOWN_STATE, WARNING, EVENT_SERVER, "FD %i: Entered event server for unknown state %vs") \
+    LOGGER_ENTRY(EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "FD %i: Event Server connection closed") \
     \
-    LOGGER_ENTRY(IOT_EVENT_SERVER_COMMAND_RECEIVED, VERBOSE, IOT_EVENT_SERVER, "IOT Event Server received message %vN") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %vE") \
-    LOGGER_ENTRY(IOT_EVENT_SERVER_CONNECTION_CLOSED, INFO, IOT_EVENT_SERVER, "IOT Event Server connection closed fd %i") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_WRITE_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer write failed with error %vE") \
-    LOGGER_ENTRY(IOT_EVENT_SERVER_NULL_SOCKET, ERROR, IOT_EVENT_SERVER, "IOT Event Server command received with null socket") \
     \
     LOGGER_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, ERROR, IOT_HTTPSERVER, "FILEWATCHER event create failed") \
     LOGGER_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, WARNING, IOT_HTTPSERVER, "FILEWATCHER failed to add folder for watch with error %ve") \

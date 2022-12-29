@@ -25,7 +25,7 @@ std::ostream& operator<<(std::ostream& os, const http_header::VERSION httpVersio
     HTTP_VERSION_LIST
 #undef HTTP_VERSION_ENTRY
     default:
-        os << "Unknown version " << (int)httpVersion;
+        os << "Unknown version " << static_cast<int>(httpVersion);
         break;
     }
     return os;
@@ -88,7 +88,7 @@ std::ostream& operator<<(std::ostream& os, const http_header_request& requestHea
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header::CODE responseCODE) {
-    return os << (int)responseCODE << " " << http_header::get_code_string(responseCODE);
+    return os << static_cast<int>(responseCODE) << " " << http_header::get_code_string(responseCODE);
 }
 
 std::ostream& operator<<(std::ostream& os, const http_header_response_status& responseHeader) {

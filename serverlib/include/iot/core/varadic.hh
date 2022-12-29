@@ -365,7 +365,7 @@ consteval size_t check_formatstring_args_internal()
 {
     constexpr const size_t index = COUNT - sizeof...(ARGS) - 1;
     if (fmt_list[index] != what_type<T>::value) {
-        //std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[(int)fmt_list[index]] << std::endl;
+        //std::cout << "Index: " << index << ": what_type: " << what_type<T>::str << ", fmt_list: " << type_str[static_cast<int>(fmt_list[index])] << std::endl;
         return index; // Bad type
     }
 

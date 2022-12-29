@@ -45,7 +45,7 @@ const std::string command_t::to_string() const {
 std::ostream& operator<<(std::ostream& os, const message_base_t &message) {
     message_code_t code = message;
     if (code > message_code_t::COMMAND) {
-        return os << "Bad message " << (int) code << std::endl;
+        return os << "Bad message " << static_cast<int>(code) << std::endl;
     }
     switch(message) {
     case message_code_t::UNKNOWN:
