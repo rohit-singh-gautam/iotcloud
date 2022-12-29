@@ -89,8 +89,12 @@ constexpr bool to_type(const type_identifier id, void *store, const char *value)
         }
 
     case type_identifier::filepath_t: {
-        
         *(std::filesystem::path *)store = std::filesystem::path(value);
+        break;
+    }
+
+    case type_identifier::stdstring_t: {
+        *(std::string *)store = std::string(value);
         break;
     }
         

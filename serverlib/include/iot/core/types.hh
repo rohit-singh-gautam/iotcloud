@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <functional>
 #include <filesystem>
+#include <string>
 
 struct sockaddr_in6;
 namespace rohit {
@@ -157,6 +158,7 @@ typedef float float_t;
 typedef double double_t;
 typedef long double longdouble_t;
 typedef std::filesystem::path filepath_t;
+typedef std::string stdstring_t;
 
 #define LIST_DEFINITION_END
 
@@ -181,6 +183,7 @@ typedef std::filesystem::path filepath_t;
     TYPE_LIST_ENTRY(ipv6_port_t) \
     TYPE_LIST_ENTRY(ipv6_socket_addr_t) \
     TYPE_LIST_ENTRY(filepath_t) \
+    TYPE_LIST_ENTRY(stdstring_t) \
     LIST_DEFINITION_END
 
 

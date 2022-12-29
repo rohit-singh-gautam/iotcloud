@@ -19,9 +19,10 @@
 namespace rohit {
 #define CONFIG_LIST \
     CONFIG_ENTRY(CONFIG_LOG, "log") \
+    CONFIG_ENTRY(CONFIG_TERMINATE, "terminate") \
     LIST_DEFINITION_END
 
-enum class config_t : uint16_t {
+enum class config_t {
 #define CONFIG_ENTRY(x, y) x,
         CONFIG_LIST
 #undef CONFIG_ENTRY
@@ -33,7 +34,7 @@ constexpr const char *config_t_string[] = {
 #undef CONFIG_ENTRY
 };
 
-struct config_log {
+struct [[gnu::packed]] config_log {
     module_t module;
     logger_level level;
 };

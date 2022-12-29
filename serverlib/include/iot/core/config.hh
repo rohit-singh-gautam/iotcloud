@@ -39,7 +39,8 @@ constexpr int64_t filewatcher_wait_in_ns = 1ULL * 1000ULL * 1000000ULL;
 #define macrostr(x) macrostr_helper(x)
 #define WEB_SERVER_NAME "Rohit Web " macrostr(IOT_VERSION_MAJOR) "." macrostr(IOT_VERSION_MINOR)
 
-constexpr uint8_t web_server_name[] = WEB_SERVER_NAME;
+constexpr uint8_t web_server_name[] { WEB_SERVER_NAME };
+constexpr const char ipc_path[] { "/tmp/iotcloud/pipe/config" };
 
 } // namespace config
 } // namespace rohit
