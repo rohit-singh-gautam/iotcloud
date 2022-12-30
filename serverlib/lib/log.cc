@@ -314,10 +314,14 @@ static void log_thread_function() {
     logger::all.flush();
 }
 
-void init_log_thread(const char *filename) {
-    int log_filedescriptor = open(filename, O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+void init_log_thread(const std::filesystem::path &filename) {
+    if (!std::filesystem::exists(filename)) {
+        auto parent { filename.parent_path() };
+        std::filesystem::create_directories(parent);
+    }
+    int log_filedescriptor = open(filename.c_str(), O_RDWR | O_APPEND | O_CREAT, O_SYNC | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     if ( log_filedescriptor < 0 ) {
-        std::cerr << "Failed to open file " << filename << ", error " << errno << ", " << strerror(errno) << std::endl;
+        std::cerr << "Failed to open file " << filename.c_str() << ", error " << errno << ", " << strerror(errno) << std::endl;
     }
 
     logger::all.set_fd(log_filedescriptor);

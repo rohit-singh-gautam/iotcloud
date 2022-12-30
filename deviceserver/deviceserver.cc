@@ -19,10 +19,17 @@
 #include <iot/init.hh>
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>
+#include <iot/config/message.hh>
 #include <signal.h>
 #include <json.hpp>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <mqueue.h>
+#include <filesystem>
+#include <memory>
+#include <thread>
 
-const char *log_file;
+std::filesystem::path log_file;
 const char *config_folder;
 bool display_version;
 bool log_debug_mode;
@@ -34,7 +41,7 @@ bool parse_and_display(int argc, char *argv[]) {
         "Device server is designed to keep hold on all the IOT devices connected to internet. "
         "All devices share their state with this server and even devices are contolled by this server. ",
         {
-            {'l', "log_file", "file path", "Path to save log file", log_file, "/tmp/iotcloud/log/deviceserver.log"},
+            {'l', "log_file", "file path", "Path to save log file", log_file, std::filesystem::path("/tmp/iotcloud/log/deviceserver.log")},
             {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file iot.json and logmodule.json", config_folder, "/etc/iotcloud"},
             {'t', "thread_count", "number of thread", "Number of threads that listen to socket, 0 means number of CPU", thread_count, 0},
             {'v', "version", "Display version", display_version},
@@ -220,6 +227,52 @@ void destroy_app() {
     std::cout << "All thread joined" << std::endl;
 }
 
+void configuration_thread_function() {
+    char message[rohit::config::ipc_message_size];
+    mqd_t mq  = mq_open(rohit::config::ipc_key, O_CREAT | O_RDONLY, 0644, mq_attr {0, rohit::config::ipc_queue_size, rohit::config::ipc_message_size, 0, {0}});
+
+    if(mq < 0)
+    {
+        //todo: throw error
+        std::cout << "Unable to open queue - " << strerror(errno) << std::endl;
+        return;
+    }
+
+    while(!evtdist->isTerminated()) {
+        unsigned int prio;
+        std::fill(std::begin(message), std::end(message), 0);
+        
+        auto bytesread = mq_receive(mq, message, sizeof(rohit::config::ipc_message_size), &prio);
+        if (bytesread <= 0) {
+            //TODO:: Throw error
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
+        }
+
+        switch (*reinterpret_cast<rohit::config_t *>(message))
+        {
+        case rohit::config_t::CONFIG_LOG: {
+            auto index {sizeof(rohit::config_t)};
+            while(index + sizeof(rohit::config_log) <= static_cast<decltype(index)>(bytesread)) {
+                auto ptrlogconf { reinterpret_cast<rohit::config_log *>(message + index) };
+                std::cout << "Module " << (int)ptrlogconf->module << '\n';
+                // Set log
+                index += sizeof(rohit::config_log);
+            }
+            break;
+        }
+        
+        case rohit::config_t::CONFIG_TERMINATE:
+            destroy_app();
+            break;
+        default:
+            break;
+        }
+    }
+    mq_close(mq);
+    mq_unlink(rohit::config::ipc_key);
+}
+
 void segv_app() {
     rohit::log<rohit::log_t::SEGMENTATION_FAULT>();
     rohit::segv_log_flush();
@@ -345,6 +398,8 @@ int main(int argc, char *argv[]) try {
     std::cout << "Creating event distributor" << std::endl;
     evtdist = new rohit::event_distributor(thread_count);
     evtdist->init();
+
+    std::jthread conf_thread { configuration_thread_function };
 
     ptr_filewatcher = new rohit::http::httpfilewatcher(*evtdist);
     ptr_filewatcher->init();

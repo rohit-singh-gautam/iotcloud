@@ -191,7 +191,7 @@ protected:
                                 unsigned int *outlen,
                                 void *arg);
 
-    friend void init_iot(const char *logfilename);
+    friend void init_iot(const std::filesystem::path &logfilename);
     friend void destroy_iot();
 
     friend class server_socket_ssl_t;

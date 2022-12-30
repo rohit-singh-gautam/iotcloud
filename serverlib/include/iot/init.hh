@@ -13,10 +13,11 @@
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include <filesystem>
 
 namespace rohit {
 
-void init_iot(const char *logfilename);
+void init_iot(const std::filesystem::path &logfilename);
 void destroy_iot();
 
 } // namespace rohit

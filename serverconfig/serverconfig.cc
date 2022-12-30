@@ -17,8 +17,9 @@
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <mqueue.h>
+#include <sys/types.h>
 #include <string>
 #include <ranges>
 #include <string_view>
@@ -149,21 +150,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    int fifoFD { 0 };
+    mqd_t mq { };
 
     if (!logconfig.empty() || terminate) {
-        // Creating FIFO file descriptor
-        if (!std::filesystem::exists(rohit::config::ipc_path)) {
-            // Check and create parent folder first
-            auto fspath { std::filesystem::path(rohit::config::ipc_path) };
-            auto fsparent { fspath.parent_path() };
-            std::filesystem::create_directories(fsparent);
-            mkfifo(rohit::config::ipc_path, 0660);
+        mq = mq_open(rohit::config::ipc_key, O_WRONLY);
+        if(mq < 0) {
+            std::cout << "Device Server not running\n";
+            return 0;
         }
-        fifoFD = open(rohit::config::ipc_path, O_WRONLY);
     }
-
-    if (!fifoFD) return 0;
 
     if (!logconfig.empty()) {
         try {
@@ -178,8 +173,8 @@ int main(int argc, char *argv[]) {
                 for(auto &conf: logconfig) {
                     nextcpy = std::copy(reinterpret_cast<uint8_t *>(&conf), reinterpret_cast<uint8_t *>(&conf) + sizeof(conf), nextcpy);
                 }
-                auto ret = write(fifoFD, reinterpret_cast<void *>(sendmem.get()), sendsize);
-                if (static_cast<decltype(sendsize)>(ret) == sendsize) {
+                auto ret = mq_send(mq, reinterpret_cast<const char *>(sendmem.get()), sendsize, 0);
+                if (ret == 0) {
                     std::cout << "Successfully configured log for Device Server\n";
                 }
             }
@@ -190,13 +185,13 @@ int main(int argc, char *argv[]) {
 
     if (terminate) {
         auto value { rohit::config_t::CONFIG_TERMINATE };
-        auto ret = write(fifoFD, reinterpret_cast<void *>(&value), sizeof(value));
-        if (static_cast<size_t>(ret) == sizeof(value)) {
+        auto ret = mq_send(mq, reinterpret_cast<const char *>(&value), sizeof(value), 0);
+        if (ret == 0) {
             std::cout << "Successfully terminated Device Server\n";
         }
     }
 
-    if (fifoFD) close(fifoFD);
+    mq_close(mq);
 
     return 0;
 }

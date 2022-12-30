@@ -26,6 +26,7 @@
 #include <bitset>
 #include <queue>
 #include <algorithm>
+#include <filesystem>
 
 namespace rohit {
 
@@ -147,6 +148,8 @@ namespace rohit {
     \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %vE") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_WRITE_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer write failed with error %vE") \
+    \
+    LOGGER_ENTRY(EVENT_SERVER_CONFIG_READ_FAILED, WARNING, EVENT_SERVER, "Event server config read failed with error %ve") \
     \
     LOGGER_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, ERROR, IOT_HTTPSERVER, "FILEWATCHER event create failed") \
     LOGGER_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, WARNING, IOT_HTTPSERVER, "FILEWATCHER failed to add folder for watch with error %ve") \
@@ -512,7 +515,7 @@ void log(const ARGS&... args) {
     _log.log<ID, ARGS...>(args...);
 }
 
-void init_log_thread(const char *filename);
+void init_log_thread(const std::filesystem::path &filename);
 void destroy_log_thread();
 void segv_log_flush();
 

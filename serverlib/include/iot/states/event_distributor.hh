@@ -244,6 +244,7 @@ public:
     void wait();
 
     void terminate();
+    bool isTerminated() const { return is_terminate; }
 
     bool pause();
     bool resume();
