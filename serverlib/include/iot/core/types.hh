@@ -15,6 +15,7 @@
 #pragma once
 
 #include <iot/states/statesentry.hh>
+#include "log_entry.hh"
 #include <stdint.h>
 #include <sys/types.h>
 #include <bit>
@@ -160,8 +161,6 @@ typedef long double longdouble_t;
 typedef std::filesystem::path filepath_t;
 typedef std::string stdstring_t;
 
-#define LIST_DEFINITION_END
-
 #define TYPE_LIST \
     TYPE_LIST_ENTRY(bool_t) \
     TYPE_LIST_ENTRY(int8_t) \
@@ -184,6 +183,8 @@ typedef std::string stdstring_t;
     TYPE_LIST_ENTRY(ipv6_socket_addr_t) \
     TYPE_LIST_ENTRY(filepath_t) \
     TYPE_LIST_ENTRY(stdstring_t) \
+    TYPE_LIST_ENTRY(module_t) \
+    TYPE_LIST_ENTRY(logger_level) \
     LIST_DEFINITION_END
 
 

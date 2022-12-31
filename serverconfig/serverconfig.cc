@@ -170,8 +170,8 @@ int main(int argc, char *argv[]) {
                 std::unique_ptr<uint8_t[]> sendmem {new uint8_t[sendsize]};
                 auto value { rohit::config_t::CONFIG_LOG };
                 auto nextcpy = std::copy(reinterpret_cast<uint8_t *>(&value), reinterpret_cast<uint8_t *>(&value) + sizeof(value), sendmem.get());
-                for(auto &conf: logconfig) {
-                    nextcpy = std::copy(reinterpret_cast<uint8_t *>(&conf), reinterpret_cast<uint8_t *>(&conf) + sizeof(conf), nextcpy);
+                for(auto &conf: configlist) {
+                    nextcpy = std::copy(reinterpret_cast<const uint8_t *>(&conf), reinterpret_cast<const uint8_t *>(&conf) + sizeof(conf), nextcpy);
                 }
                 auto ret = mq_send(mq, reinterpret_cast<const char *>(sendmem.get()), sendsize, 0);
                 if (ret == 0) {

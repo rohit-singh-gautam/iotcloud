@@ -15,6 +15,7 @@
 #pragma once
 
 #include "types.hh"
+#include "log_entry.hh"
 #include <assert.h>
 #include <iostream>
 #include <string_view>
@@ -119,6 +120,8 @@ constexpr size_t formatstring_count(const char (&fmtstr)[size]) {
             case 'v':
             case 's':
             case 'c':
+            case 'm':
+            case 'l':
                 ++count;
                 state = formatstring_state::COPY;
                 break;
@@ -326,6 +329,14 @@ template <const size_t COUNT> struct formatstring_type_list {
                 case 'c':
                     type_list[index++] = type_identifier::int32_t;
                     length += type_length<type_identifier::int32_t>::value;
+                    break;
+                case 'm':
+                    type_list[index++] = type_identifier::module_t;
+                    length += type_length<type_identifier::module_t>::value;
+                    break;
+                case 'l':
+                    type_list[index++] = type_identifier::logger_level;
+                    length += type_length<type_identifier::logger_level>::value;
                     break;
                 default:
                     type_list[index++] = type_identifier::bad_type;
@@ -583,6 +594,12 @@ consteval size_t check_formatstring_helper(const char (&fmtstr)[fmtstr_size]) {
                     break;
                 case 'c':
                     if (*type_itr != type_identifier::int32_t) return check_args_error + count;
+                    break;
+                case 'm':
+                    if (*type_itr != type_identifier::module_t) return check_args_error + count;
+                    break;
+                case 'l':
+                    if (*type_itr != type_identifier::logger_level) return check_args_error + count;
                     break;
                 default:
                     return check_fmtstr_error + count;

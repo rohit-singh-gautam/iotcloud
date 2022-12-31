@@ -81,7 +81,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/serverconfig/ServerConfig",
-            "args": ["-c", "SYSTEM:3,all:all,4:all"],
+            "args": ["-c", "SYSTEM:3"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

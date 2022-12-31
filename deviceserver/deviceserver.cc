@@ -228,25 +228,23 @@ void destroy_app() {
 }
 
 void configuration_thread_function() {
-    char message[rohit::config::ipc_message_size];
-    mqd_t mq  = mq_open(rohit::config::ipc_key, O_CREAT | O_RDONLY, 0644, mq_attr {0, rohit::config::ipc_queue_size, rohit::config::ipc_message_size, 0, {0}});
-
-    if(mq < 0)
-    {
-        //todo: throw error
-        std::cout << "Unable to open queue - " << strerror(errno) << std::endl;
+    mq_attr attr {0, 0, 0, 0, {0}};
+    mqd_t mq  = mq_open(rohit::config::ipc_key, O_CREAT | O_RDWR, 0666, nullptr);
+    if(mq < 0) {
+        rohit::log<rohit::log_t::EVENT_SERVER_CONFIG_INIT_FAILED>(errno);
         return;
     }
+    mq_getattr(mq, &attr);
+    char message[attr.mq_msgsize + 1];
 
+    std::fill(message, message + attr.mq_msgsize + 1, 0);
     while(!evtdist->isTerminated()) {
         unsigned int prio;
-        std::fill(std::begin(message), std::end(message), 0);
         
-        auto bytesread = mq_receive(mq, message, sizeof(rohit::config::ipc_message_size), &prio);
+        auto bytesread = mq_receive(mq, message, attr.mq_msgsize + 1, &prio);
         if (bytesread <= 0) {
-            //TODO:: Throw error
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            continue;
+            rohit::log<rohit::log_t::EVENT_SERVER_CONFIG_READ_FAILED>(errno);
+            return;
         }
 
         switch (*reinterpret_cast<rohit::config_t *>(message))
@@ -255,19 +253,26 @@ void configuration_thread_function() {
             auto index {sizeof(rohit::config_t)};
             while(index + sizeof(rohit::config_log) <= static_cast<decltype(index)>(bytesread)) {
                 auto ptrlogconf { reinterpret_cast<rohit::config_log *>(message + index) };
-                std::cout << "Module " << (int)ptrlogconf->module << '\n';
-                // Set log
+                if (ptrlogconf->module >= rohit::module_t::MAX_MODULE) {
+                    rohit::log<rohit::log_t::CONFIG_SERVER_LOG_LEVEL_ALL>(ptrlogconf->level);
+                    rohit::enabled_log_module.enable_all(ptrlogconf->level);
+                } else {
+                    rohit::log<rohit::log_t::CONFIG_SERVER_LOG_LEVEL>(ptrlogconf->level, ptrlogconf->module);
+                    rohit::enabled_log_module.set_module(ptrlogconf->module, ptrlogconf->level);
+                }
                 index += sizeof(rohit::config_log);
             }
             break;
         }
         
         case rohit::config_t::CONFIG_TERMINATE:
+            rohit::log<rohit::log_t::CONFIG_SERVER_TERMINATE>();
             destroy_app();
             break;
         default:
             break;
         }
+        std::fill(message, message + attr.mq_msgsize + 1, 0);
     }
     mq_close(mq);
     mq_unlink(rohit::config::ipc_key);

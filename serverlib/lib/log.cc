@@ -236,6 +236,22 @@ void to_string_ssl_error_helper(char *&pStr, const uint8_t *&data_args) {
     pStr += count;
 }
 
+void module_t_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const module_t &value = *reinterpret_cast<const module_t *>(data_args);
+    data_args += sizeof(module_t);
+    auto count =  to_string<false>(value, pStr);
+   
+    pStr += count;
+}
+
+void logger_level_to_string_helper(char *&pStr, const uint8_t *&data_args) {
+    const logger_level &value = *reinterpret_cast<const logger_level *>(data_args);
+    data_args += sizeof(logger_level);
+    auto count =  to_string<false>(value, pStr);
+   
+    pStr += count;
+}
+
 template<std::size_t N>
 void to_string_helper(char *&pStr, const char (&disp_str)[N]) {
     // Skipping null
@@ -512,6 +528,8 @@ void createLogsString(logger_logs_entry_read &logEntry, char *pStr) {
                 case 'v': epoll_event_to_string_helper(pStr, data_args); break;
                 case 's': state_t_to_string_helper(pStr, data_args); break;
                 case 'c': to_string_ssl_error_helper(pStr, data_args); break;
+                case 'm': module_t_to_string_helper(pStr, data_args); break;
+                case 'l': logger_level_to_string_helper(pStr, data_args); break;
                 default: write_string(pStr, "Unknown message, client may required to be upgraded"); break;
             } // switch (c)
             state = formatstring_state::COPY;
@@ -603,6 +621,20 @@ const std::string logreader::readnextstring(bool live) {
     createLogsString(*logread, text);
 
     return std::string(text);
+}
+
+void active_module::set_module(const module_t module, const logger_level level) {
+        if (module >= module_t::MAX_MODULE) {
+            log<log_t::SETTING_LOG_LEVEL_FAILED>(level, module);
+        } else {
+            log<log_t::SETTING_LOG_LEVEL>(level, module);
+            module_level[static_cast<size_t>(module)] = level;
+        }
+    }
+
+void active_module::enable_all(const logger_level level) {
+    log<log_t::SETTING_LOG_LEVEL_ALL>(level);
+    std::fill(std::begin(module_level), std::end(module_level), level);
 }
 
 } // namespace rohit
