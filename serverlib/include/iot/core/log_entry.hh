@@ -79,8 +79,11 @@ namespace rohit {
     LIST_DEFINITION_END
 
 #define LOGGER_LOG_LIST \
+    LOGGER_ENTRY(BADLOG_ERROR, ALERT, SYSTEM, "Your log is corrupted, delete it, restart server and use latest log reader !!!!!!!!!!!!!!") \
     LOGGER_ENTRY(SEGMENTATION_FAULT, ALERT, SYSTEM, "Segmentation fault occurred !!!!!!!!!!!!!!") \
     \
+    LOGGER_ENTRY(APPLICATION_STARTING, ALERT, SYSTEM, "Application is starting") \
+    LOGGER_ENTRY(APPLICATION_STARTED_SUCCESSFULLY, ALERT, SYSTEM, "Application started successfully") \
     LOGGER_ENTRY(PTHREAD_CREATE_FAILED, ERROR, SYSTEM, "Unable to create pthread with error %ve") \
     LOGGER_ENTRY(PTHREAD_JOIN_FAILED, WARNING, SYSTEM, "Unable to join pthread with error %ve") \
     LOGGER_ENTRY(SOCKET_CREATE_SUCCESS, DEBUG, SOCKET, "Socket %i created") \

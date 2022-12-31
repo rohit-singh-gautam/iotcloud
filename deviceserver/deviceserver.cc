@@ -395,6 +395,7 @@ void set_sigaction() {
 }
 
 int main(int argc, char *argv[]) try {
+    rohit::log<rohit::log_t::APPLICATION_STARTING>();
     if (!parse_and_display(argc, argv)) return EXIT_SUCCESS;
 
     if (isFailure(check_socket_limits())) {
@@ -428,6 +429,7 @@ int main(int argc, char *argv[]) try {
 
     // Wait and terminate
     std::cout << "Waiting for all thread to join" << std::endl;
+    rohit::log<rohit::log_t::APPLICATION_STARTED_SUCCESSFULLY>();
     evtdist->wait();
     conf_thread.request_stop();
 
