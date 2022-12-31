@@ -313,7 +313,7 @@ void add_time_to_string_helper(
     pStr += count;
 }
 
-std::thread *plog_thread = nullptr;
+std::unique_ptr<std::thread> plog_thread;
 bool log_thread_running = false;
 
 void segv_log_flush() {
@@ -343,14 +343,13 @@ void init_log_thread(const std::filesystem::path &filename) {
 
     logger::all.set_fd(log_filedescriptor);
 
-    plog_thread = new std::thread { log_thread_function };
+    plog_thread.reset(new std::thread { log_thread_function });
 }
 
 
 void destroy_log_thread() {
     log_thread_running = false;
     plog_thread->join();
-    plog_thread = nullptr;
 }
 
 

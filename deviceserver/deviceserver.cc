@@ -72,7 +72,7 @@ std::vector<std::unique_ptr<serverevent_ssl_type>> srvevts_ssl;
 std::vector<std::unique_ptr<httpevent_type>> srvhttpevts;
 std::vector<std::unique_ptr<httpevent_ssl_type>> srvhttpevts_ssl;
 
-rohit::http::httpfilewatcher *ptr_filewatcher;
+std::unique_ptr<rohit::http::httpfilewatcher> ptr_filewatcher;
 
 const std::string load_config_string(const char *const configfile) {
     int fd = open(configfile, O_RDONLY);
@@ -416,7 +416,7 @@ int main(int argc, char *argv[]) try {
     evtdist.reset(new rohit::event_distributor(thread_count));
     evtdist->init();
 
-    ptr_filewatcher = new rohit::http::httpfilewatcher(*evtdist);
+    ptr_filewatcher.reset(new rohit::http::httpfilewatcher(*evtdist));
     ptr_filewatcher->init();
 
     const auto str_config_folder = std::string(config_folder);
