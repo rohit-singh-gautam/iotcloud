@@ -97,6 +97,10 @@ namespace rohit {
     LOGGER_ENTRY(SETTING_LOG_LEVEL, ALERT, SYSTEM, "Setting Log level %vl for module %vm") \
     LOGGER_ENTRY(SETTING_LOG_LEVEL_ALL, ALERT, SYSTEM, "Setting Log level %vl for all modules") \
     \
+    LOGGER_ENTRY(CONFIG_SERVER_INIT_SUCCESS, ALERT, EVENT_SERVER, "Config Server: Started Successfully. Number of Message: %li, Message Size: %li") \
+    LOGGER_ENTRY(CONFIG_SERVER_INIT_FAILED_RETRY, WARNING, EVENT_SERVER, "Config Server: initialize failed, retrying... Error: %ve") \
+    LOGGER_ENTRY(CONFIG_SERVER_INIT_FAILED, ERROR, EVENT_SERVER, "Config Server: initialize failed with error: %ve") \
+    LOGGER_ENTRY(CONFIG_SERVER_READ_FAILED, ERROR, EVENT_SERVER, "Config Server: read failed, stopping server. Error: %ve") \
     LOGGER_ENTRY(CONFIG_SERVER_LOG_LEVEL, INFO, CONFIG_SERVER, "Config Server: Setting Log level %vl for module %vm") \
     LOGGER_ENTRY(CONFIG_SERVER_LOG_LEVEL_ALL, ALERT, SYSTEM, "Config Server: Setting Log level %vl for all modules") \
     LOGGER_ENTRY(CONFIG_SERVER_TERMINATE, ALERT, CONFIG_SERVER, "Config Server: Terminating...") \
@@ -151,9 +155,6 @@ namespace rohit {
     \
     LOGGER_ENTRY(IOT_EVENT_SERVER_READ_FAILED, DEBUG, IOT_EVENT_SERVER, "IOT Event Server peer read failed with error %vE") \
     LOGGER_ENTRY(IOT_EVENT_SERVER_WRITE_FAILED, ERROR, IOT_EVENT_SERVER, "IOT Event Server peer write failed with error %vE") \
-    \
-    LOGGER_ENTRY(EVENT_SERVER_CONFIG_INIT_FAILED, WARNING, EVENT_SERVER, "Config server initialize failed with error: %ve") \
-    LOGGER_ENTRY(EVENT_SERVER_CONFIG_READ_FAILED, WARNING, EVENT_SERVER, "Config server read failed, stopping server. Error: %ve") \
     \
     LOGGER_ENTRY(FILEWATCHER_EVENT_CREATE_FAILED, ERROR, IOT_HTTPSERVER, "FILEWATCHER event create failed") \
     LOGGER_ENTRY(FILEWATCHER_ADD_FOLDER_FAILED, WARNING, IOT_HTTPSERVER, "FILEWATCHER failed to add folder for watch with error %ve") \

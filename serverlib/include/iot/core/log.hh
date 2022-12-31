@@ -253,8 +253,9 @@ public:
     template <log_t ID, typename... ARGS>
     inline void log(const ARGS&... args)
     {
-        if constexpr (log_description<ID>::level < logger_level::ERROR)
+        if constexpr (log_description<ID>::level < logger_level::ERROR) {
             if (!enabled_log_module.is_enabled<ID>()) return;
+        }
         const int64_t nanosecond = std::chrono::system_clock::now().time_since_epoch().count();
         logger_logs_entry<ID, ARGS...> logs_entry(nanosecond, args...);
 

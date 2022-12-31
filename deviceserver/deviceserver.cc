@@ -222,7 +222,7 @@ void destroy_app() {
 }
 
 class mqd_t_raii {
-    const mqd_t mq;
+    mqd_t mq;
 public:
     mqd_t_raii(const mqd_t mq) : mq(mq) { }
     ~mqd_t_raii() {
@@ -230,18 +230,25 @@ public:
         mq_unlink(rohit::config::ipc_key);
     }
 
+    mqd_t& operator=(const mqd_t value) { return mq = value; }
     operator mqd_t() const { return mq; }
 };
 
 void configuration_thread_function(std::stop_token stoken) {
-    mq_attr attr {0, 0, 0, 0, {0}};
-    mqd_t_raii mq  { mq_open(rohit::config::ipc_key, O_CREAT | O_RDWR, 0666, nullptr) };
+    mq_attr attr {0, rohit::config::ipc_queue_size, rohit::config::ipc_message_size, 0, {0}};
+    mqd_t_raii mq  { mq_open(rohit::config::ipc_key, O_CREAT | O_RDWR, 0644, &attr) };
     if(mq < 0) {
-        rohit::log<rohit::log_t::EVENT_SERVER_CONFIG_INIT_FAILED>(errno);
-        return;
+        // Retrying
+        rohit::log<rohit::log_t::CONFIG_SERVER_INIT_FAILED_RETRY>(errno);
+        mq = mq_open(rohit::config::ipc_key, O_CREAT | O_RDWR, 0644, nullptr);
+        if (mq < 0) {
+            rohit::log<rohit::log_t::CONFIG_SERVER_INIT_FAILED>(errno);
+            return;
+        }
     }
     mq_getattr(mq, &attr);
     char message[attr.mq_msgsize + 1];
+    rohit::log<rohit::log_t::CONFIG_SERVER_INIT_SUCCESS>(attr.mq_maxmsg, attr.mq_msgsize);
 
     std::fill(message, message + attr.mq_msgsize + 1, 0);
     while(!evtdist->isTerminated() && !stoken.stop_requested()) {
@@ -249,7 +256,7 @@ void configuration_thread_function(std::stop_token stoken) {
         
         auto bytesread = mq_receive(mq, message, attr.mq_msgsize + 1, &prio);
         if (bytesread <= 0) {
-            rohit::log<rohit::log_t::EVENT_SERVER_CONFIG_READ_FAILED>(errno);
+            rohit::log<rohit::log_t::CONFIG_SERVER_READ_FAILED>(errno);
             return;
         }
 
@@ -408,8 +415,6 @@ int main(int argc, char *argv[]) try {
     evtdist.reset(new rohit::event_distributor(thread_count));
     evtdist->init();
 
-    std::jthread conf_thread { configuration_thread_function };
-
     ptr_filewatcher = new rohit::http::httpfilewatcher(*evtdist);
     ptr_filewatcher->init();
 
@@ -418,6 +423,8 @@ int main(int argc, char *argv[]) try {
 
     // Loading servers
     load_and_execute_config(configfile);
+
+    std::jthread conf_thread { configuration_thread_function };
 
     // Wait and terminate
     std::cout << "Waiting for all thread to join" << std::endl;
