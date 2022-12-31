@@ -76,6 +76,7 @@ logger::logger() {
 }
 
 logger::~logger() {
+    logger::all.flush(this);
     logger::all.remove(this);
 }
 
