@@ -65,11 +65,11 @@ typedef rohit::serverevent<rohit::iotserverevent<true>, true> serverevent_ssl_ty
 typedef rohit::serverevent<rohit::iothttpevent<false>, false> httpevent_type;
 typedef rohit::serverevent<rohit::iothttpsslevent, true> httpevent_ssl_type;
 
-rohit::event_distributor *evtdist = nullptr;
-std::vector<serverevent_type *> srvevts;
-std::vector<serverevent_ssl_type *> srvevts_ssl;
-std::vector<httpevent_type *> srvhttpevts;
-std::vector<httpevent_ssl_type *> srvhttpevts_ssl;
+std::unique_ptr<rohit::event_distributor> evtdist;
+std::vector<std::unique_ptr<serverevent_type>> srvevts;
+std::vector<std::unique_ptr<serverevent_ssl_type>> srvevts_ssl;
+std::vector<std::unique_ptr<httpevent_type>> srvhttpevts;
+std::vector<std::unique_ptr<httpevent_ssl_type>> srvhttpevts_ssl;
 
 rohit::http::httpfilewatcher *ptr_filewatcher;
 
@@ -119,7 +119,7 @@ void load_and_execute_config(const std::string configfile) {
             auto srvevt =
                 new serverevent_type(port);
             srvevt->init(*evtdist);
-            srvevts.push_back(srvevt);
+            srvevts.emplace_back(srvevt);
         } else if (TYPE == "ssl") {
             const auto cert_file = server["CertFile"].ToString();
             const auto prikey_file_temp = server["PrikeyFile"].ToString();
@@ -132,14 +132,14 @@ void load_and_execute_config(const std::string configfile) {
                 prikey_file.c_str());
             srvevt_ssl->init(*evtdist);
 
-            srvevts_ssl.push_back(srvevt_ssl);
+            srvevts_ssl.emplace_back(srvevt_ssl);
         } else if (TYPE == "http") {
             std::cout << "Creating a HTTP server at port " << port << std::endl;
             auto webfolder = server["Folder"].ToString();
             rohit::http::webfilemap.add_folder(port, webfolder);
             auto srvhttpevt = new httpevent_type(port);
             srvhttpevt->init(*evtdist);
-            srvhttpevts.push_back(srvhttpevt);
+            srvhttpevts.emplace_back(srvhttpevt);
 
             ptr_filewatcher->add_folder(webfolder);
         } else if (TYPE == "https") {
@@ -155,7 +155,7 @@ void load_and_execute_config(const std::string configfile) {
                 cert_file.c_str(),
                 prikey_file.c_str());
             srvhttpevt_ssl->init(*evtdist);
-            srvhttpevts_ssl.push_back(srvhttpevt_ssl);
+            srvhttpevts_ssl.emplace_back(srvhttpevt_ssl);
 
             ptr_filewatcher->add_folder(webfolder);
         } else{
@@ -201,35 +201,40 @@ void destroy_app() {
         rohit::destroy_iot();
     }
 
-    for(auto srvevt: srvevts) {
+    for(auto &srvevt: srvevts) {
         srvevt->close();
-        delete srvevt;
     }
 
-    for(auto srvevt_ssl: srvevts_ssl) {
+    for(auto &srvevt_ssl: srvevts_ssl) {
         srvevt_ssl->close();
-        delete srvevt_ssl;
     }
 
-    for(auto srvhttpevt: srvhttpevts) {
+    for(auto &srvhttpevt: srvhttpevts) {
         srvhttpevt->close();
-        delete srvhttpevt;
     }
 
-    for(auto srvhttpevt_ssl: srvhttpevts_ssl) {
+    for(auto &srvhttpevt_ssl: srvhttpevts_ssl) {
         srvhttpevt_ssl->close();
-        delete srvhttpevt_ssl;
     }
-
-    evtdist->wait();
-    delete evtdist;
 
     std::cout << "All thread joined" << std::endl;
 }
 
-void configuration_thread_function() {
+class mqd_t_raii {
+    const mqd_t mq;
+public:
+    mqd_t_raii(const mqd_t mq) : mq(mq) { }
+    ~mqd_t_raii() {
+        mq_close(mq);
+        mq_unlink(rohit::config::ipc_key);
+    }
+
+    operator mqd_t() const { return mq; }
+};
+
+void configuration_thread_function(std::stop_token stoken) {
     mq_attr attr {0, 0, 0, 0, {0}};
-    mqd_t mq  = mq_open(rohit::config::ipc_key, O_CREAT | O_RDWR, 0666, nullptr);
+    mqd_t_raii mq  { mq_open(rohit::config::ipc_key, O_CREAT | O_RDWR, 0666, nullptr) };
     if(mq < 0) {
         rohit::log<rohit::log_t::EVENT_SERVER_CONFIG_INIT_FAILED>(errno);
         return;
@@ -238,7 +243,7 @@ void configuration_thread_function() {
     char message[attr.mq_msgsize + 1];
 
     std::fill(message, message + attr.mq_msgsize + 1, 0);
-    while(!evtdist->isTerminated()) {
+    while(!evtdist->isTerminated() && !stoken.stop_requested()) {
         unsigned int prio;
         
         auto bytesread = mq_receive(mq, message, attr.mq_msgsize + 1, &prio);
@@ -268,14 +273,12 @@ void configuration_thread_function() {
         case rohit::config_t::CONFIG_TERMINATE:
             rohit::log<rohit::log_t::CONFIG_SERVER_TERMINATE>();
             destroy_app();
-            break;
+            return;
         default:
             break;
         }
         std::fill(message, message + attr.mq_msgsize + 1, 0);
     }
-    mq_close(mq);
-    mq_unlink(rohit::config::ipc_key);
 }
 
 void segv_app() {
@@ -401,7 +404,7 @@ int main(int argc, char *argv[]) try {
     rohit::init_iot(log_file);
 
     std::cout << "Creating event distributor" << std::endl;
-    evtdist = new rohit::event_distributor(thread_count);
+    evtdist.reset(new rohit::event_distributor(thread_count));
     evtdist->init();
 
     std::jthread conf_thread { configuration_thread_function };
@@ -418,6 +421,7 @@ int main(int argc, char *argv[]) try {
     // Wait and terminate
     std::cout << "Waiting for all thread to join" << std::endl;
     evtdist->wait();
+    conf_thread.request_stop();
 
     return 0;
 } catch (rohit::exception_t e) {

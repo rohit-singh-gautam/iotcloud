@@ -78,7 +78,6 @@ public:
 
     void close() override {
         socket_id.close();
-        ctx.delayed_free(this);
     }
 };
 
