@@ -16,6 +16,7 @@
 #include <iothttpevent.hh>
 #include <iotfilemapping.hh>
 #include <httpfilewatcher.hh>
+#include <iot/watcher/helperevent.hh>
 #include <iot/init.hh>
 #include <iot/core/configparser.hh>
 #include <iot/core/version.h>

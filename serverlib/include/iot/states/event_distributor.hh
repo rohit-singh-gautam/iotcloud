@@ -195,11 +195,10 @@ private:
         thread_entry_map.insert(std::make_pair(pthread, thread_entry));
     }
 
-    helperevent_executor *helperevent;
+    std::unique_ptr<helperevent_executor> helperevent;
 
 public:
     event_distributor(const int thread_count = 0, const int max_event_size = event_distributor::max_event_size);
-    ~event_distributor();
 
     void init();
 

@@ -42,10 +42,6 @@ event_distributor::event_distributor(const int thread_count, const int max_event
     pthread_mutex_init(&eventdist_lock, nullptr);
 }
 
-event_distributor::~event_distributor() {
-    delete helperevent;
-}
-
 void event_distributor::init() {
     pthread_t cleanup_thread;
     auto cleanup_ret = pthread_create(&cleanup_thread, NULL, &event_distributor::cleanup, this);
@@ -71,7 +67,7 @@ void event_distributor::init() {
         throw exception_t(err_t::EVENT_DIST_CREATE_FAILED);
     }
 
-    helperevent = new helperevent_executor(*this);
+    helperevent.reset(new helperevent_executor(*this));
     helperevent->init();
 }
 
