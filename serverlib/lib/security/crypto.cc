@@ -24,6 +24,7 @@
 namespace rohit {
 namespace crypto {
 
+constexpr char key_encoding[] = "DER";
 using evp_ctx_ptr = std::unique_ptr<EVP_PKEY_CTX, decltype([](EVP_PKEY_CTX *ptr) { EVP_PKEY_CTX_free(ptr); })>;
 
 std::ostream& operator<<(std::ostream& os, const openssl_ec_key_mem &key) {
@@ -211,12 +212,8 @@ err_t decrypt_aes_256_gsm(
 }
 
 err_t ec_generate_private_key(const mem<void> &prikey_bin, openssl_ec_key_mem &private_key) {
-    std::unique_ptr<BIO, decltype([](BIO *ptr) { BIO_free(ptr); })> prikey_bio { BIO_new_mem_buf(prikey_bin.ptr, prikey_bin.size) };
-    if (!prikey_bio) {
-        return err_t::CRYPTO_KEY_GENERATION_FAILED;
-    }
-
-    private_key = PEM_read_bio_PrivateKey(prikey_bio.get(), nullptr, nullptr, nullptr);
+    const unsigned char *ptr {reinterpret_cast<const unsigned char *>(prikey_bin.ptr)};
+    private_key = d2i_AutoPrivateKey(nullptr, &ptr, prikey_bin.size);
     if (private_key == nullptr) {
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
@@ -225,13 +222,10 @@ err_t ec_generate_private_key(const mem<void> &prikey_bin, openssl_ec_key_mem &p
 }
 
 err_t ec_generate_public_key(const mem<void> &pubkey_bin, openssl_ec_key_mem &public_key) {
-    std::unique_ptr<BIO, decltype([](BIO *ptr) { BIO_free(ptr); })> pubkey_bio { BIO_new_mem_buf(pubkey_bin.ptr, pubkey_bin.size) };
-    if (pubkey_bio == nullptr) {
-        return err_t::CRYPTO_KEY_GENERATION_FAILED;
-    }
-
-    public_key = PEM_read_bio_PUBKEY(pubkey_bio.get(), nullptr, nullptr, nullptr);
-    if (public_key == nullptr) {
+    const unsigned char *ptr {reinterpret_cast<const unsigned char *>(pubkey_bin.ptr)};
+    public_key = d2i_PUBKEY(nullptr, &ptr, pubkey_bin.size);
+    if (!public_key) {
+        ERR_print_errors_fp(stdout);
         return err_t::CRYPTO_KEY_GENERATION_FAILED;
     }
 
@@ -332,11 +326,11 @@ err_t generate_ec_key(const char *curve, openssl_ec_key_mem &ec_private_key) {
 
 err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &private_ec_key)
 {
-    const char *format = "PEM";
+    // i2d_PrivateKey can be used here
     std::unique_ptr<OSSL_ENCODER_CTX, decltype([](OSSL_ENCODER_CTX *ptr) { OPENSSL_free(ptr); })>
         ossl_ctx { OSSL_ENCODER_CTX_new_for_pkey(
                         ec_key, EVP_PKEY_KEYPAIR,
-                        format, nullptr, nullptr ) };
+                        key_encoding, nullptr, nullptr ) };
     
     if (!ossl_ctx) return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
@@ -350,11 +344,11 @@ err_t get_private_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &priv
 }
 
 err_t get_public_key_binary(const openssl_ec_key_mem &ec_key, openssl_mem &public_ec_key) {
-    const char *format = "PEM";
+    // i2d_PublicKey can be used here
     std::unique_ptr<OSSL_ENCODER_CTX, decltype([](OSSL_ENCODER_CTX *ptr) { OPENSSL_free(ptr); })>
         ossl_ctx { OSSL_ENCODER_CTX_new_for_pkey(
                         ec_key, EVP_PKEY_PUBLIC_KEY,
-                        format, nullptr, nullptr ) };
+                        key_encoding, nullptr, nullptr ) };
     
     if (!ossl_ctx) return err_t::CRYPTO_BAD_PUBLIC_KEY;
 
