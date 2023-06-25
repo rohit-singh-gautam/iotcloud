@@ -59,4 +59,4 @@ This is server that stores message to be consumed by subscriber. All the publish
 
 
 ## Intrusion Detection Server
-
+Check for too many connections from single IP. There can be another check number of request per second and per day. This server is not designed to used for a blinking light, hence wont be allowed to have such request.

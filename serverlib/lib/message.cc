@@ -17,12 +17,6 @@
 
 namespace rohit {
 
-const char * operation_t::displayString[] = {
-#define MESSAGE_OPERATION_ENTRY(x) #x,
-    MESSAGE_OPERATION_LIST
-#undef MESSAGE_OPERATION_ENTRY
-};
-
 const char * message_base_t::displayString[] = {
 #define MESSAGE_CODE_ENTRY(x) #x,
     MESSAGE_CODE_LIST

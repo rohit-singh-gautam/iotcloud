@@ -29,12 +29,12 @@ namespace rohit {
     MESSAGE_CODE_ENTRY(UNAUTHORIZED) \
     MESSAGE_CODE_ENTRY(SUCCESS) \
     MESSAGE_CODE_ENTRY(COMMAND) \
+    MESSAGE_CODE_ENTRY(BAD_REQUEST) \
     LIST_DEFINITION_END
 
 #define MESSAGE_OPERATION_LIST \
     MESSAGE_OPERATION_ENTRY(SWITCH) \
     MESSAGE_OPERATION_ENTRY(LEVEL) \
-    MESSAGE_OPERATION_ENTRY(REGULATOR) \
     LIST_DEFINITION_END
 
 enum class message_code_t : uint16_t {
@@ -52,42 +52,29 @@ enum class operation_switch_t : operation_value_internal_type {
     ON,
 };
 
-class operation_t {
-public:
-    enum operation_internal_t : operation_internal_type {
+enum class operation_t : operation_internal_type {
 #define MESSAGE_OPERATION_ENTRY(x) x,
     MESSAGE_OPERATION_LIST
 #undef MESSAGE_OPERATION_ENTRY
-    };
+};
 
-private:
-    operation_internal_type value;
-    static const char * displayString[];
+constexpr const char *operation_t_displayString[]
+{
+#define MESSAGE_OPERATION_ENTRY(x) #x,
+    MESSAGE_OPERATION_LIST
+#undef MESSAGE_OPERATION_ENTRY
+};
 
-public:
-    constexpr operation_t() {}
-    constexpr operation_t(const operation_t &operation) : value(operation.value) {}
-    constexpr operation_t(const operation_internal_t operation) : value(operation) {}
-
-    constexpr operation_t& operator=(const operation_t &operation) {
-        this->value = operation.value;
-        return *this;
-    }
-
-    constexpr operator operation_internal_t() const { return static_cast<operation_internal_t>(value); }
-
-    inline const std::string to_string() const {
-        return displayString[value];
-    }
-
-    inline operator const std::string() const { return to_string(); }
-} __attribute__((packed));
-
-inline std::ostream& operator<<(std::ostream& os, const operation_t &operation) {
-    return os << operation.to_string();
+inline const std::string to_string(const operation_t &value) {
+    return { operation_t_displayString[static_cast<operation_internal_type>(value)] };
 }
 
-class command_t {
+
+inline std::ostream& operator<<(std::ostream& os, const operation_t &operation) {
+    return os << to_string(operation);
+}
+
+struct command_t {
 private:
     guid_t                          device;
     int32_t                         component;
@@ -112,6 +99,9 @@ public:
         value       = command.value;
         return *this;
     }
+
+    operation_t GetOperation() const { return operation; }
+
     
     // Not require to be optimised
     const std::string to_string() const;
@@ -120,9 +110,9 @@ public:
 
 std::ostream& operator<<(std::ostream& os, const command_t &command);
 
-class message_command_t;
+struct message_command_t;
 
-class message_base_t {
+struct message_base_t {
 protected:
     const message_code_t message_code;
     constexpr message_base_t(message_code_t message_code) : message_code(message_code) { }
@@ -151,12 +141,17 @@ public:
 
 std::ostream& operator<<(std::ostream& os, const message_base_t &message);
 
-class message_unknown_t : public message_base_t {
+struct message_unknown_t : public message_base_t {
 public:
     constexpr message_unknown_t() : message_base_t(message_code_t::UNKNOWN) { }
 } __attribute__((packed));
 
-class message_connect256_t : public message_base_t {
+struct message_bad_request_t : public message_base_t {
+public:
+    constexpr message_bad_request_t() : message_base_t(message_code_t::BAD_REQUEST) { }
+} __attribute__((packed));
+
+struct message_connect256_t : public message_base_t {
 private:
     uint8_t     ephemeral_public_key[256/8];
     uint8_t     iv[96/8];
@@ -164,17 +159,17 @@ public:
     constexpr message_connect256_t() : message_base_t(message_code_t::CONNECT) { }
 } __attribute__((packed));
 
-class message_keep_alive_t : public message_base_t {
+struct message_keep_alive_t : public message_base_t {
 public:
     constexpr message_keep_alive_t() : message_base_t(message_code_t::KEEP_ALIVE) { }
 } __attribute__((packed));
 
-class message_success_t : public message_base_t {
+struct message_success_t : public message_base_t {
 public:
     constexpr message_success_t() : message_base_t(message_code_t::SUCCESS) { }
 } __attribute__((packed));
 
-class message_command_t : public message_base_t {
+struct message_command_t : public message_base_t {
 public:
     static const constexpr size_t MAX_COMMAND = 16;
 
@@ -205,18 +200,23 @@ public:
         return sizeof(message_base_t) + sizeof(command_count) +
                 sizeof(command_t) * command_count;
     }
+
+    bool verify() const { return command_count <= MAX_COMMAND; }
+
+    command_t const *begin() const { return commands; }
+    command_t const *end() const { return commands + command_count; }
     
     friend std::ostream& operator<<(std::ostream& os, const message_command_t &message);
 } __attribute__((packed));
 
 std::ostream& operator<<(std::ostream& os, const message_command_t &message);
 
-class message_register_device_t : public message_base_t {
+struct message_register_device_t : public message_base_t {
 public:
     uint32_t    model;
 };
 
-class message_register_response_device_t : public message_base_t {
+struct message_register_response_device_t : public message_base_t {
 public:
     uint32_t    model;
     guid_t      device_id;

@@ -36,6 +36,9 @@ private:
     using serverpeerevent_base::get_write_buffer;
     using serverpeerevent_base::is_write_left;
 
+    static const message_success_t success_request { };
+    static const message_success_t bad_request { };
+
 public:
     using serverpeerevent<use_ssl>::serverpeerevent;
     
@@ -47,6 +50,37 @@ public:
 
     using serverpeerevent<use_ssl>::close;
 };
+
+typedef std::function<void(std::uint8_t *, size_t)> write_function;
+
+typedef std::function<void(message_base_t *, write_function)> read_function;
+
+inline void write_bad_request(write_function writeFunction)
+{
+    const auto write_buffer = reinterpret_cast<std::uint8_t *>(&bad_request);
+    const auto write_buffer_size = sizeof(message_bad_request_t);
+
+    writeFunction(write_buffer, write_buffer_size);
+}
+
+void read_register(message_base_t *, write_function);
+void read_connect(message_base_t *, write_function);
+void read_command(message_command_t *, write_function);
+
+
+inline void write_success_request(write_function writeFunction)
+{
+    const auto write_buffer = reinterpret_cast<std::uint8_t *>(&success_request);
+    const auto write_buffer_size = sizeof(message_success_t);
+
+    writeFunction(write_buffer, write_buffer_size);
+}
+
+inline void read_keep_alive(write_function writeFunction)
+{
+    write_success_request(writeFunction);
+}
+
 
 template <bool use_ssl>
 void iotserverevent<use_ssl>::read_helper() {
@@ -76,23 +110,37 @@ void iotserverevent<use_ssl>::read_helper() {
         std::cout << "------Request Start---------\n" << *base << "\n------Request End---------\n";
     }
 
-    size_t write_buffer_size = 0;
-    uint8_t *write_buffer;
+    auto writeFunction = [this](std::uint8_t *write_buffer, size_t size)
+    {
+        if constexpr (config::debug) {
+            message_base_t *write_base = (message_base_t *)write_buffer;
+            std::cout << "------Response Start---------\n" << *write_base << "\n------Response End---------\n";
+        }
+        this->push_write(write_buffer, size);
+    };
 
-    if (*base != rohit::message_code_t::COMMAND) {
-        write_buffer_size = sizeof(rohit::message_unknown_t);
-        write_buffer = new uint8_t[write_buffer_size];
-    } else {
-        write_buffer_size = sizeof(rohit::message_success_t);
-        write_buffer = new uint8_t[write_buffer_size];
+    switch(base->getMessageCode())
+    {
+        case message_code_t::COMMAND:
+            read_command(static_cast<message_command_t *>(base), writeFunction);
+            break;
+
+        case message_code_t::CONNECT:
+            read_connect(base, writeFunction);
+            break;
+            
+        case message_code_t::REGISTER:
+            read_register(base, writeFunction);
+            break;
+
+        case message_code_t::KEEP_ALIVE:
+            read_keep_alive(writeFunction);
+            break;
+
+        default:
+            write_bad_request(writeFunction);
+            break;
     }
-
-    if constexpr (config::debug) {
-        message_base_t *write_base = (message_base_t *)write_buffer;
-        std::cout << "------Response Start---------\n" << *write_base << "\n------Response End---------\n";
-    }
-
-    push_write(write_buffer, write_buffer_size);
 
     write_all();
 
