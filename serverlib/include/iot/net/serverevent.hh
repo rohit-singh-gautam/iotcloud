@@ -106,7 +106,7 @@ inline serverevent<peerevent, use_ssl, use_lock>::serverevent(
 class serverpeerevent_base {
 protected:
     struct write_entry {
-        uint8_t *buffer;
+        const uint8_t *buffer;
         size_t written;
         size_t size;
     };
@@ -117,7 +117,7 @@ public:
     inline serverpeerevent_base() : write_queue() { }
     inline serverpeerevent_base(serverpeerevent_base &&old) : write_queue(std::move(old.write_queue)) { }
 
-    inline void push_write(uint8_t *buffer, size_t size) {
+    inline void push_write(const uint8_t *buffer, size_t size) {
         write_queue.push({buffer, 0, size});
     }
 

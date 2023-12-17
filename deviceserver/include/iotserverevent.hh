@@ -19,6 +19,11 @@
 
 namespace rohit {
 
+namespace message {
+    constexpr message_success_t success_request { };
+    constexpr message_success_t bad_request { };
+};
+
 template <bool use_ssl>
 class iotserverevent : public serverpeerevent<use_ssl> {
 public:
@@ -36,9 +41,6 @@ private:
     using serverpeerevent_base::get_write_buffer;
     using serverpeerevent_base::is_write_left;
 
-    static const message_success_t success_request { };
-    static const message_success_t bad_request { };
-
 public:
     using serverpeerevent<use_ssl>::serverpeerevent;
     
@@ -51,14 +53,14 @@ public:
     using serverpeerevent<use_ssl>::close;
 };
 
-typedef std::function<void(std::uint8_t *, size_t)> write_function;
+typedef std::function<void(const std::uint8_t *, size_t)> write_function;
 
 typedef std::function<void(message_base_t *, write_function)> read_function;
 
 inline void write_bad_request(write_function writeFunction)
 {
-    const auto write_buffer = reinterpret_cast<std::uint8_t *>(&bad_request);
-    const auto write_buffer_size = sizeof(message_bad_request_t);
+    auto write_buffer = reinterpret_cast<const std::uint8_t *>(&message::bad_request);
+    auto write_buffer_size = sizeof(message_bad_request_t);
 
     writeFunction(write_buffer, write_buffer_size);
 }
@@ -70,8 +72,8 @@ void read_command(message_command_t *, write_function);
 
 inline void write_success_request(write_function writeFunction)
 {
-    const auto write_buffer = reinterpret_cast<std::uint8_t *>(&success_request);
-    const auto write_buffer_size = sizeof(message_success_t);
+    auto write_buffer = reinterpret_cast<const std::uint8_t *>(&message::success_request);
+    auto write_buffer_size = sizeof(message_success_t);
 
     writeFunction(write_buffer, write_buffer_size);
 }
@@ -110,7 +112,7 @@ void iotserverevent<use_ssl>::read_helper() {
         std::cout << "------Request Start---------\n" << *base << "\n------Request End---------\n";
     }
 
-    auto writeFunction = [this](std::uint8_t *write_buffer, size_t size)
+    auto writeFunction = [this](const std::uint8_t *write_buffer, size_t size)
     {
         if constexpr (config::debug) {
             message_base_t *write_base = (message_base_t *)write_buffer;
