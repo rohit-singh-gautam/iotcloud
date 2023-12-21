@@ -55,7 +55,7 @@ struct frame {
         CONTINUATION    = 0x09,
     };
 
-    static constexpr const char * get_string(const type_t type) {
+    static constexpr auto get_string(const type_t type) {
         switch(type) {
             case type_t::DATA: return "DATA";
             case type_t::HEADERS: return "HEADERS";
@@ -83,7 +83,7 @@ struct frame {
         ACK     = 0x01,
     };
 
-    static constexpr const char * get_string(const flags_t flag) {
+    static constexpr auto get_string(const flags_t flag) {
         switch(flag) {
             case flags_t::NONE: return "NONE";
             case flags_t::END_STREAM: return "END STREAM";
@@ -111,7 +111,7 @@ struct frame {
         HTTP_1_1_REQUIRED   = 0x0d,
     };
 
-    static constexpr const char * get_string(const error_t err) {
+    static constexpr auto get_string(const error_t err) {
         switch(err) {
             case error_t::NO_ERROR: return "NO ERROR";
             case error_t::PROTOCOL_ERROR: return "PROTOCOL ERROR";
@@ -266,7 +266,7 @@ struct settings {
         SETTINGS_MAX_HEADER_LIST_SIZE       = 0x06,
     };
 
-    static constexpr const char * get_string(const identifier_t id) {
+    static constexpr auto get_string(const identifier_t id) {
         switch(id) {
             case identifier_t::SETTINGS_HEADER_TABLE_SIZE: return "HEADER TABLE SIZE";
             case identifier_t::SETTINGS_ENABLE_PUSH: return "ENABLE PUSH";
@@ -283,22 +283,22 @@ private:
     uint32_t value;
 
     template <typename... ARGS>
-    static constexpr uint8_t *add(uint8_t *buffer, const identifier_t identifier, uint32_t value, const ARGS&... args) {
+    static constexpr auto add(uint8_t *buffer, const identifier_t identifier, uint32_t value, const ARGS&... args) {
         buffer = add(buffer, identifier, value);
         return add(buffer, args...);
     }
 
 public:
-    constexpr identifier_t get_identifier() const { return (identifier_t)changeEndian(identifier); }
-    constexpr uint32_t get_value() const { return changeEndian(value); }
+    constexpr auto get_identifier() const { return static_cast<identifier_t>(changeEndian(identifier)); }
+    constexpr auto get_value() const { return changeEndian(value); }
 
     constexpr void init(const identifier_t identifier, const uint32_t value) {
         this->identifier = changeEndian((uint16_t)identifier);
         this->value = changeEndian(value);
     }
 
-    static constexpr uint8_t *add(uint8_t *buffer, const identifier_t identifier, const uint32_t value) {
-        settings *psettings = (settings *)buffer;
+    static inline auto add(uint8_t *buffer, const identifier_t identifier, const uint32_t value) {
+        settings *psettings = reinterpret_cast<settings *>(buffer);
         psettings->init(identifier, value);
         return buffer + sizeof(settings);
     }
@@ -307,17 +307,17 @@ public:
         return sizeof(frame) + count * 6;
     }
 
-    static constexpr uint8_t *add_ack_frame(uint8_t *buffer) {
-        frame *pframe = (frame *)buffer;
+    static inline auto add_ack_frame(uint8_t *buffer) {
+        frame *pframe = reinterpret_cast<frame *>(buffer);
         buffer += sizeof(frame);
         pframe->init_frame(0x00, frame::type_t::SETTINGS, frame::flags_t::ACK, 0x00);
         return buffer;
     }
 
     template <typename... ARGS>
-    static constexpr uint8_t *add_frame(uint8_t *buffer, const ARGS&... args) {
+    static inline auto add_frame(uint8_t *buffer, const ARGS&... args) {
         constexpr uint32_t length = sizeof...(ARGS) * 3;
-        frame *pframe = (frame *)buffer;
+        frame *pframe = reinterpret_cast<frame *>(buffer);
         buffer += sizeof(frame);
         pframe->init_frame(length, frame::type_t::SETTINGS, frame::flags_t::NONE, 0x00);
         return add(buffer, args...);
@@ -343,8 +343,8 @@ public:
                 SETTINGS_MAX_HEADER_LIST_SIZE(constant::SETTINGS_MAX_HEADER_LIST_SIZE)
     {}
 
-    constexpr const uint8_t *parse_one(const uint8_t *buf) {
-        settings *psettings = (settings *)buf;
+    inline const auto parse_one(const uint8_t *buf) {
+        auto psettings = reinterpret_cast<const settings *>(buf);
         switch(psettings->get_identifier()) {
         case settings::identifier_t::SETTINGS_HEADER_TABLE_SIZE:
             SETTINGS_HEADER_TABLE_SIZE = psettings->get_value();
@@ -372,7 +372,7 @@ public:
         return buf + sizeof(settings);
     }
 
-    constexpr const uint8_t *parse_frame(
+    constexpr auto parse_frame(
                 const frame *pframe,
                 const uint8_t *pstart,
                 const uint8_t *pend) {
@@ -393,13 +393,13 @@ public:
     }
 
     // template will allow input to be both const and non const
-    constexpr const uint8_t *parse_frame(const uint8_t *pstart, const uint8_t *pend) {
-        const frame *pframe = (frame *)pstart;
+    inline auto parse_frame(const uint8_t *pstart, const uint8_t *pend) {
+        auto *pframe = reinterpret_cast<const frame *>(pstart);
         pstart += sizeof(frame);
         return parse_frame(pframe, pstart, pend);
     }
 
-    constexpr void parse_base64_frame(const uint8_t *buffer, const size_t buffer_size) {
+    inline void parse_base64_frame(const uint8_t *buffer, const size_t buffer_size) {
         const size_t decode_len = base64_decode_len(buffer, buffer_size);
         uint8_t decoded_buffer[decode_len];
         base64_decode(buffer, buffer_size, decoded_buffer);

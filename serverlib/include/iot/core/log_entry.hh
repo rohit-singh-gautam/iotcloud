@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <string>
 #include <cassert>
+#include <cstdint>
 
 namespace rohit {
 

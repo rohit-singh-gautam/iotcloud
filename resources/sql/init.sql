@@ -31,12 +31,25 @@ DROP TABLE IF EXISTS AUTHORIZATIONS CASCADE;
 
 DROP TYPE IF EXISTS PUBLIC_DEVICE_TYPE;
 
+-- This is one enty per device
+-- It contains all the information required for authentication
 CREATE TABLE PROTECTED_DEVICE (
     ID              UUID    PRIMARY KEY,
+    PUBLIC_KEY      BYTEA,
     SYMMETRIC_KEY   BYTEA,                  -- This will be created by authentication server
     KEY_EXPIRY      TIMESTAMP,
     MODELID         UUID
 );
+
+
+-- This information is only in cache
+-- Updating database will be very costly
+-- CREATE TABLE PROTECTED_DEVICE_COMPONENT {
+--     DEVICE_ID       UUID,
+--     COMPONENTINDEX  SMALLINT,
+--     OPERATION       SMALLINT,
+--     OP_VALUE        SMALLINT
+-- };
 
 -- Below table is heavily edited hence has to be optimized.
 -- Avoiding primary key will help with it
@@ -63,7 +76,7 @@ CREATE TABLE COMPONENT (
 CREATE TABLE MODEL_COMPONENT (
     MODELID         INTEGER,
     COMPONENTINDEX  SMALLINT,
-    COMPONENTID     INTEGER
+    COMPONENTID     INTEGER,
 );
 
 CREATE INDEX MODEL_COMPONENT_MODELID_INDEX ON MODEL_COMPONENT USING HASH (MODELID);
@@ -109,7 +122,7 @@ CREATE TABLE PUBLIC_DEVICE (
     TYPE        PUBLIC_DEVICE_TYPE,
     PUBLICKEY   BYTEA,
     NAME        VARCHAR,
-    GROUPID     UUID,
+    USERID      UUID,
 );
 
 CREATE TABLE GROUPS (
@@ -414,11 +427,6 @@ INSERT INTO MODEL (ID, NAME, SPEC) VALUES
 (17, 'RGB Light', '{}'),
 (18, 'Fine RGB Light', '{}'),;
 
-CREATE TABLE MODEL_COMPONENT (
-    MODELID         INTEGER,
-    COMPONENTINDEX  SMALLINT,
-    COMPONENTID     INTEGER
-);
 
 INSERT INTO MODEL (MODELID, COMPONENTINDEX, COMPONENTID) VALUES
 (1, 0, 1),

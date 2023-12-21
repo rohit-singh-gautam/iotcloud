@@ -23,7 +23,7 @@ namespace std {
 template<>
 struct hash<std::pair<rohit::http_header::FIELD, std::string>>
 {
-    size_t
+    auto
     operator()(const std::pair<rohit::http_header::FIELD, std::string> &val) const noexcept
     {
         return std::_Hash_impl::__hash_combine(val.first, std::hash<std::string>{}(val.second));
@@ -51,9 +51,9 @@ public:
         }
     }
 
-    inline std::pair<http_header::FIELD, std::string> operator[](const size_t index) const {
+    inline auto operator[](const size_t index) const {
         if (index >= entries.size()) {
-            return {http_header::FIELD::IGNORE_THIS, ""};
+            return std::make_pair(http_header::FIELD::IGNORE_THIS, std::string {""});
         } else {
             return entries[index];
         }
@@ -132,7 +132,7 @@ public:
         entry_map.clear();
     }
 
-    inline size_t size() const {
+    inline auto size() const {
         return entries.size();
     }
 
@@ -243,14 +243,14 @@ public:
 
     constexpr node() : symbol(-1), left(nullptr), right(nullptr) { }
 
-    constexpr bool is_leaf() const { return left == nullptr && right == nullptr; }
+    constexpr auto is_leaf() const { return left == nullptr && right == nullptr; }
     
     constexpr void set_leaf(const uint16_t symbol) {
         this->symbol = symbol;
     }
 
-    constexpr bool is_eos() const { return symbol == 256; }
-    constexpr char get_symbol() const { return (char) symbol; }
+    constexpr auto is_eos() const { return symbol == 256; }
+    constexpr auto get_symbol() const { return static_cast<char>(symbol); }
 };
 
 struct huffman_entry {
@@ -261,7 +261,7 @@ struct huffman_entry {
 };
 
 template <uint32_t N>
-constexpr uint32_t decode_integer(const uint8_t *&pstart, const uint8_t *pend) {
+constexpr auto decode_integer(const uint8_t *&pstart, const uint8_t *pend) {
     constexpr uint32_t mask = (1 << N) - 1;
     uint32_t value = *pstart++ & mask;
     if (value < mask) {
@@ -281,7 +281,7 @@ constexpr uint32_t decode_integer(const uint8_t *&pstart, const uint8_t *pend) {
 
 // Assuming buffer has sufficient data, hence no check
 template <uint32_t N>
-constexpr uint8_t * encode_integer(uint8_t *pstart, const uint8_t head, uint32_t value) {
+constexpr auto encode_integer(uint8_t *pstart, const uint8_t head, uint32_t value) {
     constexpr uint32_t mask = (1 << N) - 1;
     if (value < mask) {
         *pstart++ = head + (uint8_t)value;
@@ -340,7 +340,7 @@ extern const node *huffman_root;
 
 std::string get_huffman_string(const uint8_t *pstart, const uint8_t *pend);
 
-inline std::string get_header_string(const uint8_t *&pstart) {
+inline auto get_header_string(const uint8_t *&pstart) {
     size_t len = *pstart & 0x7f;
     if ((*pstart & 0x80) == 0x80) {
         ++pstart;
@@ -365,7 +365,7 @@ inline size_t huffman_string_size(const uint8_t *pvalue_start, const uint8_t *co
 
 uint8_t *add_huffman_string(uint8_t *pstart, const uint8_t *pvalue_start, const uint8_t *const pvalue_end);
 
-inline uint8_t *add_header_string(uint8_t *pstart, const std::string &value) {
+inline auto add_header_string(uint8_t *pstart, const std::string &value) {
     const uint8_t *const pvalue_start = (const uint8_t *)value.c_str();
     const uint8_t *const pvalue_end = pvalue_start + value.size() - !value.back();
     size_t size = huffman_string_size(pvalue_start, pvalue_end);
@@ -381,7 +381,7 @@ inline uint8_t *add_header_string(uint8_t *pstart, const std::string &value) {
     return pstart;
 }
 
-inline http_header::FIELD get_header_field(const uint8_t *&pstart) {
+inline auto get_header_field(const uint8_t *&pstart) {
     auto header_string = get_header_string(pstart);
     auto header_itr = http_header::field_map.find(header_string);
     if (header_itr == http_header::field_map.end()) {
@@ -391,7 +391,7 @@ inline http_header::FIELD get_header_field(const uint8_t *&pstart) {
     }
 }
 
-inline http_header_request::METHOD get_header_method(const std::string &method_name) {
+inline auto get_header_method(const std::string &method_name) {
     auto header_itr = http_header_request::method_map.find(method_name);
     if (header_itr == http_header_request::method_map.end()) {
         return http_header_request::METHOD::IGNORE_THIS;
@@ -399,6 +399,5 @@ inline http_header_request::METHOD get_header_method(const std::string &method_n
         return header_itr->second;
     }
 }
-
 
 } // namespace rohit::http::v2
