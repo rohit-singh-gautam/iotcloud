@@ -30,196 +30,236 @@
 #include <memory>
 #include <thread>
 
-std::filesystem::path log_file;
-const char *config_folder;
-bool display_version;
-bool log_debug_mode;
-int thread_count;
+class DeviceServerParameter {
+    std::filesystem::path log_file{ };
+    const char *config_folder{ };
+    bool display_version{ };
+    bool log_debug_mode{ };
+    int thread_count{ };
 
-bool parse_and_display(int argc, char *argv[]) {
-    rohit::commandline param_parser(
-        "IOT device server that is used to push data on all the devices",
-        "Device server is designed to keep hold on all the IOT devices connected to internet. "
-        "All devices share their state with this server and even devices are contolled by this server. ",
-        {
-            {'l', "log_file", "file path", "Path to save log file", log_file, std::filesystem::path("/tmp/iotcloud/log/deviceserver.log")},
-            {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file iot.json and logmodule.json", config_folder, "/etc/iotcloud"},
-            {'t', "thread_count", "number of thread", "Number of threads that listen to socket, 0 means number of CPU", thread_count, 0},
-            {'v', "version", "Display version", display_version},
-            {'d', "debug", "Dumps all the logs, logs file will be very big", log_debug_mode}
+    bool valid{ };
+
+public:
+    DeviceServerParameter(int argc, char *argv[]) {
+        rohit::commandline param_parser(
+            "IOT device server that is used to push data on all the devices",
+            "Device server is designed to keep hold on all the IOT devices connected to internet. "
+            "All devices share their state with this server and even devices are contolled by this server. ",
+            {
+                {'l', "log_file", "file path", "Path to save log file", log_file, std::filesystem::path("/tmp/iotcloud/log/deviceserver.log")},
+                {'c', "config_folder", "folder path", "Path to configuration folder, it must contain file iot.json and logmodule.json", config_folder, "/etc/iotcloud"},
+                {'t', "thread_count", "number of thread", "Number of threads that listen to socket, 0 means number of CPU", thread_count, 0},
+                {'v', "version", "Display version", display_version},
+                {'d', "debug", "Dumps all the logs, logs file will be very big", log_debug_mode}
+            }
+        );
+
+        auto valid = param_parser.parser(argc, argv);
+        if (!valid) std::cout << param_parser.usage() << std::endl;
+
+        if (display_version) {
+            std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
         }
-    );
-
-    auto ret = param_parser.parser(argc, argv);
-    if (!ret) std::cout << param_parser.usage() << std::endl;
-
-    if (display_version) {
-        std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
-        return false;
     }
 
-    return ret;
-}
+    auto IsValid() const { return valid; }
+    const auto &GetLogFile() const { return log_file; }
+    auto GetConfigurationFolder() const { return config_folder; }
+    auto GetIsDisplayVersion() const { return display_version; }
+    auto GetIsLogDebugMode() const { return log_debug_mode; }
+    auto GetThreadCount() const { return thread_count; }
+};
 
-typedef rohit::serverevent<rohit::iotserverevent<false>, false> serverevent_type;
-typedef rohit::serverevent<rohit::iotserverevent<true>, true> serverevent_ssl_type;
-typedef rohit::serverevent<rohit::iothttpevent<false>, false> httpevent_type;
-typedef rohit::serverevent<rohit::iothttpsslevent, true> httpevent_ssl_type;
+class DeviceServer {
+    typedef rohit::serverevent<rohit::iotserverevent<false>, false> serverevent_type;
+    typedef rohit::serverevent<rohit::iotserverevent<true>, true> serverevent_ssl_type;
+    typedef rohit::serverevent<rohit::iothttpevent<false>, false> httpevent_type;
+    typedef rohit::serverevent<rohit::iothttpsslevent, true> httpevent_ssl_type;
 
-std::unique_ptr<rohit::event_distributor> evtdist;
-std::vector<std::unique_ptr<serverevent_type>> srvevts;
-std::vector<std::unique_ptr<serverevent_ssl_type>> srvevts_ssl;
-std::vector<std::unique_ptr<httpevent_type>> srvhttpevts;
-std::vector<std::unique_ptr<httpevent_ssl_type>> srvhttpevts_ssl;
+    std::unique_ptr<rohit::event_distributor> evtdist;
+    std::vector<std::unique_ptr<serverevent_type>> srvevts;
+    std::vector<std::unique_ptr<serverevent_ssl_type>> srvevts_ssl;
+    std::vector<std::unique_ptr<httpevent_type>> srvhttpevts;
+    std::vector<std::unique_ptr<httpevent_ssl_type>> srvhttpevts_ssl;
 
-std::unique_ptr<rohit::http::httpfilewatcher> ptr_filewatcher;
+    std::unique_ptr<rohit::http::httpfilewatcher> ptr_filewatcher;
 
-const std::string load_config_string(const char *const configfile) {
-    int fd = open(configfile, O_RDONLY);
-    if ( fd == -1 ) {
-        perror("Unable to open file");
-        return {};
+    const DeviceServerParameter &parameter;
+
+public:
+    DeviceServer(const DeviceServerParameter &parameter) : parameter{ parameter } {
+        std::cout << "Creating event distributor" << std::endl;
+        evtdist.reset(new rohit::event_distributor(parameter.GetThreadCount()));
+        evtdist->init();
+
+        ptr_filewatcher.reset(new rohit::http::httpfilewatcher(*evtdist));
+        ptr_filewatcher->init();
+
+        const auto str_config_folder = std::string(parameter.GetConfigurationFolder());
+        const auto configfile = str_config_folder + "/iot.json";
+
+        // Loading servers
+        load_and_execute_config(configfile);
     }
 
-    struct stat bufstat;
-    fstat(fd, &bufstat);
-
-    int size = bufstat.st_size;
-    char buffer[size];
-
-    [[maybe_unused]] auto read_size = read(fd, buffer, size);
-    std::string buffer_str = std::string(buffer);
+    void Wait() {
+        evtdist->wait();
+    }
     
-    return buffer_str;
-}
+    auto IsTerminated() { return evtdist->isTerminated(); }
 
-void load_and_execute_config(const std::string configfile) {
-    std::string buffer = load_config_string(configfile.c_str());
-
-    auto config = json::JSON::Load(buffer);
-
-    auto servers = config["servers"];
-
-    for(auto server: servers.ArrayRange()) {
-        const auto IP = server["IP"].ToString();
-        const auto TYPE = server["TYPE"].ToString();
-        const auto port = server["port"].ToInt();
-
-        if (IP != "*") {
-            std::cout << "Only * is supported for IP address, skipping creation of this server" << std::endl;
-            continue;
+    void destroy_app() {
+        if (evtdist) {
+            evtdist->terminate();
+            std::cout << "Destroying IOT" << std::endl;
+            rohit::destroy_iot();
         }
 
-        if (port == 0) {
-            std::cout << "Port not provided or it is 0, skipping creation of this server" << std::endl;
-            continue;
+        for(auto &srvevt: srvevts) {
+            srvevt->close();
         }
 
-        if (TYPE == "simple") {
-            std::cout << "Creating a server at port " << port << std::endl;
-            auto srvevt =
-                new serverevent_type(port);
-            srvevt->init(*evtdist);
-            srvevts.emplace_back(srvevt);
-        } else if (TYPE == "ssl") {
-            const auto cert_file = server["CertFile"].ToString();
-            const auto prikey_file_temp = server["PrikeyFile"].ToString();
-            const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
-
-            std::cout << "Creating a SSL server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
-            auto srvevt_ssl = new serverevent_ssl_type(
-                port,
-                cert_file.c_str(),
-                prikey_file.c_str());
-            srvevt_ssl->init(*evtdist);
-
-            srvevts_ssl.emplace_back(srvevt_ssl);
-        } else if (TYPE == "http") {
-            std::cout << "Creating a HTTP server at port " << port << std::endl;
-            auto webfolder = server["Folder"].ToString();
-            rohit::http::webfilemap.add_folder(port, webfolder);
-            auto srvhttpevt = new httpevent_type(port);
-            srvhttpevt->init(*evtdist);
-            srvhttpevts.emplace_back(srvhttpevt);
-
-            ptr_filewatcher->add_folder(webfolder);
-        } else if (TYPE == "https") {
-            const auto cert_file = server["CertFile"].ToString();
-            const auto prikey_file_temp = server["PrikeyFile"].ToString();
-            const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
-
-            std::cout << "Creating a HTTPS server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
-            auto webfolder = server["Folder"].ToString();
-            rohit::http::webfilemap.add_folder(port, webfolder);
-            auto srvhttpevt_ssl = new httpevent_ssl_type(
-                port,
-                cert_file.c_str(),
-                prikey_file.c_str());
-            srvhttpevt_ssl->init(*evtdist);
-            srvhttpevts_ssl.emplace_back(srvhttpevt_ssl);
-
-            ptr_filewatcher->add_folder(webfolder);
-        } else{
-            std::cout << "Unknown server type " << TYPE << ", skipping creation of this server" << std::endl;
-            continue;
+        for(auto &srvevt_ssl: srvevts_ssl) {
+            srvevt_ssl->close();
         }
+
+        for(auto &srvhttpevt: srvhttpevts) {
+            srvhttpevt->close();
+        }
+
+        for(auto &srvhttpevt_ssl: srvhttpevts_ssl) {
+            srvhttpevt_ssl->close();
+        }
+
+        std::cout << "All thread joined" << std::endl;
     }
 
-    auto mappings = config["Mappings"];
-    for(auto mapping: mappings.ArrayRange()) {
-        auto type = mapping["Type"].ToString();
-        auto maps = mapping["Maps"];
-        if (type == "folder") {
-            auto folder_list = mapping["Folders"];
-            for(auto folder_json: folder_list.ArrayRange()) {
-                auto folder = folder_json.ToString();
-                for(auto map: maps.ArrayRange()) {
-                    auto keystr = map["Key"].ToString();
-                    auto valuestr = map["Value"].ToString();
-                    rohit::http::webfilemap.add_folder_mapping(folder, keystr, valuestr);
+private:
+    const std::string load_config_string(const char *const configfile) {
+        int fd = open(configfile, O_RDONLY);
+        if ( fd == -1 ) {
+            perror("Unable to open file");
+            return {};
+        }
+
+        struct stat bufstat;
+        fstat(fd, &bufstat);
+
+        int size = bufstat.st_size;
+        char buffer[size];
+
+        [[maybe_unused]] auto read_size = read(fd, buffer, size);
+        std::string buffer_str = std::string(buffer);
+        
+        return buffer_str;
+    }
+
+    void load_and_execute_config(const std::string configfile) {
+        std::string buffer = load_config_string(configfile.c_str());
+
+        auto config = json::JSON::Load(buffer);
+
+        auto servers = config["servers"];
+
+        for(auto server: servers.ArrayRange()) {
+            const auto IP = server["IP"].ToString();
+            const auto TYPE = server["TYPE"].ToString();
+            const auto port = server["port"].ToInt();
+
+            if (IP != "*") {
+                std::cout << "Only * is supported for IP address, skipping creation of this server" << std::endl;
+                continue;
+            }
+
+            if (port == 0) {
+                std::cout << "Port not provided or it is 0, skipping creation of this server" << std::endl;
+                continue;
+            }
+
+            if (TYPE == "simple") {
+                std::cout << "Creating a server at port " << port << std::endl;
+                auto srvevt =
+                    new serverevent_type(port);
+                srvevt->init(*evtdist);
+                srvevts.emplace_back(srvevt);
+            } else if (TYPE == "ssl") {
+                const auto cert_file = server["CertFile"].ToString();
+                const auto prikey_file_temp = server["PrikeyFile"].ToString();
+                const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
+
+                std::cout << "Creating a SSL server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
+                auto srvevt_ssl = new serverevent_ssl_type(
+                    port,
+                    cert_file.c_str(),
+                    prikey_file.c_str());
+                srvevt_ssl->init(*evtdist);
+
+                srvevts_ssl.emplace_back(srvevt_ssl);
+            } else if (TYPE == "http") {
+                std::cout << "Creating a HTTP server at port " << port << std::endl;
+                auto webfolder = server["Folder"].ToString();
+                rohit::http::webfilemap.add_folder(port, webfolder);
+                auto srvhttpevt = new httpevent_type(port);
+                srvhttpevt->init(*evtdist);
+                srvhttpevts.emplace_back(srvhttpevt);
+
+                ptr_filewatcher->add_folder(webfolder);
+            } else if (TYPE == "https") {
+                const auto cert_file = server["CertFile"].ToString();
+                const auto prikey_file_temp = server["PrikeyFile"].ToString();
+                const auto prikey_file = !prikey_file_temp.empty() ? prikey_file_temp : cert_file;
+
+                std::cout << "Creating a HTTPS server at port " << port << ", cert: " << cert_file << ", pri: " << prikey_file <<  std::endl;
+                auto webfolder = server["Folder"].ToString();
+                rohit::http::webfilemap.add_folder(port, webfolder);
+                auto srvhttpevt_ssl = new httpevent_ssl_type(
+                    port,
+                    cert_file.c_str(),
+                    prikey_file.c_str());
+                srvhttpevt_ssl->init(*evtdist);
+                srvhttpevts_ssl.emplace_back(srvhttpevt_ssl);
+
+                ptr_filewatcher->add_folder(webfolder);
+            } else{
+                std::cout << "Unknown server type " << TYPE << ", skipping creation of this server" << std::endl;
+                continue;
+            }
+        }
+
+        auto mappings = config["Mappings"];
+        for(auto mapping: mappings.ArrayRange()) {
+            auto type = mapping["Type"].ToString();
+            auto maps = mapping["Maps"];
+            if (type == "folder") {
+                auto folder_list = mapping["Folders"];
+                for(auto folder_json: folder_list.ArrayRange()) {
+                    auto folder = folder_json.ToString();
+                    for(auto map: maps.ArrayRange()) {
+                        auto keystr = map["Key"].ToString();
+                        auto valuestr = map["Value"].ToString();
+                        rohit::http::webfilemap.add_folder_mapping(folder, keystr, valuestr);
+                    }
+                }
+            } else if (type == "extension") {
+                auto folder_list = mapping["Folders"];
+                for(auto folder_json: folder_list.ArrayRange()) {
+                    auto folder = folder_json.ToString();
+                    for(auto map: maps.ArrayRange()) {
+                        auto keystr = map["Key"].ToString();
+                        auto valuestr = map["Value"].ToString();
+                        rohit::http::webfilemap.add_content_type_mapping(folder, keystr, valuestr);
+                    }
                 }
             }
-        } else if (type == "extension") {
-            auto folder_list = mapping["Folders"];
-            for(auto folder_json: folder_list.ArrayRange()) {
-                auto folder = folder_json.ToString();
-                for(auto map: maps.ArrayRange()) {
-                    auto keystr = map["Key"].ToString();
-                    auto valuestr = map["Value"].ToString();
-                    rohit::http::webfilemap.add_content_type_mapping(folder, keystr, valuestr);
-                }
-            }
         }
+
+        rohit::http::webfilemap.update_folder();
     }
 
-    rohit::http::webfilemap.update_folder();
-}
+};
 
-void destroy_app() {
-    if (evtdist) {
-        evtdist->terminate();
-        std::cout << "Destroying IOT" << std::endl;
-        rohit::destroy_iot();
-    }
-
-    for(auto &srvevt: srvevts) {
-        srvevt->close();
-    }
-
-    for(auto &srvevt_ssl: srvevts_ssl) {
-        srvevt_ssl->close();
-    }
-
-    for(auto &srvhttpevt: srvhttpevts) {
-        srvhttpevt->close();
-    }
-
-    for(auto &srvhttpevt_ssl: srvhttpevts_ssl) {
-        srvhttpevt_ssl->close();
-    }
-
-    std::cout << "All thread joined" << std::endl;
-}
+std::function<void()> destroy_app;
+std::function<bool()> IsTerminated;
 
 class mqd_t_raii {
     mqd_t mq;
@@ -251,7 +291,7 @@ void configuration_thread_function(std::stop_token stoken) {
     rohit::log<rohit::log_t::CONFIG_SERVER_INIT_SUCCESS>(attr.mq_maxmsg, attr.mq_msgsize);
 
     std::fill(message, message + attr.mq_msgsize + 1, 0);
-    while(!evtdist->isTerminated() && !stoken.stop_requested()) {
+    while(!IsTerminated() && !stoken.stop_requested()) {
         unsigned int prio;
         
         auto bytesread = mq_receive(mq, message, attr.mq_msgsize + 1, &prio);
@@ -333,7 +373,7 @@ rohit::err_t check_socket_limits() {
 
     auto original_receive_size = get_receive_buffer_size(temp_fd);
     if (original_receive_size < rohit::config::socket_read_buffer_size) {
-        std::cout << "Socket read buffer is "  << original_receive_size << " it must be set to " << rohit::config::socket_read_buffer_size << std::endl;
+        std::cout << "Socket read buffer is " << original_receive_size << " it must be set to " << rohit::config::socket_read_buffer_size << std::endl;
         std::cout << "---- Attempting to set socket read limits" << std::endl;
 
         set_receive_buffer_size(temp_fd, rohit::config::socket_read_buffer_size);
@@ -396,7 +436,8 @@ void set_sigaction() {
 
 int main(int argc, char *argv[]) try {
     rohit::log<rohit::log_t::APPLICATION_STARTING>();
-    if (!parse_and_display(argc, argv)) return EXIT_SUCCESS;
+    DeviceServerParameter parameter{argc, argv};
+    if (!parameter.IsValid() || parameter.GetIsDisplayVersion()) return EXIT_SUCCESS;
 
     if (isFailure(check_socket_limits())) {
         return EXIT_FAILURE;
@@ -404,33 +445,28 @@ int main(int argc, char *argv[]) try {
 
     set_sigaction();
 
-    if (log_debug_mode) {
+    if (parameter.GetIsLogDebugMode()) {
         rohit::enabled_log_module.enable_all();
     }
 
     // Initialization
-    std::cout << "Opening log file at " << log_file << std::endl;
-    rohit::init_iot(log_file);
+    std::cout << "Opening log file at " << parameter.GetLogFile() << std::endl;
+    rohit::init_iot(parameter.GetLogFile());
 
-    std::cout << "Creating event distributor" << std::endl;
-    evtdist.reset(new rohit::event_distributor(thread_count));
-    evtdist->init();
-
-    ptr_filewatcher.reset(new rohit::http::httpfilewatcher(*evtdist));
-    ptr_filewatcher->init();
-
-    const auto str_config_folder = std::string(config_folder);
-    const auto configfile = str_config_folder + "/iot.json";
-
-    // Loading servers
-    load_and_execute_config(configfile);
+    DeviceServer deviceServer{ parameter };
+    destroy_app = [&deviceServer]() {
+        deviceServer.destroy_app();
+    };
+    IsTerminated = [&deviceServer]() {
+        return deviceServer.IsTerminated();
+    };
 
     std::jthread conf_thread { configuration_thread_function };
 
     // Wait and terminate
     std::cout << "Waiting for all thread to join" << std::endl;
     rohit::log<rohit::log_t::APPLICATION_STARTED_SUCCESSFULLY>();
-    evtdist->wait();
+    deviceServer.Wait();
     conf_thread.request_stop();
 
     return 0;
