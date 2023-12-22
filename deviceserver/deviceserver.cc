@@ -78,7 +78,7 @@ const std::string load_config_string(const char *const configfile) {
     int fd = open(configfile, O_RDONLY);
     if ( fd == -1 ) {
         perror("Unable to open file");
-        return 0;
+        return {};
     }
 
     struct stat bufstat;

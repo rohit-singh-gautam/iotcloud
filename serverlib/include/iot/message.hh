@@ -65,8 +65,19 @@ constexpr const char *operation_t_displayString[]
 #undef MESSAGE_OPERATION_ENTRY
 };
 
-inline const std::string to_string(const operation_t &value) {
-    return { operation_t_displayString[static_cast<operation_internal_type>(value)] };
+const std::string operation_t_displayStdString[]
+{
+#define MESSAGE_OPERATION_ENTRY(x) { #x },
+    MESSAGE_OPERATION_LIST
+#undef MESSAGE_OPERATION_ENTRY
+};
+
+inline const std::string &to_string(const operation_t &value) {
+    const auto index = static_cast<operation_internal_type>(value);
+    constexpr auto max_index = std::size(operation_t_displayStdString);
+    if (index < max_index)
+        return operation_t_displayStdString[index];
+    else return operation_t_displayStdString[0];
 }
 
 

@@ -29,8 +29,8 @@ extern thread_local thread_context ctx;
 
 class event_executor {
 protected:
-    std::atomic<int> executor_count = 0;
-    bool closed = false;   
+    std::atomic<int> executor_count{ 0 };
+    bool closed{ false };
 
     // This is pure virtual function can be called only from event_distributor
     // event is irreralevent as in our case we are following
@@ -52,7 +52,7 @@ public:
     // Make sure to call enter loop before making this call
     inline void execute_protector_noenter() {
         assert(executor_count >= 1);
-        auto loop = true;
+        auto loop{ true };
 
         while(loop) {
             if (closed) {
@@ -109,7 +109,7 @@ public:
 
 class event_cleanup {
 private:
-    event_executor *ptr;
+    event_executor *const ptr;
     const uint64_t timestamp;
 
 public:

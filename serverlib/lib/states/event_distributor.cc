@@ -17,7 +17,6 @@
 #include <iot/core/log.hh>
 #include <sys/epoll.h>
 #include <limits>
-#include <iot/core/memory.hh>
 #include <sys/eventfd.h>
 
 namespace rohit {
