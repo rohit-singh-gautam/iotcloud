@@ -54,11 +54,11 @@ public:
             }
         );
 
-        auto valid = param_parser.parser(argc, argv);
+        valid = param_parser.parser(argc, argv);
         if (!valid) std::cout << param_parser.usage() << std::endl;
 
         if (display_version) {
-            std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
+            std::cout << param_parser.get_name() << " " << std::to_string(IOT_VERSION_MAJOR) << "." << std::to_string(IOT_VERSION_MINOR) << std::endl;
         }
     }
 
