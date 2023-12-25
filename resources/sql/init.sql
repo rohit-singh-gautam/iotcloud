@@ -425,7 +425,7 @@ INSERT INTO MODEL (ID, NAME, SPEC) VALUES
 (15, '15 way switch', '{}'),
 (16, '16 way switch', '{}'),
 (17, 'RGB Light', '{}'),
-(18, 'Fine RGB Light', '{}'),;
+(18, 'High Definition RGB Light', '{}'),;
 
 
 INSERT INTO MODEL (MODELID, COMPONENTINDEX, COMPONENTID) VALUES

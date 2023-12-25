@@ -32,7 +32,7 @@
 
 class DeviceServerParameter {
     std::filesystem::path log_file{ };
-    const char *config_folder{ };
+    std::string configFolder{ };
     bool display_version{ };
     bool log_debug_mode{ };
     int thread_count{ };
@@ -41,6 +41,7 @@ class DeviceServerParameter {
 
 public:
     DeviceServerParameter(int argc, char *argv[]) {
+        const char *config_folder{ };
         rohit::commandline param_parser(
             "IOT device server that is used to push data on all the devices",
             "Device server is designed to keep hold on all the IOT devices connected to internet. "
@@ -58,13 +59,16 @@ public:
         if (!valid) std::cout << param_parser.usage() << std::endl;
 
         if (display_version) {
-            std::cout << param_parser.get_name() << " " << std::to_string(IOT_VERSION_MAJOR) << "." << std::to_string(IOT_VERSION_MINOR) << std::endl;
+            std::cout << param_parser.get_name() << " " << IOT_VERSION_MAJOR << "." << IOT_VERSION_MINOR << std::endl;
+        }
+        if (config_folder) {
+            configFolder.append(config_folder);
         }
     }
 
     auto IsValid() const { return valid; }
     const auto &GetLogFile() const { return log_file; }
-    auto GetConfigurationFolder() const { return config_folder; }
+    auto GetConfigurationFolder() const { return configFolder; }
     auto GetIsDisplayVersion() const { return display_version; }
     auto GetIsLogDebugMode() const { return log_debug_mode; }
     auto GetThreadCount() const { return thread_count; }
@@ -95,7 +99,7 @@ public:
         ptr_filewatcher.reset(new rohit::http::httpfilewatcher(*evtdist));
         ptr_filewatcher->init();
 
-        const auto str_config_folder = std::string(parameter.GetConfigurationFolder());
+        const auto str_config_folder = parameter.GetConfigurationFolder();
         const auto configfile = str_config_folder + "/iot.json";
 
         // Loading servers
@@ -434,46 +438,48 @@ void set_sigaction() {
     sigaction(SIGSEGV, &sa_segv, nullptr);
 }
 
-int main(int argc, char *argv[]) try {
-    rohit::log<rohit::log_t::APPLICATION_STARTING>();
-    DeviceServerParameter parameter{argc, argv};
-    if (!parameter.IsValid() || parameter.GetIsDisplayVersion()) return EXIT_SUCCESS;
+int main(int argc, char *argv[]) {
+    try {
+        rohit::log<rohit::log_t::APPLICATION_STARTING>();
+        DeviceServerParameter parameter{argc, argv};
+        if (!parameter.IsValid() || parameter.GetIsDisplayVersion()) return EXIT_SUCCESS;
 
-    if (isFailure(check_socket_limits())) {
-        return EXIT_FAILURE;
+        if (isFailure(check_socket_limits())) {
+            return EXIT_SUCCESS;
+        }
+
+        set_sigaction();
+
+        if (parameter.GetIsLogDebugMode()) {
+            rohit::enabled_log_module.enable_all();
+        }
+
+        // Initialization
+        std::cout << "Opening log file at " << parameter.GetLogFile() << std::endl;
+        rohit::init_iot(parameter.GetLogFile());
+
+        DeviceServer deviceServer{ parameter };
+        destroy_app = [&deviceServer]() {
+            deviceServer.destroy_app();
+        };
+        IsTerminated = [&deviceServer]() {
+            return deviceServer.IsTerminated();
+        };
+
+        std::jthread conf_thread { configuration_thread_function };
+
+        // Wait and terminate
+        std::cout << "Waiting for all thread to join" << std::endl;
+        rohit::log<rohit::log_t::APPLICATION_STARTED_SUCCESSFULLY>();
+        deviceServer.Wait();
+        conf_thread.request_stop();
+
+        return 0;
+    } catch (rohit::exception_t e) {
+        segv_app();
+        std::cout << "Exception received " << e << std::endl;
+    } catch (...) {
+        segv_app();
+        std::cout << "Exception received " << std::endl;
     }
-
-    set_sigaction();
-
-    if (parameter.GetIsLogDebugMode()) {
-        rohit::enabled_log_module.enable_all();
-    }
-
-    // Initialization
-    std::cout << "Opening log file at " << parameter.GetLogFile() << std::endl;
-    rohit::init_iot(parameter.GetLogFile());
-
-    DeviceServer deviceServer{ parameter };
-    destroy_app = [&deviceServer]() {
-        deviceServer.destroy_app();
-    };
-    IsTerminated = [&deviceServer]() {
-        return deviceServer.IsTerminated();
-    };
-
-    std::jthread conf_thread { configuration_thread_function };
-
-    // Wait and terminate
-    std::cout << "Waiting for all thread to join" << std::endl;
-    rohit::log<rohit::log_t::APPLICATION_STARTED_SUCCESSFULLY>();
-    deviceServer.Wait();
-    conf_thread.request_stop();
-
-    return 0;
-} catch (rohit::exception_t e) {
-    segv_app();
-    std::cout << "Exception received " << e << std::endl;
-} catch (...) {
-    segv_app();
-    std::cout << "Exception received " << std::endl;
 }

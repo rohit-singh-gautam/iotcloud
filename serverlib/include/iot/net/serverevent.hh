@@ -57,6 +57,7 @@ public:
                     log<log_t::SOCKET_SET_NONBLOCKING_FAILED>(static_cast<int>(peer_id));
                 }
                 peerevent *p_peerevent = new peerevent(peer_id);
+                assert(p_peerevent);
                 p_peerevent->execute_protector();
                 if constexpr (peerevent::movable) {
                     if (p_peerevent->get_client_state() != state_t::SERVEREVENT_MOVED) {
@@ -118,6 +119,7 @@ public:
     inline serverpeerevent_base(serverpeerevent_base &&old) : write_queue(std::move(old.write_queue)) { }
 
     inline void push_write(const uint8_t *buffer, size_t size) {
+        assert(buffer);
         write_queue.push({buffer, 0, size});
     }
 

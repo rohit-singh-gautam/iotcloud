@@ -152,6 +152,7 @@ void iothttp2event<use_ssl>::process_read_buffer(uint8_t *read_buffer, const siz
 
             size_t write_size = pwrite_end - write_buffer;
             uint8_t *_write_buffer = new uint8_t[write_size];
+            assert(_write_buffer);
             std::copy(write_buffer, pwrite_end, _write_buffer);
             push_write(_write_buffer, write_size);
             write_all();
@@ -175,6 +176,7 @@ void iothttp2event<use_ssl>::process_read_buffer(uint8_t *read_buffer, const siz
     if (write_buffer != pwrite_end) {
         size_t write_size = pwrite_end - write_buffer;
         uint8_t *_write_buffer = new uint8_t[write_size];
+        assert(_write_buffer);
         std::copy(write_buffer, pwrite_end, _write_buffer);
         push_write(_write_buffer, write_size);
     }
@@ -239,7 +241,7 @@ void iothttpevent<use_ssl>::read_helper() {
 
                 // below will move current structure to std::move
                 iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
-
+                assert(http2executor);
                 http2executor->enter_loop();
 
                 // Add http2executor to epoll
@@ -281,7 +283,7 @@ void iothttpevent<use_ssl>::read_helper() {
 
                 // below will move current structure to std::move
                 iothttp2event<use_ssl> *http2executor = new iothttp2event<use_ssl>(std::move(*this));
-
+                assert(http2executor);
                 http2executor->enter_loop();
 
                 // Add http2executor to epoll
@@ -346,6 +348,7 @@ void iothttpevent<use_ssl>::read_helper() {
                     const auto write_size_header = (size_t)(last_write_buffer - write_buffer);
 
                     auto _write_buffer = new uint8_t[write_size_header + 2 + file_details->content.size];
+                    assert(_write_buffer);
                     last_write_buffer = std::copy(write_buffer, write_buffer + write_size_header, _write_buffer);
                     *last_write_buffer++ = '\r';
                     *last_write_buffer++ = '\n';
@@ -367,6 +370,7 @@ void iothttpevent<use_ssl>::read_helper() {
 
     if (write_size != 0) {
         auto _write_buffer = new uint8_t[write_size];
+        assert(_write_buffer);
         std::copy(write_buffer, write_buffer + write_size, _write_buffer);
         push_write(_write_buffer, write_size);
     }
@@ -459,6 +463,7 @@ void iothttp2event<use_ssl>::upgrade(http_header_request &header) {
     pwrite_end = rohit::http::v2::settings::add_ack_frame(pwrite_end);
     size_t write_size = pwrite_end - write_buffer;
     uint8_t *_write_buffer = new uint8_t[write_size];
+    assert(_write_buffer);
     std::copy(write_buffer, pwrite_end, _write_buffer);
     push_write(_write_buffer, write_size);
 
@@ -528,6 +533,7 @@ void iothttp2event<use_ssl>::process_request(rohit::http::v2::request &request) 
                     if (write_buffer != pwrite_end) {
                         size_t write_size = pwrite_end - write_buffer;
                         uint8_t *_write_buffer = new uint8_t[write_size];
+                        assert(_write_buffer);
                         std::copy(write_buffer, pwrite_end, _write_buffer);
                         push_write(_write_buffer, write_size);
                         pwrite_end = write_buffer;
@@ -551,6 +557,7 @@ void iothttp2event<use_ssl>::process_request(rohit::http::v2::request &request) 
 
                         write_size = pwrite_end - write_buffer;
                         _write_buffer = new uint8_t[write_size];
+                        assert(_write_buffer);
                         std::copy(write_buffer, pwrite_end, _write_buffer);
                         push_write(_write_buffer, write_size);
                         pwrite_end = write_buffer;
@@ -571,6 +578,7 @@ void iothttp2event<use_ssl>::process_request(rohit::http::v2::request &request) 
 
                     write_size = pwrite_end - write_buffer;
                     _write_buffer = new uint8_t[write_size];
+                    assert(_write_buffer);
                     std::copy(write_buffer, pwrite_end, _write_buffer);
                     push_write(_write_buffer, write_size);
                     pwrite_end = write_buffer;
@@ -586,6 +594,7 @@ void iothttp2event<use_ssl>::process_request(rohit::http::v2::request &request) 
         if (write_buffer != pwrite_end) {
             size_t write_size = pwrite_end - write_buffer;
             uint8_t *_write_buffer = new uint8_t[write_size];
+            assert(_write_buffer);
             std::copy(write_buffer, pwrite_end, _write_buffer);
             push_write(_write_buffer, write_size);
             pwrite_end = write_buffer;
