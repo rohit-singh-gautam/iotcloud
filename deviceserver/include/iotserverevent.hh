@@ -20,8 +20,8 @@
 namespace rohit {
 
 namespace message {
-    constexpr message_success_t success_request { };
-    constexpr message_success_t bad_request { };
+    constexpr Success success_request { };
+    constexpr BadRequest bad_request { };
 };
 
 template <bool use_ssl>
@@ -55,25 +55,25 @@ public:
 
 typedef std::function<void(const std::uint8_t *, size_t)> write_function;
 
-typedef std::function<void(message_base_t *, write_function)> read_function;
+typedef std::function<void(message::Base *, write_function)> read_function;
 
 inline void write_bad_request(write_function writeFunction)
 {
     auto write_buffer = reinterpret_cast<const std::uint8_t *>(&message::bad_request);
-    auto write_buffer_size = sizeof(message_bad_request_t);
+    auto write_buffer_size = sizeof(message::BadRequest);
 
     writeFunction(write_buffer, write_buffer_size);
 }
 
-void read_register(message_base_t *, write_function);
-void read_connect(message_base_t *, write_function);
-void read_command(message_command_t *, write_function);
+void read_register(const message::Base *, write_function);
+void read_connect(const message::Base *, write_function);
+void read_command(const message::Command *, write_function);
 
 
 inline void write_success_request(write_function writeFunction)
 {
     auto write_buffer = reinterpret_cast<const std::uint8_t *>(&message::success_request);
-    auto write_buffer_size = sizeof(message_success_t);
+    auto write_buffer_size = sizeof(message::Success);
 
     writeFunction(write_buffer, write_buffer_size);
 }
@@ -82,7 +82,6 @@ inline void read_keep_alive(write_function writeFunction)
 {
     write_success_request(writeFunction);
 }
-
 
 template <bool use_ssl>
 void iotserverevent<use_ssl>::read_helper() {
@@ -106,7 +105,7 @@ void iotserverevent<use_ssl>::read_helper() {
         return;
     }
 
-    rohit::message_base_t *base = (rohit::message_base_t *)read_buffer;
+    auto base = reinterpret_cast<const rohit::message::Base *>(read_buffer);
 
     if constexpr (config::debug) {
         std::cout << "------Request Start---------\n" << *base << "\n------Request End---------\n";
@@ -115,7 +114,7 @@ void iotserverevent<use_ssl>::read_helper() {
     auto writeFunction = [this](const std::uint8_t *write_buffer, size_t size)
     {
         if constexpr (config::debug) {
-            message_base_t *write_base = (message_base_t *)write_buffer;
+            auto write_base = reinterpret_cast<const rohit::message::Base *>(write_buffer);
             std::cout << "------Response Start---------\n" << *write_base << "\n------Response End---------\n";
         }
         this->push_write(write_buffer, size);
@@ -123,19 +122,19 @@ void iotserverevent<use_ssl>::read_helper() {
 
     switch(base->getMessageCode())
     {
-        case message_code_t::COMMAND:
-            read_command(static_cast<message_command_t *>(base), writeFunction);
+        case message::Code::COMMAND:
+            read_command(reinterpret_cast<const message::Command *>(base), writeFunction);
             break;
 
-        case message_code_t::CONNECT:
+        case message::Code::CONNECT:
             read_connect(base, writeFunction);
             break;
             
-        case message_code_t::REGISTER:
+        case message::Code::REGISTER:
             read_register(base, writeFunction);
             break;
 
-        case message_code_t::KEEP_ALIVE:
+        case message::Code::KEEP_ALIVE:
             read_keep_alive(writeFunction);
             break;
 

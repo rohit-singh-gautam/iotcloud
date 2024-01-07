@@ -16,28 +16,28 @@
 
 namespace rohit {
 
-void read_register(message_base_t *, write_function writeFunction)
+void read_register(const message::Base *, write_function writeFunction)
 {
     write_success_request(writeFunction);
 }
 
-void read_connect(message_base_t *, write_function writeFunction)
+void read_connect(const message::Base *, write_function writeFunction)
 {
     write_success_request(writeFunction);
 }
 
-void read_command(message_command_t *base, write_function writeFunction) {
+void read_command(const message::Command *base, write_function writeFunction) {
     if (base->verify())
     {
         for(auto command: *base)
         {
             switch(command.GetOperation())
             {
-                case operation_t::SWITCH:
+                case message::Operation::Code::SWITCH:
                     write_success_request(writeFunction);
                     break;
                 
-                case operation_t::LEVEL:
+                case message::Operation::Code::LEVEL:
                     write_success_request(writeFunction);
                     break;
             }

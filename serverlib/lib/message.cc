@@ -15,41 +15,31 @@
 #include <iot/message.hh>
 #include <sstream>
 
-namespace rohit {
-
-const char * message_base_t::displayString[] = {
-#define MESSAGE_CODE_ENTRY(x) #x,
-    MESSAGE_CODE_LIST
-#undef MESSAGE_CODE_ENTRY
-};
-
-std::ostream& operator<<(std::ostream& os, const command_t &command) {
-     return os  << command.device 
-                << ":" << command.component 
-                << ":" << command.operation 
-                << ":" << command.value;
+std::ostream& operator<<(std::ostream& os, const rohit::message::Operation::Code &operation) {
+    return os << to_string(operation);
 }
 
-const std::string command_t::to_string() const {
-        std::stringstream ss;
-        ss << *this;
-        return ss.str();
+std::ostream& operator<<(std::ostream& os, const rohit::message::CommandEntry &command) {
+    return os  << command.GetDevice() 
+                << ":" << command.GetComponent()
+                << ":" << command.GetOperation()
+                << ":" << command.GetOperationData();
 }
 
-std::ostream& operator<<(std::ostream& os, const message_base_t &message) {
-    message_code_t code = message;
-    if (code > message_code_t::COMMAND) {
+std::ostream& operator<<(std::ostream& os, const rohit::message::Base &message) {
+    rohit::message::Code code = message;
+    if (code > rohit::message::Code::COMMAND) {
         return os << "Bad message " << static_cast<int>(code) << std::endl;
     }
     switch(message) {
-    case message_code_t::UNKNOWN:
-    case message_code_t::SUCCESS:
+    case rohit::message::Code::UNKNOWN:
+    case rohit::message::Code::SUCCESS:
         os << message.to_string() << std::endl;
         break;
 
-    case message_code_t::COMMAND: {
-        message_command_t &commandMessage = (message_command_t &)message;
-        os << commandMessage;
+    case rohit::message::Code::COMMAND: {
+        auto &commandMessage = static_cast<const rohit::message::Command &>(message);
+        os << commandMessage.to_string();
         break;
     }
     
@@ -60,12 +50,26 @@ std::ostream& operator<<(std::ostream& os, const message_base_t &message) {
     return os;
 };
 
-std::ostream& operator<<(std::ostream& os, const message_command_t &message) {
-    os << ((message_base_t &)message).to_string() << std::endl;
-    for (uint32_t index=0; index < message.command_count; ++index) {
-        os << "\t" << message.commands[index] << std::endl;
+std::ostream& operator<<(std::ostream& os, const rohit::message::Command &message) {
+    os << message.to_string() << std::endl;
+    for (auto &messageEntry: message) {
+        os << "\t" << messageEntry << std::endl;
     }
     return os;
+}
+
+namespace rohit {
+
+const char * message::Base::displayString[] = {
+#define MESSAGE_CODE_ENTRY(x) #x,
+    MESSAGE_CODE_LIST
+#undef MESSAGE_CODE_ENTRY
+};
+
+const std::string rohit::message::CommandEntry::to_string() const {
+    std::stringstream ss;
+    ss << *this;
+    return ss.str();
 }
 
 } // namespace rohit

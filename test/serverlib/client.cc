@@ -41,8 +41,8 @@ int connect_count = 0;
 
 void test_deviceserver() {
     const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
-    rohit::message_command_t messageCommand;
-    messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
+    rohit::message::Command messageCommand;
+    messageCommand.add(rohit::to_guid(destGuid), 1, rohit::message::Operation::Code::SWITCH, rohit::message::Operation::Switch::ON);
 
     rohit::client_socket_t client_socket(ipv6addr);
     std::cout << "Local Address: " << client_socket << std::endl;   
@@ -63,7 +63,7 @@ void test_deviceserver() {
             std::cout << "Zero bytes written " << std::endl;
         }
 
-        size_t read_buffer_size = sizeof(rohit::message_command_t);
+        size_t read_buffer_size = sizeof(rohit::message::Command);
         uint8_t read_buffer[read_buffer_size];
 
         size_t read_buffer_length;
@@ -81,8 +81,8 @@ void test_deviceserver() {
             std::cout << rohit::upper_case_numbers[value/16] << rohit::upper_case_numbers[value%16];
         }
 
-        rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
-        std::cout << std::endl << "------Response Start---------\n" << *messageBase << "------Response End---------\n";
+        auto messageBase = reinterpret_cast<const rohit::message::Base *>(read_buffer);
+        std::cout << std::endl << "------Response Start---------\n" << messageBase->to_string() << "------Response End---------\n";
 
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_call_in_ms));
     }
@@ -93,8 +93,8 @@ void test_deviceserver() {
 
 void test_deviceserver_ssl() {
     const char destGuid[] = "085c3faf-55ef-4cb5-a170-d216d86d2ea8";
-    rohit::message_command_t messageCommand;
-    messageCommand.add(rohit::to_guid(destGuid), 1, rohit::operation_t::SWITCH, rohit::operation_switch_t::ON);
+    rohit::message::Command messageCommand;
+    messageCommand.add(rohit::to_guid(destGuid), 1, rohit::message::Operation::Code::SWITCH, rohit::message::Operation::Switch::ON);
 
     rohit::client_socket_ssl_t client_socket(ipv6addr);
     std::cout << "Local Address: " << client_socket << std::endl;   
@@ -112,7 +112,7 @@ void test_deviceserver_ssl() {
             return;
         }
 
-        size_t read_buffer_size = sizeof(rohit::message_command_t);
+        size_t read_buffer_size = sizeof(rohit::message::Command);
         uint8_t read_buffer[read_buffer_size];
 
         size_t read_buffer_length { };
@@ -124,7 +124,7 @@ void test_deviceserver_ssl() {
             return;
         }
 
-        rohit::message_base_t *messageBase = (rohit::message_base_t *)read_buffer;
+        auto messageBase = reinterpret_cast<const rohit::message::Base *>(read_buffer);
         std::cout << "Read buffer hex: ";
         for(decltype(read_buffer_length) temp = 0; temp < read_buffer_length; ++temp) {
             uint8_t value = read_buffer[temp];
