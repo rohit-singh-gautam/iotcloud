@@ -5,6 +5,41 @@
 #include <iostream>
 #include <cstdlib>
 
+void rohit::DeviceClient::PowerOn(std::uint32_t componentIndex) {
+    rohit::message::Command command { };
+    command.add(guid, componentIndex, rohit::message::Operation::Code::SWITCH, rohit::message::Operation::Switch::ON);
+    size_t actualSend { 0 };
+
+    client_socket.write(reinterpret_cast<const void *>(&command), command.length(), actualSend);
+}
+
+void rohit::DeviceClient::PowerOff(std::uint32_t componentIndex) {
+    rohit::message::Command command { };
+    command.add(guid, componentIndex, rohit::message::Operation::Code::SWITCH, rohit::message::Operation::Switch::OFF);
+
+    size_t actualSend { 0 };
+    client_socket.write(reinterpret_cast<const void *>(&command), command.length(), actualSend);
+}
+
+void rohit::DeviceClient::Brigtness(std::uint32_t componentIndex, std::uint16_t value) {
+    rohit::message::Command command { };
+    command.add(guid, componentIndex, rohit::message::Operation::Code::LEVEL, value);
+    size_t actualSend { 0 };
+
+    client_socket.write(reinterpret_cast<const void *>(&command), command.length(), actualSend);
+}
+
+void rohit::DeviceClient::SelectColor(std::uint32_t componentIndex, std::uint16_t red, std::uint16_t green, std::uint16_t blue, std::uint16_t gamma) {
+    rohit::message::Command command { };
+    command.add(guid, componentIndex, rohit::message::Operation::Code::RED, red);
+    command.add(guid, componentIndex, rohit::message::Operation::Code::GREEN, green);
+    command.add(guid, componentIndex, rohit::message::Operation::Code::BLUE, blue);
+    command.add(guid, componentIndex, rohit::message::Operation::Code::GAMMA, gamma);
+
+    size_t actualSend { 0 };
+    client_socket.write(reinterpret_cast<const void *>(&command), command.length(), actualSend);
+}
+
 std::ostream &operator<<(std::ostream &os, const rohit::DeviceModel model) {
     return os << model.GetString();
 }

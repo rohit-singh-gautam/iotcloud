@@ -9,7 +9,6 @@ set(PostgreSQL_LIBRARY_DIR /usr/lib/postgresql)
 set(PostgreSQL_TYPE_INCLUDE_DIR /usr/include/postgresql)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(PostgreSQL REQUIRED)
 
 add_library(ServerLibrary
     lib/memory/memory.cc
@@ -27,11 +26,10 @@ configure_file(include/iot/core/version.h.in include/iot/core/version.h)
 
 include_directories(ServerLibrary PUBLIC 
     ${PROJECT_SOURCE_DIR}/include
-    ${PostgreSQL_INCLUDE_DIRS})
+)
 
 target_link_libraries(ServerLibrary PUBLIC 
     Threads::Threads
     OpenSSL::SSL
     OpenSSL::Crypto
-    ${PostgreSQL_LIBRARIES}
 )

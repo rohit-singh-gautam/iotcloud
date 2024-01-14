@@ -126,12 +126,21 @@ public:
     constexpr guid_t() : guid_8() {}
     constexpr guid_t(const uint8_t *guid_binary) : guid_8() { std::copy(guid_binary, guid_binary + size, guid_8); }
 
+    size_t hash() const { return guid_64[0] ^ guid_64[1]; }
+
     constexpr uint8_t operator[](size_t index) const { return guid_8[index]; }
 
     constexpr operator void *() { return (void *)guid_8; }
     constexpr operator const void *() const { return (const void *)guid_8; }
     constexpr operator uint8_t *() { return guid_8; }
     constexpr operator const uint8_t *() const { return guid_8; }
+
+    auto operator==(const guid_t &rhs) const { return guid_64[0] == rhs.guid_64[0] && guid_64[1] == rhs.guid_64[1]; }
+
+    uint8_t *serialized(uint8_t *buffer_start, uint8_t *buffer_end) {
+        if (buffer_start + size >= buffer_end) return nullptr;
+        return std::copy(guid_8, guid_8 + size, buffer_start);
+    }
 
     /* Below are not good for packed
     constexpr operator uint16_t *() { return guid_16; }
@@ -293,11 +302,19 @@ namespace std {
 template<>
 struct hash<rohit::ipv6_port_t>
 {
-    size_t
-    operator()(const rohit::ipv6_port_t &val) const noexcept
+    size_t operator()(const rohit::ipv6_port_t &val) const noexcept
     {
         auto ret = hash<uint16_t> {} (val);
         return ret;
     }
 };
+
+template<>
+struct hash<rohit::guid_t> {
+    size_t operator()(const rohit::guid_t &guid) const noexcept
+    {
+        return guid.hash();
+    }
+};
+
 } // namespace std

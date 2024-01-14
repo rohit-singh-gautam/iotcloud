@@ -113,20 +113,17 @@ const std::string &DeviceModel::GetString() const {
 }
 
 class DeviceClient {
-    DeviceModel model;
+    const DeviceModel model;
+    const guid_t guid;
     rohit::client_socket_t client_socket;
     
 public:
-    DeviceClient(DeviceModel model, const rohit::ipv6_socket_addr_t &ipv6addr) : model{ model }, client_socket{ ipv6addr } { }
+    DeviceClient(const DeviceModel model, const guid_t guid, const rohit::ipv6_socket_addr_t &ipv6addr) : model{ model }, guid{ guid }, client_socket{ ipv6addr } { }
 
-    bool PowerOn(std::uint32_t componentIndex);
-    bool PowerOff(std::uint32_t componentIndex);
-
-    bool BrigtnessDecrease(std::uint32_t componentIndex, std::uint16_t value);
-    bool BrigtnessIncrease(std::uint32_t componentIndex, std::uint16_t value);
-
-    bool SelectColor(std::uint32_t componentIndex, std::uint16_t red, std::uint16_t green, std::uint16_t blue, std::uint16_t gamma);
-
+    void PowerOn(std::uint32_t componentIndex);
+    void PowerOff(std::uint32_t componentIndex);
+    void Brigtness(std::uint32_t componentIndex, std::uint16_t value);
+    void SelectColor(std::uint32_t componentIndex, std::uint16_t red, std::uint16_t green, std::uint16_t blue, std::uint16_t gamma);
 };
 
 } //namespace rohit

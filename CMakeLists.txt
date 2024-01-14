@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 
-#sudo apt install libssl-dev
-#sudo apt install libpq-dev
 #sudo apt install flex
 #sudo apt install bison
+#sudo apt install generate-ninja
 
 project(iotcloud)
 

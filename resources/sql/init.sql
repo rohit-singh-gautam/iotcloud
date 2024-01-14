@@ -31,16 +31,6 @@ DROP TABLE IF EXISTS AUTHORIZATIONS CASCADE;
 
 DROP TYPE IF EXISTS PUBLIC_DEVICE_TYPE;
 
--- This is one enty per device
--- It contains all the information required for authentication
-CREATE TABLE PROTECTED_DEVICE (
-    ID              UUID    PRIMARY KEY,
-    PUBLIC_KEY      BYTEA,
-    SYMMETRIC_KEY   BYTEA,                  -- This will be created by authentication server
-    KEY_EXPIRY      TIMESTAMP,
-    MODELID         UUID
-);
-
 
 -- This information is only in cache
 -- Updating database will be very costly
@@ -112,11 +102,24 @@ CREATE TABLE USERS (
 CREATE INDEX USER_EMAIL_INDEX ON USERS USING HASH (EMAIL);
 CREATE INDEX USER_MOBILE_INDEX ON USERS USING HASH (MOBILE);
 
+-- This is iot device
+-- This is one enty per device
+-- It contains all the information required for authentication
+CREATE TABLE PROTECTED_DEVICE (
+    ID              UUID    PRIMARY KEY,
+    PUBLIC_KEY      BYTEA,
+    SYMMETRIC_KEY   BYTEA,                  -- This will be created by authentication server
+    KEY_EXPIRY      TIMESTAMP,
+    MODELID         INTEGER
+);
+
 CREATE TYPE PUBLIC_DEVICE_TYPE AS ENUM (
   'ANDROID', 
   'WINDOWS', 
   'IPHONE');
 
+-- This is non IOT device cannot be controlled
+-- This will receive update for which it has registered
 CREATE TABLE PUBLIC_DEVICE (
     ID          UUID        PRIMARY KEY,
     TYPE        PUBLIC_DEVICE_TYPE,

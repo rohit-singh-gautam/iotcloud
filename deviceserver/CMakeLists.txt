@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
+find_package(libpqxx CONFIG REQUIRED)
+
 project(DeviceServer)
 
 add_executable(DeviceServer
@@ -8,6 +10,7 @@ add_executable(DeviceServer
     lib/iothttphelper.cc
     lib/iothttpevent.cc
     lib/iotserverevent.cc
+    lib/devices.cc
 )
 
 include_directories(DeviceServer PUBLIC
@@ -20,7 +23,4 @@ include_directories(DeviceServer PUBLIC
     ${CMAKE_SOURCE_DIR}/thirdparty/md5
 )
 
-target_link_libraries(DeviceServer PUBLIC
-    HTTPParser
-    ServerLibrary
-)
+target_link_libraries(DeviceServer PUBLIC HTTPParser ServerLibrary libpqxx::pqxx)
